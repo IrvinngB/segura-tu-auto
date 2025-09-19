@@ -1,0 +1,163 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* SeguraTuAuto Insurance Theme - Professional & Trustworthy */
+  --background: #ecfeff; /* Light Cyan for overall background */
+  --foreground: #475569; /* Dark Gray for text */
+  --card: #ffffff; /* White for card backgrounds */
+  --card-foreground: #475569; /* Dark Gray for card text */
+  --popover: #ffffff; /* White for popover backgrounds */
+  --popover-foreground: #475569; /* Dark Gray for popover text */
+  --primary: #164e63; /* Cyan-800 for primary actions and buttons */
+  --primary-foreground: #ffffff; /* White for text on primary buttons */
+  --secondary: #84cc16; /* Bright Green for secondary actions */
+  --secondary-foreground: #ffffff; /* White for text on secondary buttons */
+  --muted: #f0fdf4; /* Soft background for muted elements */
+  --muted-foreground: #374151; /* Dark Gray for muted text */
+  --accent: #84cc16; /* Accent color for highlights */
+  --accent-foreground: #164e63; /* Dark Cyan for text on accents */
+  --destructive: #dc2626; /* Red for error messages */
+  --destructive-foreground: #ffffff; /* White for text on error messages */
+  --border: #d1d5db; /* Light Gray for borders */
+  --input: #ffffff; /* White for input fields */
+  --ring: #84cc16; /* Bright Green for focus rings */
+  --chart-1: #1d4ed8; /* Chart color 1 */
+  --chart-2: #9333ea; /* Chart color 2 */
+  --chart-3: #f59e0b; /* Chart color 3 */
+  --chart-4: #2563eb; /* Chart color 4 */
+  --chart-5: #ec4899; /* Chart color 5 */
+  --radius: 0.5rem; /* Corner rounding for elements */
+  --sidebar: #ffffff; /* White for sidebar background */
+  --sidebar-foreground: #475569; /* Dark Gray for sidebar text */
+  --sidebar-primary: #164e63; /* Cyan-800 for primary sidebar elements */
+  --sidebar-primary-foreground: #ffffff; /* White for primary sidebar text */
+  --sidebar-accent: #84cc16; /* Bright Green for sidebar accents */
+  --sidebar-accent-foreground: #164e63; /* Dark Cyan for text on sidebar accents */
+  --sidebar-border: #d1d5db; /* Light Gray for sidebar borders */
+  --sidebar-ring: #84cc16; /* Bright Green for focus rings in sidebar */
+}
+
+.dark {
+  --background: #0f172a; /* Dark slate for dark mode background */
+  --foreground: #f1f5f9; /* Light slate for dark mode text */
+  --card: #1e293b; /* Dark slate for card backgrounds */
+  --card-foreground: #f1f5f9; /* Light slate for card text */
+  --popover: #1e293b; /* Dark slate for popover backgrounds */
+  --popover-foreground: #f1f5f9; /* Light slate for popover text */
+  --primary: #0891b2; /* Cyan-600 for primary actions in dark mode */
+  --primary-foreground: #ffffff; /* White for text on primary buttons */
+  --secondary: #65a30d; /* Green-600 for secondary actions in dark mode */
+  --secondary-foreground: #ffffff; /* White for text on secondary buttons */
+  --muted: #334155; /* Slate-700 for muted elements */
+  --muted-foreground: #94a3b8; /* Slate-400 for muted text */
+  --accent: #65a30d; /* Green-600 for accents in dark mode */
+  --accent-foreground: #f1f5f9; /* Light slate for text on accents */
+  --destructive: #ef4444; /* Red-500 for error messages */
+  --destructive-foreground: #ffffff; /* White for text on error messages */
+  --border: #334155; /* Slate-700 for borders */
+  --input: #1e293b; /* Dark slate for input fields */
+  --ring: #65a30d; /* Green-600 for focus rings */
+  --chart-1: #3b82f6; /* Blue-500 for charts */
+  --chart-2: #a855f7; /* Purple-500 for charts */
+  --chart-3: #f59e0b; /* Amber-500 for charts */
+  --chart-4: #06b6d4; /* Cyan-500 for charts */
+  --chart-5: #ec4899; /* Pink-500 for charts */
+  --sidebar: #1e293b; /* Dark slate for sidebar background */
+  --sidebar-foreground: #f1f5f9; /* Light slate for sidebar text */
+  --sidebar-primary: #0891b2; /* Cyan-600 for primary sidebar elements */
+  --sidebar-primary-foreground: #ffffff; /* White for primary sidebar text */
+  --sidebar-accent: #65a30d; /* Green-600 for sidebar accents */
+  --sidebar-accent-foreground: #f1f5f9; /* Light slate for text on sidebar accents */
+  --sidebar-border: #334155; /* Slate-700 for sidebar borders */
+  --sidebar-ring: #65a30d; /* Green-600 for focus rings in sidebar */
+}
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom styles for insurance forms and data tables */
+.insurance-form {
+  @apply space-y-6 p-6 bg-card rounded-lg border;
+}
+
+.data-table {
+  @apply w-full border-collapse bg-card rounded-lg overflow-hidden;
+}
+
+.status-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.status-active {
+  @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+}
+
+.status-pending {
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+}
+
+.status-expired {
+  @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+}
+
+.priority-high {
+  @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+}
+
+.priority-medium {
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+}
+
+.priority-low {
+  @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+}
