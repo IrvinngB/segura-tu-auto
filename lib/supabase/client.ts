@@ -6,51 +6,58 @@ export function createClient() {
     supabaseConfig.url, 
     supabaseConfig.anonKey,
     {
-      auth: supabaseConfig.auth,
-      cookies: {
-        get(name: string) {
-          if (typeof document === 'undefined') return undefined
-          const value = document.cookie
-            .split('; ')
-            .find(row => row.startsWith(`${name}=`))
-            ?.split('=')[1]
-          return value
-        },
-        set(name: string, value: string, options: any) {
-          if (typeof document === 'undefined') return
-          
-          // Configurar opciones de cookie por defecto
-          const defaultOptions = {
-            path: '/',
-            sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
-            ...options
+      auth: {
+        ...supabaseConfig.auth,
+        // Usar localStorage en lugar de cookies para evitar conflictos
+        storage: typeof window !== 'undefined' ? {
+          getItem: (key: string) => {
+            try {
+              return window.localStorage.getItem(key)
+            } catch (error) {
+              console.warn('Error getting item from localStorage:', error)
+              return null
+            }
+          },
+          setItem: (key: string, value: string) => {
+            try {
+              // Limpiar sesiones anteriores antes de establecer una nueva
+              if (key === 'sb-auth-token') {
+                // Limpiar todas las claves de Supabase existentes
+                const keysToRemove = []
+                for (let i = 0; i < window.localStorage.length; i++) {
+                  const existingKey = window.localStorage.key(i)
+                  if (existingKey && existingKey.includes('sb-')) {
+                    keysToRemove.push(existingKey)
+                  }
+                }
+                keysToRemove.forEach(k => window.localStorage.removeItem(k))
+              }
+              window.localStorage.setItem(key, value)
+            } catch (error) {
+              console.warn('Error setting item in localStorage:', error)
+            }
+          },
+          removeItem: (key: string) => {
+            try {
+              window.localStorage.removeItem(key)
+            } catch (error) {
+              console.warn('Error removing item from localStorage:', error)
+            }
           }
-          
-          const cookieString = Object.entries(defaultOptions)
-            .map(([key, val]) => `${key}=${val}`)
-            .join('; ')
-            
-          document.cookie = `${name}=${value}; ${cookieString}`
-        },
-        remove(name: string, options: any) {
-          if (typeof document === 'undefined') return
-          
-          const defaultOptions = {
-            path: '/',
-            sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
-            expires: 'Thu, 01 Jan 1970 00:00:00 UTC',
-            ...options
-          }
-          
-          const cookieString = Object.entries(defaultOptions)
-            .map(([key, val]) => `${key}=${val}`)
-            .join('; ')
-            
-          document.cookie = `${name}=; ${cookieString}`
-        },
+        } : undefined,
+        storageKey: 'sb-auth-token',
+        // Configuración para evitar múltiples sesiones
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce' as const,
       },
+      // No usar cookies personalizadas para evitar conflictos
+      global: {
+        headers: {
+          'X-Client-Info': 'supabase-js-web'
+        }
+      }
     }
   )
 }

@@ -6,6 +6,7 @@ console.log('🧹 Limpiando cookies problemáticas de Supabase...')
 // Lista de cookies de Supabase que pueden causar problemas
 const supabaseCookies = [
   'sb-sztuxibgvlwbykaopnqg-auth-token',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier',
   'sb-auth-token',
   'supabase-auth-token',
   'sb-sztuxibgvlwbykaopnqg-auth-token.0',
@@ -17,7 +18,17 @@ const supabaseCookies = [
   'sb-sztuxibgvlwbykaopnqg-auth-token.6',
   'sb-sztuxibgvlwbykaopnqg-auth-token.7',
   'sb-sztuxibgvlwbykaopnqg-auth-token.8',
-  'sb-sztuxibgvlwbykaopnqg-auth-token.9'
+  'sb-sztuxibgvlwbykaopnqg-auth-token.9',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.0',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.1',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.2',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.3',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.4',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.5',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.6',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.7',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.8',
+  'sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier.9'
 ]
 
 // Función para eliminar una cookie
@@ -69,3 +80,26 @@ document.cookie.split(';').forEach(cookie => {
     console.log(`⚠️  Cookie de Supabase encontrada: ${name}`)
   }
 })
+
+// Mostrar localStorage actual
+console.log('📋 localStorage actual:')
+Object.keys(localStorage).forEach(key => {
+  if (key.includes('sb-') || key.includes('supabase')) {
+    console.log(`⚠️  localStorage de Supabase encontrado: ${key}`)
+  }
+})
+
+// Mostrar sessionStorage actual
+console.log('📋 sessionStorage actual:')
+Object.keys(sessionStorage).forEach(key => {
+  if (key.includes('user_profile_') || key.includes('customer_data_') || key.includes('supabase')) {
+    console.log(`⚠️  sessionStorage encontrado: ${key}`)
+  }
+})
+
+console.log('')
+console.log('🚀 Para probar la limpieza automática:')
+console.log('1. Ve al dashboard')
+console.log('2. Haz clic en "🧹 Limpiar Cache"')
+console.log('3. O cierra sesión completamente')
+console.log('4. Inicia sesión de nuevo')

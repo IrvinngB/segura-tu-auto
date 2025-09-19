@@ -27,7 +27,7 @@ interface RecentClaim {
 }
 
 export default function Dashboard() {
-  const { user, userProfile, loading: authLoading } = useAuth()
+  const { user, userProfile, loading: authLoading, clearAllCache } = useAuth()
   const [stats, setStats] = useState<DashboardStats>({
     totalPolicies: 0,
     activeClaims: 0,
@@ -216,6 +216,14 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-muted-foreground">Bienvenido, {user?.email}</span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={clearAllCache}
+                title="Limpiar cache y datos de sesión"
+              >
+                🧹 Limpiar Cache
+              </Button>
               <Button variant="outline" onClick={() => supabase.auth.signOut()}>
                 Cerrar Sesión
               </Button>

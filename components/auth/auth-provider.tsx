@@ -13,6 +13,7 @@ interface AuthContextType {
   loading: boolean
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
+  clearAllCache: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -37,20 +38,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
+      // Usar maybeSingle() en lugar de single() para evitar error PGRST116
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle()
 
       if (error) {
         console.error("Error fetching user profile:", error)
         return null
       }
 
-      // Guardar en cache
-      if (data) {
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          data,
-          timestamp: Date.now()
-        }))
+      // Si no hay datos, el usuario no existe en la tabla users
+      if (!data) {
+        console.warn(`User profile not found for user ID: ${userId}`)
+        return null
       }
+
+      // Guardar en cache
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }))
 
       return data
     } catch (error) {
@@ -73,10 +83,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const clearAllCache = () => {
+    try {
+      // Limpiar cache de sessionStorage
+      const keysToRemove = []
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && (key.includes('user_profile_') || key.includes('customer_data_') || key.includes('supabase'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => sessionStorage.removeItem(key))
+
+      // Limpiar cache de localStorage
+      const localStorageKeysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.includes('sb-') || key.includes('supabase'))) {
+          localStorageKeysToRemove.push(key)
+        }
+      }
+      localStorageKeysToRemove.forEach(key => localStorage.removeItem(key))
+
+      console.log('✅ Cache limpiado completamente')
+    } catch (error) {
+      console.error('Error al limpiar cache:', error)
+    }
+  }
+
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    setUserProfile(null)
+    try {
+      // Limpiar todo el cache
+      clearAllCache()
+
+      // Cerrar sesión en Supabase
+      await supabase.auth.signOut()
+
+      // Limpiar estado local
+      setUser(null)
+      setUserProfile(null)
+
+      console.log('✅ Sesión cerrada y cache limpiado completamente')
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error)
+      // Aún así limpiar el estado local
+      setUser(null)
+      setUserProfile(null)
+    }
   }
 
   useEffect(() => {
@@ -149,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, signOut, refreshUser }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, userProfile, loading, signOut, refreshUser, clearAllCache }}>{children}</AuthContext.Provider>
   )
 }
 

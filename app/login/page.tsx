@@ -44,29 +44,37 @@ export default function LoginPage() {
           .from("users")
           .select("role")
           .eq("id", data.user.id)
-          .single()
+          .maybeSingle()
 
         if (userError) {
+          console.error("Error fetching user data:", userError)
           setError("Error fetching user data")
+          return
+        }
+
+        // Si no hay datos de usuario, redirigir al dashboard principal
+        if (!userData) {
+          console.warn("User profile not found, redirecting to main dashboard")
+          router.push("/")
           return
         }
 
         // Redirect based on role
         switch (userData.role) {
           case "admin":
-            router.push("/admin/dashboard")
+            router.push("/")
             break
           case "agent":
-            router.push("/agent/dashboard")
+            router.push("/")
             break
           case "adjuster":
-            router.push("/adjuster/dashboard")
+            router.push("/")
             break
           case "customer":
-            router.push("/customer/dashboard")
+            router.push("/")
             break
           default:
-            router.push("/dashboard")
+            router.push("/")
         }
       }
     } catch (err) {
