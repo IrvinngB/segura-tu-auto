@@ -80,18 +80,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    let mounted = true
+
     const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        
+        if (!mounted) return
+        
+        setUser(session?.user ?? null)
 
-      if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id)
-        setUserProfile(profile)
+        if (session?.user) {
+          const profile = await fetchUserProfile(session.user.id)
+          if (mounted) {
+            setUserProfile(profile)
+          }
+        }
+
+        if (mounted) {
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error("Error getting initial session:", error)
+        if (mounted) {
+          setLoading(false)
+        }
       }
-
-      setLoading(false)
     }
 
     getInitialSession()
@@ -99,19 +115,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
+      if (!mounted) return
+      
+      try {
+        setUser(session?.user ?? null)
 
-      if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id)
-        setUserProfile(profile)
-      } else {
-        setUserProfile(null)
+        if (session?.user) {
+          const profile = await fetchUserProfile(session.user.id)
+          if (mounted) {
+            setUserProfile(profile)
+          }
+        } else {
+          if (mounted) {
+            setUserProfile(null)
+          }
+        }
+
+        if (mounted) {
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error("Error in auth state change:", error)
+        if (mounted) {
+          setLoading(false)
+        }
       }
-
-      setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   return (

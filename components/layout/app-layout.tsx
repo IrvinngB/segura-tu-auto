@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo, memo } from "react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { RoleBasedSidebar } from "@/components/navigation/role-based-sidebar"
 import { cn } from "@/lib/utils"
@@ -9,13 +10,16 @@ interface AppLayoutProps {
   children: React.ReactNode
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export const AppLayout = memo(function AppLayout({ children }: AppLayoutProps) {
   const { user } = useAuth()
   const pathname = usePathname()
 
   // No mostrar sidebar en páginas de autenticación
-  const authPages = ["/login", "/register", "/auth"]
-  const shouldShowSidebar = user && !authPages.some(page => pathname.startsWith(page))
+  const authPages = useMemo(() => ["/login", "/register", "/auth"], [])
+  const shouldShowSidebar = useMemo(() => 
+    user && !authPages.some(page => pathname.startsWith(page)), 
+    [user, pathname, authPages]
+  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,4 +35,4 @@ export function AppLayout({ children }: AppLayoutProps) {
       </div>
     </div>
   )
-}
+})

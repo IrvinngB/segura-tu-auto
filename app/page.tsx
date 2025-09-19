@@ -1,12 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/auth/auth-provider"
 import { createBrowserClient } from "@supabase/ssr"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Car, FileText, AlertTriangle, Users, TrendingUp, Shield, Clock } from "lucide-react"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { DashboardSkeleton } from "@/components/ui/skeleton"
 
 interface DashboardStats {
   totalPolicies: number
@@ -24,8 +27,7 @@ interface RecentClaim {
 }
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null)
-  const [userRole, setUserRole] = useState<string>("")
+  const { user, userProfile, loading: authLoading } = useAuth()
   const [stats, setStats] = useState<DashboardStats>({
     totalPolicies: 0,
     activeClaims: 0,
@@ -42,30 +44,17 @@ export default function Dashboard() {
   )
 
   useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        router.push("/login")
+    const fetchDashboardData = async () => {
+      if (!user || !userProfile) {
+        if (!authLoading) {
+          router.push("/login")
+        }
         return
       }
-      setUser(user)
 
       try {
-        // Get user profile with role
-        const { data: userProfile } = await supabase
-          .from("users")
-          .select("role, first_name, last_name")
-          .eq("id", user.id)
-          .single()
-
-        if (userProfile) {
-          setUserRole(userProfile.role)
-        }
-
         // Get dashboard statistics based on user role
-        if (userProfile?.role === "customer") {
+        if (userProfile.role === "customer") {
           // Customer dashboard - show only their data
           const { data: customerData } = await supabase.from("customers").select("id").eq("user_id", user.id).single()
 
@@ -125,17 +114,19 @@ export default function Dashboard() {
       setLoading(false)
     }
 
-    getUser()
-  }, [router, supabase.auth])
+    if (!authLoading) {
+      fetchDashboardData()
+    }
+  }, [user, userProfile, authLoading, router])
 
-  const getNavigationItems = () => {
+  const navigationItems = useMemo(() => {
     const baseItems = [
       { path: "/policies", icon: FileText, label: "Gestión de Pólizas" },
       { path: "/claims", icon: AlertTriangle, label: "Reclamaciones" },
       { path: "/risk-assessment", icon: TrendingUp, label: "Evaluación de Riesgo" },
     ]
 
-    if (userRole === "customer") {
+    if (userProfile?.role === "customer") {
       return [
         { path: "/customer/dashboard", icon: Shield, label: "Mi Dashboard" },
         { path: "/customer/policies", icon: FileText, label: "Mis Pólizas" },
@@ -144,7 +135,7 @@ export default function Dashboard() {
       ]
     }
 
-    if (userRole === "admin" || userRole === "agent") {
+    if (userProfile?.role === "admin" || userProfile?.role === "agent") {
       return [
         ...baseItems,
         { path: "/documents", icon: FileText, label: "Documentos" },
@@ -153,7 +144,7 @@ export default function Dashboard() {
       ]
     }
 
-    if (userRole === "adjuster") {
+    if (userProfile?.role === "adjuster") {
       return [
         { path: "/claims", icon: AlertTriangle, label: "Reclamaciones" },
         { path: "/damage-assessments", icon: TrendingUp, label: "Evaluaciones" },
@@ -162,9 +153,9 @@ export default function Dashboard() {
     }
 
     return baseItems
-  }
+  }, [userProfile?.role])
 
-  const getPriorityBadgeVariant = (priority: string) => {
+  const getPriorityBadgeVariant = useMemo(() => (priority: string) => {
     switch (priority) {
       case "high":
       case "urgent":
@@ -176,12 +167,28 @@ export default function Dashboard() {
       default:
         return "secondary"
     }
+  }, [])
+
+  if (authLoading) {
+    return <LoadingSpinner size="lg" className="min-h-screen" />
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-background">
+        <header className="bg-card border-b border-border">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div className="flex items-center space-x-4">
+                <Shield className="h-8 w-8 text-primary" />
+                <h1 className="text-2xl font-bold text-foreground">SeguraTuAuto</h1>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <DashboardSkeleton />
+        </div>
       </div>
     )
   }
@@ -195,13 +202,13 @@ export default function Dashboard() {
             <div className="flex items-center space-x-4">
               <Shield className="h-8 w-8 text-primary" />
               <h1 className="text-2xl font-bold text-foreground">SeguraTuAuto</h1>
-              {userRole && (
+              {userProfile?.role && (
                 <Badge variant="outline" className="capitalize">
-                  {userRole === "customer"
+                  {userProfile.role === "customer"
                     ? "Cliente"
-                    : userRole === "agent"
+                    : userProfile.role === "agent"
                       ? "Agente"
-                      : userRole === "adjuster"
+                      : userProfile.role === "adjuster"
                         ? "Evaluador"
                         : "Admin"}
                 </Badge>
@@ -223,14 +230,14 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {userRole === "customer" ? "Mis Pólizas" : "Total Pólizas"}
+                {userProfile?.role === "customer" ? "Mis Pólizas" : "Total Pólizas"}
               </CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalPolicies}</div>
               <p className="text-xs text-muted-foreground">
-                {userRole === "customer" ? "Pólizas activas" : "+12% desde el mes pasado"}
+                {userProfile?.role === "customer" ? "Pólizas activas" : "+12% desde el mes pasado"}
               </p>
             </CardContent>
           </Card>
@@ -238,14 +245,14 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {userRole === "customer" ? "Mis Reclamaciones" : "Reclamaciones Activas"}
+                {userProfile?.role === "customer" ? "Mis Reclamaciones" : "Reclamaciones Activas"}
               </CardTitle>
               <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.activeClaims}</div>
               <p className="text-xs text-muted-foreground">
-                {userRole === "customer" ? "En proceso" : "-3% desde la semana pasada"}
+                {userProfile?.role === "customer" ? "En proceso" : "-3% desde la semana pasada"}
               </p>
             </CardContent>
           </Card>
@@ -253,14 +260,14 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {userRole === "customer" ? "Mi Perfil" : "Total Clientes"}
+                {userProfile?.role === "customer" ? "Mi Perfil" : "Total Clientes"}
               </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalClients}</div>
               <p className="text-xs text-muted-foreground">
-                {userRole === "customer" ? "Información actualizada" : "+8% desde el mes pasado"}
+                {userProfile?.role === "customer" ? "Información actualizada" : "+8% desde el mes pasado"}
               </p>
             </CardContent>
           </Card>
@@ -268,14 +275,14 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {userRole === "customer" ? "Estado de Evaluaciones" : "Evaluaciones Pendientes"}
+                {userProfile?.role === "customer" ? "Estado de Evaluaciones" : "Evaluaciones Pendientes"}
               </CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.pendingAssessments}</div>
               <p className="text-xs text-muted-foreground">
-                {userRole === "customer" ? "En revisión" : "Requieren atención"}
+                {userProfile?.role === "customer" ? "En revisión" : "Requieren atención"}
               </p>
             </CardContent>
           </Card>
@@ -289,7 +296,7 @@ export default function Dashboard() {
               <CardDescription>Accede a las funciones principales del sistema</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {userRole === "customer" ? (
+              {userProfile?.role === "customer" ? (
                 <>
                   <Button
                     className="w-full justify-start bg-transparent"
@@ -350,10 +357,10 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <CardTitle>
-                {userRole === "customer" ? "Mis Reclamaciones Recientes" : "Reclamaciones Recientes"}
+                {userProfile?.role === "customer" ? "Mis Reclamaciones Recientes" : "Reclamaciones Recientes"}
               </CardTitle>
               <CardDescription>
-                {userRole === "customer"
+                {userProfile?.role === "customer"
                   ? "Estado de tus reclamaciones más recientes"
                   : "Últimas reclamaciones que requieren atención"}
               </CardDescription>
@@ -388,7 +395,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {getNavigationItems().map((item) => (
+              {navigationItems.map((item) => (
                 <Button
                   key={item.path}
                   variant="outline"

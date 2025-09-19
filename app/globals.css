@@ -123,6 +123,26 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Asegurar que todos los elementos clickeables tengan cursor pointer */
+  button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  a,
+  [onclick],
+  .cursor-pointer {
+    cursor: pointer !important;
+  }
+  
+  /* Elementos que no deberían tener cursor pointer */
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  input:disabled,
+  a[aria-disabled="true"] {
+    cursor: not-allowed !important;
+  }
 }
 
 /* Custom styles for insurance forms and data tables */

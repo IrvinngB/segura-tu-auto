@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, memo } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -60,18 +60,20 @@ const navigationItems: NavigationItem[] = [
   { name: "Mis Casos", href: "/adjuster/cases", icon: AlertTriangle, roles: ["adjuster"], description: "Casos asignados" },
 ]
 
-export function RoleBasedSidebar() {
+export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const { userProfile, signOut } = useAuth()
 
   // Filtrar navegación basada en el rol del usuario
-  const filteredNavigation = navigationItems.filter(item => 
-    userProfile?.role && item.roles.includes(userProfile.role)
+  const filteredNavigation = useMemo(() => 
+    navigationItems.filter(item => 
+      userProfile?.role && item.roles.includes(userProfile.role)
+    ), [userProfile?.role]
   )
 
   // Agrupar elementos por categorías
-  const groupedNavigation = {
+  const groupedNavigation = useMemo(() => ({
     main: filteredNavigation.filter(item => 
       ["Dashboard", "Mis Pólizas", "Pólizas", "Mis Reclamaciones", "Reclamaciones"].includes(item.name)
     ),
@@ -84,9 +86,9 @@ export function RoleBasedSidebar() {
     reports: filteredNavigation.filter(item => 
       ["Análisis"].includes(item.name)
     )
-  }
+  }), [filteredNavigation])
 
-  const getRoleDisplayName = (role: string) => {
+  const getRoleDisplayName = useMemo(() => (role: string) => {
     const roleNames = {
       admin: "Administrador",
       agent: "Agente",
@@ -94,9 +96,9 @@ export function RoleBasedSidebar() {
       customer: "Cliente"
     }
     return roleNames[role as keyof typeof roleNames] || role
-  }
+  }, [])
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = useMemo(() => (role: string) => {
     const roleColors = {
       admin: "text-red-600",
       agent: "text-blue-600", 
@@ -104,7 +106,7 @@ export function RoleBasedSidebar() {
       customer: "text-purple-600"
     }
     return roleColors[role as keyof typeof roleColors] || "text-gray-600"
-  }
+  }, [])
 
   const handleSignOut = async () => {
     try {
@@ -222,4 +224,4 @@ export function RoleBasedSidebar() {
       )}
     </>
   )
-}
+})
