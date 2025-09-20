@@ -28,6 +28,15 @@ export default function LoginPage() {
     setError("")
 
     try {
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.includes("sb-")) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach((key) => localStorage.removeItem(key))
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -39,7 +48,6 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Get user role from the users table
         const { data: userData, error: userError } = await supabase
           .from("users")
           .select("role")
@@ -48,36 +56,22 @@ export default function LoginPage() {
 
         if (userError) {
           console.error("Error fetching user data:", userError)
-          setError("Error fetching user data")
+          console.warn("User profile not found, redirecting to main dashboard")
+          router.push("/")
           return
         }
 
-        // Si no hay datos de usuario, redirigir al dashboard principal
         if (!userData) {
           console.warn("User profile not found, redirecting to main dashboard")
           router.push("/")
           return
         }
 
-        // Redirect based on role
-        switch (userData.role) {
-          case "admin":
-            router.push("/")
-            break
-          case "agent":
-            router.push("/")
-            break
-          case "adjuster":
-            router.push("/")
-            break
-          case "customer":
-            router.push("/")
-            break
-          default:
-            router.push("/")
-        }
+        console.log(`✅ Login successful for ${userData.role}`)
+        router.push("/")
       }
     } catch (err) {
+      console.error("Login error:", err)
       setError("An unexpected error occurred")
     } finally {
       setLoading(false)

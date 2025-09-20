@@ -1,20 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  // Middleware simplificado para evitar conflictos con localStorage
-  // Solo redirigir a login si no hay usuario y no está en páginas públicas
+  // Only redirect to login if not on public pages
   const { pathname } = request.nextUrl
-  
-  // Páginas públicas que no requieren autenticación
-  const publicPaths = ['/login', '/register', '/auth', '/forgot-password']
-  const isPublicPath = publicPaths.some(path => pathname.startsWith(path))
-  
-  // Si es una página pública, permitir acceso
+
+  // Public pages that don't require authentication
+  const publicPaths = ["/login", "/register", "/auth", "/forgot-password", "/auth-code-error"]
+  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path))
+
   if (isPublicPath) {
     return NextResponse.next()
   }
-  
-  // Para otras páginas, permitir acceso y dejar que el AuthProvider maneje la autenticación
+
+  // This avoids server/client conflicts with localStorage
   return NextResponse.next()
 }
 
