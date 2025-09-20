@@ -6,26 +6,26 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth/auth-provider"
-import { 
-  Shield, 
-  FileText, 
-  AlertTriangle, 
-  TrendingUp, 
-  Users, 
-  Upload, 
-  BarChart3, 
-  Menu, 
+import {
+  Shield,
+  FileText,
+  AlertTriangle,
+  TrendingUp,
+  Users,
+  Upload,
+  BarChart3,
+  Menu,
   X,
   Home,
   Car,
   CreditCard,
-  Settings,
   LogOut,
   User,
   ClipboardList,
   MessageSquare,
-  Calculator
+  Calculator,
 } from "lucide-react"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 interface NavigationItem {
   name: string
@@ -37,27 +37,99 @@ interface NavigationItem {
 
 const navigationItems: NavigationItem[] = [
   // Dashboard - Todos los roles
-  { name: "Dashboard", href: "/", icon: Home, roles: ["admin", "agent", "adjuster", "customer"], description: "Panel principal" },
-  
+  {
+    name: "Dashboard",
+    href: "/",
+    icon: Home,
+    roles: ["admin", "agent", "adjuster", "customer"],
+    description: "Panel principal",
+  },
+
   // Admin y Agent
   { name: "Pólizas", href: "/policies", icon: FileText, roles: ["admin", "agent"], description: "Gestión de pólizas" },
   { name: "Clientes", href: "/clients", icon: Users, roles: ["admin", "agent"], description: "Gestión de clientes" },
-  { name: "Reclamaciones", href: "/claims", icon: AlertTriangle, roles: ["admin", "agent", "adjuster"], description: "Gestión de reclamos" },
-  { name: "Evaluación de Riesgo", href: "/risk-assessment", icon: TrendingUp, roles: ["admin", "agent"], description: "Evaluación de riesgos" },
-  { name: "Documentos", href: "/documents", icon: Upload, roles: ["admin", "agent"], description: "Gestión de documentos" },
-  { name: "Análisis", href: "/analytics", icon: BarChart3, roles: ["admin", "agent"], description: "Reportes y análisis" },
-  
+  {
+    name: "Reclamaciones",
+    href: "/claims",
+    icon: AlertTriangle,
+    roles: ["admin", "agent", "adjuster"],
+    description: "Gestión de reclamos",
+  },
+  {
+    name: "Evaluación de Riesgo",
+    href: "/risk-assessment",
+    icon: TrendingUp,
+    roles: ["admin", "agent"],
+    description: "Evaluación de riesgos",
+  },
+  {
+    name: "Documentos",
+    href: "/documents",
+    icon: Upload,
+    roles: ["admin", "agent"],
+    description: "Gestión de documentos",
+  },
+  {
+    name: "Análisis",
+    href: "/analytics",
+    icon: BarChart3,
+    roles: ["admin", "agent"],
+    description: "Reportes y análisis",
+  },
+
   // Customer
-  { name: "Mis Pólizas", href: "/customer/policies", icon: FileText, roles: ["customer"], description: "Mis pólizas de seguro" },
-  { name: "Mis Reclamaciones", href: "/customer/claims", icon: AlertTriangle, roles: ["customer"], description: "Mis reclamos" },
+  {
+    name: "Mis Pólizas",
+    href: "/customer/policies",
+    icon: FileText,
+    roles: ["customer"],
+    description: "Mis pólizas de seguro",
+  },
+  {
+    name: "Mis Reclamaciones",
+    href: "/customer/claims",
+    icon: AlertTriangle,
+    roles: ["customer"],
+    description: "Mis reclamos",
+  },
   { name: "Mis Vehículos", href: "/customer/vehicles", icon: Car, roles: ["customer"], description: "Mis vehículos" },
-  { name: "Cotización", href: "/customer/quote", icon: Calculator, roles: ["customer"], description: "Solicitar cotización" },
-  { name: "Pagos", href: "/customer/payments", icon: CreditCard, roles: ["customer"], description: "Historial de pagos" },
-  { name: "Comunicaciones", href: "/customer/communications", icon: MessageSquare, roles: ["customer"], description: "Mensajes y notificaciones" },
-  
+  {
+    name: "Cotización",
+    href: "/customer/quote",
+    icon: Calculator,
+    roles: ["customer"],
+    description: "Solicitar cotización",
+  },
+  {
+    name: "Pagos",
+    href: "/customer/payments",
+    icon: CreditCard,
+    roles: ["customer"],
+    description: "Historial de pagos",
+  },
+  {
+    name: "Comunicaciones",
+    href: "/customer/communications",
+    icon: MessageSquare,
+    roles: ["customer"],
+    description: "Mensajes y notificaciones",
+  },
+
   // Adjuster
-  { name: "Evaluaciones", href: "/adjuster/assessments", icon: ClipboardList, roles: ["adjuster"], description: "Evaluaciones de daños" },
-  { name: "Mis Casos", href: "/adjuster/cases", icon: AlertTriangle, roles: ["adjuster"], description: "Casos asignados" },
+  {
+    name: "Evaluaciones",
+    href: "/adjuster/assessments",
+    icon: ClipboardList,
+    roles: ["adjuster"],
+    description: "Evaluaciones de daños",
+  },
+  {
+    name: "Mis Casos",
+    href: "/adjuster/cases",
+    icon: AlertTriangle,
+    roles: ["adjuster"],
+    description: "Casos asignados",
+  },
 ]
 
 export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
@@ -66,47 +138,53 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
   const { userProfile, signOut } = useAuth()
 
   // Filtrar navegación basada en el rol del usuario
-  const filteredNavigation = useMemo(() => 
-    navigationItems.filter(item => 
-      userProfile?.role && item.roles.includes(userProfile.role)
-    ), [userProfile?.role]
+  const filteredNavigation = useMemo(
+    () => navigationItems.filter((item) => userProfile?.role && item.roles.includes(userProfile.role)),
+    [userProfile?.role],
   )
 
   // Agrupar elementos por categorías
-  const groupedNavigation = useMemo(() => ({
-    main: filteredNavigation.filter(item => 
-      ["Dashboard", "Mis Pólizas", "Pólizas", "Mis Reclamaciones", "Reclamaciones"].includes(item.name)
-    ),
-    management: filteredNavigation.filter(item => 
-      ["Clientes", "Mis Vehículos", "Evaluación de Riesgo", "Evaluaciones", "Mis Casos"].includes(item.name)
-    ),
-    tools: filteredNavigation.filter(item => 
-      ["Cotización", "Documentos", "Pagos", "Comunicaciones"].includes(item.name)
-    ),
-    reports: filteredNavigation.filter(item => 
-      ["Análisis"].includes(item.name)
-    )
-  }), [filteredNavigation])
+  const groupedNavigation = useMemo(
+    () => ({
+      main: filteredNavigation.filter((item) =>
+        ["Dashboard", "Mis Pólizas", "Pólizas", "Mis Reclamaciones", "Reclamaciones"].includes(item.name),
+      ),
+      management: filteredNavigation.filter((item) =>
+        ["Clientes", "Mis Vehículos", "Evaluación de Riesgo", "Evaluaciones", "Mis Casos"].includes(item.name),
+      ),
+      tools: filteredNavigation.filter((item) =>
+        ["Cotización", "Documentos", "Pagos", "Comunicaciones"].includes(item.name),
+      ),
+      reports: filteredNavigation.filter((item) => ["Análisis"].includes(item.name)),
+    }),
+    [filteredNavigation],
+  )
 
-  const getRoleDisplayName = useMemo(() => (role: string) => {
-    const roleNames = {
-      admin: "Administrador",
-      agent: "Agente",
-      adjuster: "Ajustador",
-      customer: "Cliente"
-    }
-    return roleNames[role as keyof typeof roleNames] || role
-  }, [])
+  const getRoleDisplayName = useMemo(
+    () => (role: string) => {
+      const roleNames = {
+        admin: "Administrador",
+        agent: "Agente",
+        adjuster: "Ajustador",
+        customer: "Cliente",
+      }
+      return roleNames[role as keyof typeof roleNames] || role
+    },
+    [],
+  )
 
-  const getRoleColor = useMemo(() => (role: string) => {
-    const roleColors = {
-      admin: "text-red-600",
-      agent: "text-blue-600", 
-      adjuster: "text-green-600",
-      customer: "text-purple-600"
-    }
-    return roleColors[role as keyof typeof roleColors] || "text-gray-600"
-  }, [])
+  const getRoleColor = useMemo(
+    () => (role: string) => {
+      const roleColors = {
+        admin: "text-red-600",
+        agent: "text-blue-600",
+        adjuster: "text-green-600",
+        customer: "text-purple-600",
+      }
+      return roleColors[role as keyof typeof roleColors] || "text-gray-600"
+    },
+    [],
+  )
 
   const handleSignOut = async () => {
     try {
@@ -122,9 +200,7 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
     return (
       <div className="mb-6">
         {title && (
-          <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            {title}
-          </h3>
+          <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{title}</h3>
         )}
         <ul className="space-y-1">
           {items.map((item) => {
@@ -173,6 +249,9 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
         <div className="flex items-center justify-center h-16 border-b border-border px-4">
           <Shield className="h-8 w-8 text-primary" />
           <span className="ml-2 text-xl font-bold">SeguraTuAuto</span>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* User Info */}

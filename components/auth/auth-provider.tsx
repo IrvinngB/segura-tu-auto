@@ -26,41 +26,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      // Cache simple en memoria para evitar consultas repetidas
       const cacheKey = `user_profile_${userId}`
       const cached = sessionStorage.getItem(cacheKey)
-      
+
       if (cached) {
         const parsed = JSON.parse(cached)
-        // Cache válido por 5 minutos
+        // Cache valid for 5 minutes
         if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
           return parsed.data
         }
       }
 
-      // Usar maybeSingle() en lugar de single() para evitar error PGRST116
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle()
+      const { data, error } = await supabase.from("users").select("*").eq("id", userId).maybeSingle()
 
       if (error) {
         console.error("Error fetching user profile:", error)
         return null
       }
 
-      // Si no hay datos, el usuario no existe en la tabla users
       if (!data) {
         console.warn(`User profile not found for user ID: ${userId}`)
         return null
       }
 
-      // Guardar en cache
-      sessionStorage.setItem(cacheKey, JSON.stringify({
-        data,
-        timestamp: Date.now()
-      }))
+      // Save to cache
+      sessionStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          data,
+          timestamp: Date.now(),
+        }),
+      )
 
       return data
     } catch (error) {
@@ -85,48 +81,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearAllCache = () => {
     try {
-      // Limpiar cache de sessionStorage
+      // Clear sessionStorage cache
       const keysToRemove = []
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
-        if (key && (key.includes('user_profile_') || key.includes('customer_data_') || key.includes('supabase'))) {
+        if (key && (key.includes("user_profile_") || key.includes("customer_data_") || key.includes("supabase"))) {
           keysToRemove.push(key)
         }
       }
-      keysToRemove.forEach(key => sessionStorage.removeItem(key))
+      keysToRemove.forEach((key) => sessionStorage.removeItem(key))
 
-      // Limpiar cache de localStorage
+      // Clear localStorage cache
       const localStorageKeysToRemove = []
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
-        if (key && (key.includes('sb-') || key.includes('supabase'))) {
+        if (key && (key.includes("sb-") || key.includes("supabase"))) {
           localStorageKeysToRemove.push(key)
         }
       }
-      localStorageKeysToRemove.forEach(key => localStorage.removeItem(key))
+      localStorageKeysToRemove.forEach((key) => localStorage.removeItem(key))
 
-      console.log('✅ Cache limpiado completamente')
+      const cookiesToClear = [
+        "sb-sztuxibgvlwbykaopnqg-auth-token",
+        "sb-sztuxibgvlwbykaopnqg-auth-token-code-verifier",
+        "sb-auth-token",
+        "supabase-auth-token",
+      ]
+
+      cookiesToClear.forEach((cookieName) => {
+        // Clear for different path and domain combinations
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=localhost`
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.localhost`
+      })
+
+      console.log("✅ Cache cleared completely")
     } catch (error) {
-      console.error('Error al limpiar cache:', error)
+      console.error("Error clearing cache:", error)
     }
   }
 
   const signOut = async () => {
     try {
-      // Limpiar todo el cache
+      // Clear all cache first
       clearAllCache()
 
-      // Cerrar sesión en Supabase
+      // Sign out from Supabase
       await supabase.auth.signOut()
 
-      // Limpiar estado local
+      // Clear local state
       setUser(null)
       setUserProfile(null)
 
-      console.log('✅ Sesión cerrada y cache limpiado completamente')
+      console.log("✅ Session closed and cache cleared completely")
     } catch (error) {
-      console.error('Error al cerrar sesión:', error)
-      // Aún así limpiar el estado local
+      console.error("Error signing out:", error)
+      // Still clear local state
       setUser(null)
       setUserProfile(null)
     }
@@ -140,9 +150,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const {
           data: { session },
         } = await supabase.auth.getSession()
-        
+
         if (!mounted) return
-        
+
         setUser(session?.user ?? null)
 
         if (session?.user) {
@@ -169,8 +179,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
-      
+
       try {
+        if (event === "SIGNED_OUT") {
+          clearAllCache()
+        }
+
         setUser(session?.user ?? null)
 
         if (session?.user) {
@@ -202,7 +216,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, signOut, refreshUser, clearAllCache }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, userProfile, loading, signOut, refreshUser, clearAllCache }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 
