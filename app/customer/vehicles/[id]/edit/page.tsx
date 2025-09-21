@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useCustomerData } from "@/hooks/use-customer-data";
 import { createClient } from "@/lib/supabase/client";
-import { EditVehicleForm } from "@/components/vehicles/edit-vehicle-form";
+import { EditVehicleForm } from "@/components/vehicles";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Car } from "lucide-react";
 import Link from "next/link";
@@ -15,17 +15,17 @@ export default function EditVehiclePage() {
     const params = useParams();
     const router = useRouter();
     const vehicleId = params.id as string;
-    
+
     const {
         customerData,
         loading: customerLoading,
         error: customerError,
     } = useCustomerData();
-    
+
     const [vehicle, setVehicle] = useState<Vehicle | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    
+
     const supabase = createClient();
 
     useEffect(() => {
@@ -52,9 +52,13 @@ export default function EditVehiclePage() {
             if (vehicleError) {
                 console.error("Error obteniendo vehículo:", vehicleError);
                 if (vehicleError.code === "PGRST116") {
-                    setError("Vehículo no encontrado o no tienes permisos para editarlo");
+                    setError(
+                        "Vehículo no encontrado o no tienes permisos para editarlo"
+                    );
                 } else {
-                    setError(`Error al cargar el vehículo: ${vehicleError.message}`);
+                    setError(
+                        `Error al cargar el vehículo: ${vehicleError.message}`
+                    );
                 }
                 return;
             }
@@ -121,13 +125,15 @@ export default function EditVehiclePage() {
                             </Link>
                         </Button>
                         <div>
-                            <h1 className="text-3xl font-bold">Editar Vehículo</h1>
+                            <h1 className="text-3xl font-bold">
+                                Editar Vehículo
+                            </h1>
                             <p className="text-muted-foreground">
                                 Modificar información del vehículo
                             </p>
                         </div>
                     </div>
-                    
+
                     <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-md">
                         <p className="text-destructive">{error}</p>
                     </div>
@@ -148,20 +154,23 @@ export default function EditVehiclePage() {
                             </Link>
                         </Button>
                         <div>
-                            <h1 className="text-3xl font-bold">Editar Vehículo</h1>
+                            <h1 className="text-3xl font-bold">
+                                Editar Vehículo
+                            </h1>
                             <p className="text-muted-foreground">
                                 Modificar información del vehículo
                             </p>
                         </div>
                     </div>
-                    
+
                     <div className="text-center py-12">
                         <Car className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <h3 className="text-lg font-semibold mb-2">
                             Vehículo no encontrado
                         </h3>
                         <p className="text-muted-foreground">
-                            El vehículo que intentas editar no existe o no tienes permisos para modificarlo.
+                            El vehículo que intentas editar no existe o no
+                            tienes permisos para modificarlo.
                         </p>
                     </div>
                 </div>
@@ -182,7 +191,8 @@ export default function EditVehiclePage() {
                     <div>
                         <h1 className="text-3xl font-bold">Editar Vehículo</h1>
                         <p className="text-muted-foreground">
-                            Modificar información de {vehicle.year} {vehicle.make} {vehicle.model}
+                            Modificar información de {vehicle.year}{" "}
+                            {vehicle.make} {vehicle.model}
                         </p>
                     </div>
                 </div>
