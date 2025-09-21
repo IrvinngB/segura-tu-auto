@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,18 +23,21 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "@/lib/supabase/client";
 import { Car, Calendar, DollarSign, Gauge } from "lucide-react";
+import type { Vehicle } from "@/lib/types/database";
 
-interface VehicleFormProps {
+interface EditVehicleFormProps {
+    vehicle: Vehicle;
     customerId: string;
     onSuccess?: () => void;
     onCancel?: () => void;
 }
 
-export function VehicleForm({
+export function EditVehicleForm({
+    vehicle,
     customerId,
     onSuccess,
     onCancel,
-}: VehicleFormProps) {
+}: EditVehicleFormProps) {
     const [vehicleData, setVehicleData] = useState({
         make: "",
         model: "",
@@ -58,6 +61,31 @@ export function VehicleForm({
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const supabase = createClient();
+
+    // Llenar el formulario con los datos del vehículo existente
+    useEffect(() => {
+        if (vehicle) {
+            setVehicleData({
+                make: vehicle.make || "",
+                model: vehicle.model || "",
+                year: vehicle.year || new Date().getFullYear(),
+                vin: vehicle.vin || "",
+                licensePlate: vehicle.license_plate || "",
+                color: vehicle.color || "",
+                engineSize: vehicle.engine_size || "",
+                fuelType: vehicle.fuel_type || "Gasolina",
+                transmission: vehicle.transmission || "Manual",
+                vehicleType: vehicle.vehicle_type || "Sedán",
+                usageType: vehicle.usage_type || "personal",
+                estimatedValue: vehicle.estimated_value?.toString() || "",
+                mileage: vehicle.mileage?.toString() || "",
+                garageType: vehicle.garage_type || "street",
+                annualMileage: vehicle.annual_mileage?.toString() || "",
+            });
+            setSafetyFeatures(vehicle.safety_features || []);
+            setAntiTheftDevices(vehicle.anti_theft_devices || []);
+        }
+    }, [vehicle]);
 
     const handleInputChange = (field: string, value: string | number) => {
         setVehicleData((prev) => ({ ...prev, [field]: value }));
@@ -139,9 +167,8 @@ export function VehicleForm({
                 return;
             }
 
-            // Preparar datos para inserción
+            // Preparar datos para actualización
             const vehiclePayload = {
-                customer_id: customerId,
                 make: vehicleData.make.trim(),
                 model: vehicleData.model.trim(),
                 year: vehicleData.year,
@@ -169,13 +196,17 @@ export function VehicleForm({
                     : null,
                 safety_features: safetyFeatures,
                 anti_theft_devices: antiTheftDevices,
+                updated_at: new Date().toISOString(),
             };
 
-            console.log("Registrando vehículo:", vehiclePayload);
+            console.log("Actualizando vehículo:", vehiclePayload);
 
+            // Actualizar en la base de datos
             const { data, error } = await supabase
                 .from("vehicles")
-                .insert(vehiclePayload)
+                .update(vehiclePayload)
+                .eq("id", vehicle.id)
+                .eq("customer_id", customerId) // Verificación de seguridad adicional
                 .select()
                 .single();
 
@@ -187,15 +218,15 @@ export function VehicleForm({
                     // Unique constraint violation
                     if (error.message.includes("vin")) {
                         setError(
-                            "El VIN ingresado ya está registrado en el sistema"
+                            "El VIN ingresado ya está registrado por otro vehículo"
                         );
                     } else if (error.message.includes("license_plate")) {
                         setError(
-                            "Las placas ingresadas ya están registradas en el sistema"
+                            "Las placas ingresadas ya están registradas por otro vehículo"
                         );
                     } else {
                         setError(
-                            "Ya existe un vehículo con esos datos en el sistema"
+                            "Ya existe otro vehículo con esos datos en el sistema"
                         );
                     }
                 } else if (error.code === "23514") {
@@ -210,14 +241,14 @@ export function VehicleForm({
                     );
                 } else {
                     setError(
-                        `Error al registrar el vehículo: ${error.message}`
+                        `Error al actualizar el vehículo: ${error.message}`
                     );
                 }
                 return;
             }
 
-            console.log("Vehículo registrado exitosamente:", data);
-            setSuccess("¡Vehículo registrado exitosamente!");
+            console.log("Vehículo actualizado exitosamente:", data);
+            setSuccess("¡Vehículo actualizado exitosamente!");
 
             if (onSuccess) {
                 setTimeout(() => onSuccess(), 1500);
@@ -225,7 +256,7 @@ export function VehicleForm({
         } catch (error) {
             console.error("Error inesperado:", error);
             setError(
-                "Error inesperado al registrar el vehículo. Por favor, intente nuevamente."
+                "Error inesperado al actualizar el vehículo. Por favor, intente nuevamente."
             );
         } finally {
             setLoading(false);
@@ -262,10 +293,10 @@ export function VehicleForm({
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Car className="h-5 w-5" />
-                    Registrar Vehículo
+                    Editar Vehículo
                 </CardTitle>
                 <CardDescription>
-                    Complete la información del vehículo para el seguro
+                    Modifica la información del vehículo {vehicle.year} {vehicle.make} {vehicle.model}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -288,7 +319,8 @@ export function VehicleForm({
                                 marcados con asterisco (*) para continuar.
                             </AlertDescription>
                         </Alert>
-                    )}{" "}
+                    )}
+                    
                     {/* Basic Vehicle Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
@@ -339,6 +371,7 @@ export function VehicleForm({
                             </div>
                         </div>
                     </div>
+                    
                     {/* Vehicle Details */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
@@ -377,6 +410,7 @@ export function VehicleForm({
                             </p>
                         </div>
                     </div>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <Label htmlFor="color">Color *</Label>
@@ -440,6 +474,7 @@ export function VehicleForm({
                             </Select>
                         </div>
                     </div>
+                    
                     {/* Vehicle Type and Usage */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
@@ -525,6 +560,7 @@ export function VehicleForm({
                             </Select>
                         </div>
                     </div>
+                    
                     {/* Financial and Usage Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
@@ -599,6 +635,7 @@ export function VehicleForm({
                             </div>
                         </div>
                     </div>
+                    
                     {/* Garage Type */}
                     <div className="space-y-2">
                         <Label htmlFor="garageType">
@@ -624,6 +661,7 @@ export function VehicleForm({
                             </SelectContent>
                         </Select>
                     </div>
+                    
                     {/* Safety Features */}
                     <div className="space-y-4">
                         <Label>Características de Seguridad</Label>
@@ -651,6 +689,7 @@ export function VehicleForm({
                             ))}
                         </div>
                     </div>
+                    
                     {/* Anti-theft Devices */}
                     <div className="space-y-4">
                         <Label>Dispositivos Antirrobo</Label>
@@ -678,6 +717,7 @@ export function VehicleForm({
                             ))}
                         </div>
                     </div>
+                    
                     {/* Actions */}
                     <div className="flex gap-4 pt-6">
                         <Button
@@ -686,8 +726,8 @@ export function VehicleForm({
                             className="flex-1"
                         >
                             {loading
-                                ? "Registrando vehículo..."
-                                : "Registrar Vehículo"}
+                                ? "Actualizando vehículo..."
+                                : "Actualizar Vehículo"}
                         </Button>
                         {onCancel && (
                             <Button
