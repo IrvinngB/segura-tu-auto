@@ -24,6 +24,7 @@ import {
     Trash2,
     AlertTriangle,
     Edit,
+    Eye,
 } from "lucide-react";
 import Link from "next/link";
 import type { Vehicle } from "@/lib/types/database";
@@ -329,8 +330,14 @@ export default function CustomerVehiclesPage() {
                                                 variant="outline"
                                                 size="sm"
                                                 className="flex-1"
+                                                asChild
                                             >
-                                                Ver Detalles
+                                                <Link
+                                                    href={`/customer/vehicles/${vehicle.id}`}
+                                                >
+                                                    <Eye className="h-4 w-4 mr-2" />
+                                                    Ver Detalles
+                                                </Link>
                                             </Button>
                                             <Button
                                                 variant="outline"
@@ -338,7 +345,9 @@ export default function CustomerVehiclesPage() {
                                                 className="flex-1"
                                                 asChild
                                             >
-                                                <Link href={`/customer/vehicles/${vehicle.id}/edit`}>
+                                                <Link
+                                                    href={`/customer/vehicles/${vehicle.id}/edit`}
+                                                >
                                                     <Edit className="h-4 w-4 mr-2" />
                                                     Editar
                                                 </Link>
