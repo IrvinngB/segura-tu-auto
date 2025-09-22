@@ -633,7 +633,7 @@ export function VehicleForm({
                             {safetyFeatureOptions.map((feature) => (
                                 <label
                                     key={feature}
-                                    className="flex items-center space-x-2 cursor-pointer"
+                                    className="flex items-center space-x-3 cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-md transition-colors"
                                 >
                                     <input
                                         type="checkbox"
@@ -646,9 +646,11 @@ export function VehicleForm({
                                                 "safety"
                                             )
                                         }
-                                        className="rounded border-gray-300"
+                                        className="w-4 h-4 rounded border-2 border-gray-400 text-blue-600 bg-white shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:bg-gray-700 dark:border-gray-500 dark:checked:bg-blue-600 dark:checked:border-blue-600 dark:shadow-xl dark:hover:shadow-2xl dark:focus:ring-blue-400"
                                     />
-                                    <span className="text-sm">{feature}</span>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                                        {feature}
+                                    </span>
                                 </label>
                             ))}
                         </div>
@@ -660,7 +662,7 @@ export function VehicleForm({
                             {antiTheftOptions.map((device) => (
                                 <label
                                     key={device}
-                                    className="flex items-center space-x-2 cursor-pointer"
+                                    className="flex items-center space-x-3 cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-md transition-colors"
                                 >
                                     <input
                                         type="checkbox"
@@ -673,9 +675,11 @@ export function VehicleForm({
                                                 "antitheft"
                                             )
                                         }
-                                        className="rounded border-gray-300"
+                                        className="w-4 h-4 rounded border-2 border-gray-400 text-blue-600 bg-white shadow-md hover:shadow-lg transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:bg-gray-700 dark:border-gray-500 dark:checked:bg-blue-600 dark:checked:border-blue-600 dark:shadow-xl dark:hover:shadow-2xl dark:focus:ring-blue-400"
                                     />
-                                    <span className="text-sm">{device}</span>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                                        {device}
+                                    </span>
                                 </label>
                             ))}
                         </div>
