@@ -45,7 +45,7 @@ export function PolicyForm({
     const [selectedVehicle, setSelectedVehicle] = useState("");
     const [selectedCoverages, setSelectedCoverages] = useState<string[]>([]);
     const [policyData, setPolicyData] = useState({
-        policyType: "comprehensive",
+        policyType: "Amplia",
         startDate: format(new Date(), "yyyy-MM-dd"),
         endDate: format(
             new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
@@ -451,13 +451,13 @@ export function PolicyForm({
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="comprehensive">
+                                    <SelectItem value="Amplia">
                                         Cobertura Amplia
                                     </SelectItem>
-                                    <SelectItem value="liability">
+                                    <SelectItem value="Básica">
                                         Responsabilidad Civil
                                     </SelectItem>
-                                    <SelectItem value="basic">
+                                    <SelectItem value="Limitada">
                                         Cobertura Básica
                                     </SelectItem>
                                 </SelectContent>
