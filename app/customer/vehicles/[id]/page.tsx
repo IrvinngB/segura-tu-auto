@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { useCustomerData } from "@/hooks/use-customer-data";
+import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +42,7 @@ export default function VehicleDetailsPage() {
         customerData,
         loading: customerLoading,
         error: customerError,
-    } = useCustomerData();
+    } = useCustomerDataSimple();
 
     const [vehicle, setVehicle] = useState<Vehicle | null>(null);
     const [loading, setLoading] = useState(true);

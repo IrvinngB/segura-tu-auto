@@ -98,8 +98,6 @@ export function useCustomerData() {
             if (customer) {
                 console.log("👤 Datos de customer encontrados:", customer);
                 console.log("👤 Datos de user:", customer.user);
-                console.log("👤 Datos de customer encontrados:", customer);
-                console.log("👤 Datos de user:", customer.user);
 
                 const customerInfo = {
                     id: customer.id,
@@ -136,7 +134,7 @@ export function useCustomerData() {
             console.log("🏁 fetchCustomerData finalizado");
             setLoading(false);
         }
-    }, [userProfile?.id, supabase]);
+    }, [userProfile?.id]); // Removido supabase de las dependencias
 
     useEffect(() => {
         fetchCustomerData();
