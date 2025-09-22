@@ -297,69 +297,8 @@ export function VehicleForm({
                     {!isFormValid() && (
                         <Alert>
                             <AlertDescription>
-                                <div className="space-y-2">
-                                    <p className="font-medium">
-                                        Por favor, rellene todos los campos
-                                        requeridos:
-                                    </p>
-                                    <ul className="text-sm list-disc list-inside space-y-1">
-                                        {!vehicleData.make.trim() && (
-                                            <li>Marca</li>
-                                        )}
-                                        {!vehicleData.model.trim() && (
-                                            <li>Modelo</li>
-                                        )}
-                                        {!(
-                                            vehicleData.year >= 1990 &&
-                                            vehicleData.year <=
-                                                new Date().getFullYear() + 1
-                                        ) && (
-                                            <li>
-                                                Año válido (1990-
-                                                {new Date().getFullYear() + 1})
-                                            </li>
-                                        )}
-                                        {!vehicleData.vin.trim() && (
-                                            <li>VIN</li>
-                                        )}
-                                        {!vehicleData.licensePlate.trim() && (
-                                            <li>Placas</li>
-                                        )}
-                                        {!vehicleData.color.trim() && (
-                                            <li>Color</li>
-                                        )}
-                                        {!vehicleData.engineSize.trim() && (
-                                            <li>Tamaño del Motor</li>
-                                        )}
-                                        {!(
-                                            vehicleData.estimatedValue.trim() &&
-                                            !isNaN(
-                                                Number(
-                                                    vehicleData.estimatedValue
-                                                )
-                                            ) &&
-                                            Number(vehicleData.estimatedValue) >
-                                                0
-                                        ) && <li>Valor Estimado válido</li>}
-                                        {!(
-                                            vehicleData.mileage.trim() &&
-                                            !isNaN(
-                                                Number(vehicleData.mileage)
-                                            ) &&
-                                            Number(vehicleData.mileage) >= 0
-                                        ) && <li>Kilometraje Actual válido</li>}
-                                        {!(
-                                            vehicleData.annualMileage.trim() &&
-                                            !isNaN(
-                                                Number(
-                                                    vehicleData.annualMileage
-                                                )
-                                            ) &&
-                                            Number(vehicleData.annualMileage) >=
-                                                0
-                                        ) && <li>Kilometraje Anual válido</li>}
-                                    </ul>
-                                </div>
+                                Por favor, ingrese todos los datos obligatorios
+                                que están marcados con asterisco (*).
                             </AlertDescription>
                         </Alert>
                     )}{" "}
