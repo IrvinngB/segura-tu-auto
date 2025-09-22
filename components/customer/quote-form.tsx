@@ -23,7 +23,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "@/lib/supabase/client";
-import { useCustomerData } from "@/hooks/use-customer-data";
+import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
 import type { CoverageType, Vehicle } from "@/lib/types/database";
 import { Calculator, Car, Shield, DollarSign, Plus } from "lucide-react";
 
@@ -33,7 +33,7 @@ interface QuoteFormProps {
 }
 
 export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
-    const { customerData, loading: customerLoading } = useCustomerData();
+    const { customerData, loading: customerLoading } = useCustomerDataSimple();
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
     const [vehicleData, setVehicleData] = useState({

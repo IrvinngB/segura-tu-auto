@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ProtectedRoute } from "@/components/auth/protected-route"
-import { useCustomerData } from "@/hooks/use-customer-data"
+import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -30,7 +30,7 @@ interface Communication {
 }
 
 export default function CustomerCommunicationsPage() {
-  const { customerData, loading: customerLoading, error: customerError } = useCustomerData()
+  const { customerData, loading: customerLoading, error: customerError } = useCustomerDataSimple()
   const [communications, setCommunications] = useState<Communication[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")

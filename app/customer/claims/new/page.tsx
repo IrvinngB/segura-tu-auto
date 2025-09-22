@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react"
 import { ClaimForm } from "@/components/claims/claim-form"
 import { ProtectedRoute } from "@/components/auth/protected-route"
-import { useCustomerData } from "@/hooks/use-customer-data"
+import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react"
 
 export default function NewClaimPage() {
-  const { customerData, loading: customerLoading, error: customerError } = useCustomerData()
+  const { customerData, loading: customerLoading, error: customerError } = useCustomerDataSimple()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const router = useRouter()

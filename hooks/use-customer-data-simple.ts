@@ -9,6 +9,10 @@ interface CustomerData {
     last_name: string;
     email: string;
     role: string;
+    birth_date?: string;
+    license_year?: number;
+    has_accidents?: boolean;
+    has_claims?: boolean;
 }
 
 export function useCustomerDataSimple() {
@@ -56,7 +60,16 @@ export function useCustomerDataSimple() {
                     return;
                 }
 
-                // Usar datos del userProfile directamente
+                // Obtener datos adicionales del usuario
+                const { data: userData, error: userError } = await supabase
+                    .from("users")
+                    .select("birth_date, license_year, has_accidents, has_claims")
+                    .eq("id", userProfile.id)
+                    .single();
+
+                console.log("🔍 SIMPLE: User data result:", { userData, userError });
+
+                // Usar datos del userProfile y userData
                 const customerInfo: CustomerData = {
                     id: customer.id,
                     user_id: customer.user_id,
@@ -64,6 +77,10 @@ export function useCustomerDataSimple() {
                     last_name: userProfile.last_name || "",
                     email: userProfile.email || "",
                     role: userProfile.role || "",
+                    birth_date: userData?.birth_date,
+                    license_year: userData?.license_year,
+                    has_accidents: userData?.has_accidents,
+                    has_claims: userData?.has_claims,
                 };
 
                 console.log("✅ SIMPLE: Customer data set:", customerInfo);
