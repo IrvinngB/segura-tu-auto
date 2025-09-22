@@ -60,6 +60,7 @@ export function VehicleForm({
     const supabase = createClient();
 
     const handleInputChange = (field: string, value: string | number) => {
+        console.log(`Cambiando campo ${field} a:`, value);
         setVehicleData((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -171,6 +172,7 @@ export function VehicleForm({
                 anti_theft_devices: antiTheftDevices,
             };
 
+            console.log("Datos actuales del formulario:", vehicleData);
             console.log("Registrando vehículo:", vehiclePayload);
 
             const { data, error } = await supabase
@@ -457,7 +459,7 @@ export function VehicleForm({
                                     <SelectItem value="Manual">
                                         Manual
                                     </SelectItem>
-                                    <SelectItem value="Automático">
+                                    <SelectItem value="Automatico">
                                         Automática
                                     </SelectItem>
                                     <SelectItem value="CVT">CVT</SelectItem>

@@ -46,13 +46,13 @@ export function EditVehicleForm({
         licensePlate: "",
         color: "",
         engineSize: "",
-        fuelType: "Gasolina",
-        transmission: "Manual",
-        vehicleType: "Sedán",
-        usageType: "personal",
+        fuelType: "", // ← CAMBIADO DE "Gasolina" A ""
+        transmission: "", // ← CAMBIADO DE "Manual" A ""
+        vehicleType: "", // ← CAMBIADO DE "Sedán" A ""
+        usageType: "", // ← CAMBIADO DE "personal" A ""
         estimatedValue: "",
         mileage: "",
-        garageType: "street",
+        garageType: "", // ← CAMBIADO DE "street" A ""
         annualMileage: "",
     });
     const [safetyFeatures, setSafetyFeatures] = useState<string[]>([]);
@@ -60,12 +60,191 @@ export function EditVehicleForm({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [isDataLoaded, setIsDataLoaded] = useState(false);
     const supabase = createClient();
+
+    // Función para normalizar valores de la BD con los del Select
+    const normalizeSelectValue = (
+        fieldName: string,
+        value: string | null | undefined
+    ) => {
+        if (!value) return "";
+
+        // Mapeo de valores para asegurar coincidencia exacta
+        const valueMap: { [key: string]: { [key: string]: string } } = {
+            fuelType: {
+                Gasolina: "Gasolina",
+                Diesel: "Diesel",
+                Diésel: "Diesel",
+                Híbrido: "Híbrido",
+                Hibrido: "Híbrido",
+                Eléctrico: "Eléctrico",
+                Electrico: "Eléctrico",
+                GLP: "GLP",
+            },
+            transmission: {
+                Manual: "Manual",
+                Automatico: "Automatico",
+                Automático: "Automatico",
+                Automática: "Automatico",
+                Automatic: "Automatico",
+                CVT: "CVT",
+            },
+            vehicleType: {
+                Sedán: "Sedán",
+                Sedan: "Sedán",
+                Hatchback: "Hatchback",
+                SUV: "SUV",
+                Pickup: "Pickup",
+                Coupé: "Coupé",
+                Coupe: "Coupé",
+                Convertible: "Convertible",
+                Wagon: "Wagon",
+                "Station Wagon": "Wagon",
+            },
+            usageType: {
+                personal: "personal",
+                commercial: "commercial",
+                taxi: "taxi",
+                delivery: "delivery",
+                other: "other",
+            },
+            garageType: {
+                enclosed: "enclosed",
+                covered: "covered",
+                street: "street",
+            },
+        };
+
+        const mappedValue = valueMap[fieldName]?.[value] || value;
+        console.log(
+            `🔄 Normalizando ${fieldName}: "${value}" → "${mappedValue}"`
+        );
+
+        // Log adicional para debug específico
+        if (fieldName === "transmission") {
+            console.log("🔧 Debug transmission:");
+            console.log("  - Valor original:", `"${value}"`);
+            console.log("  - Valor mapeado:", `"${mappedValue}"`);
+            console.log(
+                "  - Mapeo disponible:",
+                Object.keys(valueMap.transmission)
+            );
+        }
+
+        return mappedValue;
+    };
 
     // Llenar el formulario con los datos del vehículo existente
     useEffect(() => {
+        console.log("🔄 useEffect ejecutándose. vehicle:", !!vehicle);
+
         if (vehicle) {
-            setVehicleData({
+            console.log("🚗 Datos RAW del vehículo desde BD:", vehicle);
+
+            // Log específico de los valores que vienen de la BD
+            console.log("📊 VALORES RAW DE LA BD:");
+            console.log("  fuel_type (BD):", `"${vehicle.fuel_type}"`);
+            console.log("  transmission (BD):", `"${vehicle.transmission}"`);
+            console.log("  vehicle_type (BD):", `"${vehicle.vehicle_type}"`);
+            console.log("  usage_type (BD):", `"${vehicle.usage_type}"`);
+            console.log("  garage_type (BD):", `"${vehicle.garage_type}"`);
+
+            // Valores exactos que esperan los SelectItem
+            console.log("🎯 VALORES ESPERADOS POR LOS SELECTITEM:");
+            console.log(
+                "  fuelType SelectItems: ['Gasolina', 'Diesel', 'Híbrido', 'Eléctrico', 'GLP']"
+            );
+            console.log(
+                "  transmission SelectItems: ['Manual', 'Automatico', 'CVT']"
+            );
+            console.log(
+                "  vehicleType SelectItems: ['Sedán', 'Hatchback', 'SUV', 'Pickup', 'Coupé', 'Convertible', 'Wagon']"
+            );
+            console.log(
+                "  usageType SelectItems: ['personal', 'commercial', 'taxi', 'delivery', 'other']"
+            );
+            console.log(
+                "  garageType SelectItems: ['enclosed', 'covered', 'street']"
+            );
+            console.log("🔧 fuel_type desde BD:", `"${vehicle.fuel_type}"`);
+            console.log(
+                "⚙️ transmission desde BD:",
+                `"${vehicle.transmission}"`
+            );
+            console.log(
+                "🚙 vehicle_type desde BD:",
+                `"${vehicle.vehicle_type}"`
+            );
+            console.log("🎯 usage_type desde BD:", `"${vehicle.usage_type}"`);
+            console.log("🏠 garage_type desde BD:", `"${vehicle.garage_type}"`);
+
+            // Mapeo de valores de BD a valores de SelectItem
+            const mapBdToSelectValue = (
+                bdValue: string | undefined,
+                field: string
+            ): string => {
+                console.log(`🗺️ Mapeando ${field}: "${bdValue}"`);
+
+                if (!bdValue) return "";
+
+                // Mapeos específicos según el campo
+                const mappings: { [key: string]: { [key: string]: string } } = {
+                    fuel_type: {
+                        gasoline: "Gasolina",
+                        gasolina: "Gasolina",
+                        diesel: "Diesel",
+                        hybrid: "Híbrido",
+                        hibrido: "Híbrido",
+                        electric: "Eléctrico",
+                        electrico: "Eléctrico",
+                        glp: "GLP",
+                    },
+                    transmission: {
+                        manual: "Manual",
+                        automatic: "Automatico",
+                        automatico: "Automatico",
+                        cvt: "CVT",
+                    },
+                    vehicle_type: {
+                        sedan: "Sedán",
+                        hatchback: "Hatchback",
+                        suv: "SUV",
+                        pickup: "Pickup",
+                        coupe: "Coupé",
+                        convertible: "Convertible",
+                        wagon: "Wagon",
+                    },
+                    usage_type: {
+                        personal: "personal",
+                        commercial: "commercial",
+                        taxi: "taxi",
+                        delivery: "delivery",
+                        other: "other",
+                    },
+                    garage_type: {
+                        enclosed: "enclosed",
+                        covered: "covered",
+                        street: "street",
+                        garage: "enclosed",
+                        cubierto: "covered",
+                        calle: "street",
+                    },
+                };
+
+                const fieldMappings = mappings[field];
+                if (fieldMappings) {
+                    const normalizedBdValue = bdValue.toLowerCase().trim();
+                    const mappedValue =
+                        fieldMappings[normalizedBdValue] || bdValue;
+                    console.log(`   "${bdValue}" → "${mappedValue}"`);
+                    return mappedValue;
+                }
+
+                return bdValue;
+            };
+
+            const newVehicleData = {
                 make: vehicle.make || "",
                 model: vehicle.model || "",
                 year: vehicle.year || new Date().getFullYear(),
@@ -73,22 +252,172 @@ export function EditVehicleForm({
                 licensePlate: vehicle.license_plate || "",
                 color: vehicle.color || "",
                 engineSize: vehicle.engine_size || "",
-                fuelType: vehicle.fuel_type || "Gasolina",
-                transmission: vehicle.transmission || "Manual",
-                vehicleType: vehicle.vehicle_type || "Sedán",
-                usageType: vehicle.usage_type || "personal",
+                fuelType: mapBdToSelectValue(vehicle.fuel_type, "fuel_type"),
+                transmission: mapBdToSelectValue(
+                    vehicle.transmission,
+                    "transmission"
+                ),
+                vehicleType: mapBdToSelectValue(
+                    vehicle.vehicle_type,
+                    "vehicle_type"
+                ),
+                usageType: mapBdToSelectValue(vehicle.usage_type, "usage_type"),
                 estimatedValue: vehicle.estimated_value?.toString() || "",
                 mileage: vehicle.mileage?.toString() || "",
-                garageType: vehicle.garage_type || "street",
+                garageType: mapBdToSelectValue(
+                    vehicle.garage_type,
+                    "garage_type"
+                ),
                 annualMileage: vehicle.annual_mileage?.toString() || "",
+            };
+
+            console.log(
+                "📝 Datos que se van a establecer en el estado:",
+                newVehicleData
+            );
+            console.log("🎯 Valores finales para Select:");
+            console.log("  - fuelType:", `"${newVehicleData.fuelType}"`);
+            console.log(
+                "  - transmission:",
+                `"${newVehicleData.transmission}"`
+            );
+            console.log("  - vehicleType:", `"${newVehicleData.vehicleType}"`);
+            console.log("  - usageType:", `"${newVehicleData.usageType}"`);
+            console.log("  - garageType:", `"${newVehicleData.garageType}"`);
+
+            // Verificar si los valores coinciden con las opciones del Select
+            const validValues = {
+                transmission: ["Manual", "Automatico", "CVT"],
+                vehicleType: [
+                    "Sedán",
+                    "Hatchback",
+                    "SUV",
+                    "Pickup",
+                    "Coupé",
+                    "Convertible",
+                    "Wagon",
+                ],
+                fuelType: ["Gasolina", "Diesel", "Híbrido", "Eléctrico", "GLP"],
+                usageType: [
+                    "personal",
+                    "commercial",
+                    "taxi",
+                    "delivery",
+                    "other",
+                ],
+                garageType: ["enclosed", "covered", "street"],
+            };
+
+            Object.entries(validValues).forEach(([field, validOptions]) => {
+                const currentValue =
+                    newVehicleData[field as keyof typeof newVehicleData];
+                const isValid = validOptions.includes(currentValue as string);
+                console.log(
+                    `✅ ${field}: "${currentValue}" ${
+                        isValid ? "✓ VÁLIDO" : "❌ NO VÁLIDO"
+                    }`
+                );
+                if (!isValid) {
+                    console.log(`   Opciones válidas:`, validOptions);
+                }
             });
+
+            setVehicleData(newVehicleData);
             setSafetyFeatures(vehicle.safety_features || []);
             setAntiTheftDevices(vehicle.anti_theft_devices || []);
+            setIsDataLoaded(true);
+
+            // Log del estado después de establecerlo
+            setTimeout(() => {
+                console.log(
+                    "📝 Estado vehicleData después de cargar:",
+                    newVehicleData
+                );
+
+                // Log adicional para verificar el estado actual
+                console.log("🔍 VERIFICACIÓN DEL ESTADO ACTUAL:");
+                console.log(
+                    "  vehicleData.fuelType:",
+                    `"${vehicleData.fuelType}"`
+                );
+                console.log(
+                    "  vehicleData.transmission:",
+                    `"${vehicleData.transmission}"`
+                );
+                console.log(
+                    "  vehicleData.vehicleType:",
+                    `"${vehicleData.vehicleType}"`
+                );
+                console.log(
+                    "  vehicleData.usageType:",
+                    `"${vehicleData.usageType}"`
+                );
+                console.log(
+                    "  vehicleData.garageType:",
+                    `"${vehicleData.garageType}"`
+                );
+
+                // Verificar coincidencias exactas con SelectItem values
+                const validValues = {
+                    fuelType: [
+                        "Gasolina",
+                        "Diesel",
+                        "Híbrido",
+                        "Eléctrico",
+                        "GLP",
+                    ],
+                    transmission: ["Manual", "Automatico", "CVT"],
+                    vehicleType: [
+                        "Sedán",
+                        "Hatchback",
+                        "SUV",
+                        "Pickup",
+                        "Coupé",
+                        "Convertible",
+                        "Wagon",
+                    ],
+                    usageType: [
+                        "personal",
+                        "commercial",
+                        "taxi",
+                        "delivery",
+                        "other",
+                    ],
+                    garageType: ["enclosed", "covered", "street"],
+                };
+
+                Object.entries(validValues).forEach(([field, validOptions]) => {
+                    const currentValue =
+                        newVehicleData[field as keyof typeof newVehicleData];
+                    const isValid = validOptions.includes(
+                        currentValue as string
+                    );
+                    console.log(
+                        `🔍 ${field}: "${currentValue}" ${
+                            isValid ? "✅ VÁLIDO" : "❌ INVÁLIDO"
+                        }`
+                    );
+                    if (!isValid) {
+                        console.log(
+                            `   Opciones válidas: [${validOptions
+                                .map((v) => `"${v}"`)
+                                .join(", ")}]`
+                        );
+                    }
+                });
+            }, 100);
+        } else {
+            console.log("❌ useEffect ejecutado pero no hay vehículo");
         }
     }, [vehicle]);
 
     const handleInputChange = (field: string, value: string | number) => {
-        setVehicleData((prev) => ({ ...prev, [field]: value }));
+        console.log(`📝 Editando campo ${field} a:`, value);
+        setVehicleData((prev) => {
+            const newData = { ...prev, [field]: value };
+            console.log(`📋 Nuevo estado después de cambio:`, newData);
+            return newData;
+        });
     };
 
     // Función para validar si todos los campos obligatorios están llenos
@@ -199,6 +528,10 @@ export function EditVehicleForm({
                 updated_at: new Date().toISOString(),
             };
 
+            console.log(
+                "Datos actuales del formulario de edición:",
+                vehicleData
+            );
             console.log("Actualizando vehículo:", vehiclePayload);
 
             // Actualizar en la base de datos
@@ -296,7 +629,8 @@ export function EditVehicleForm({
                     Editar Vehículo
                 </CardTitle>
                 <CardDescription>
-                    Modifica la información del vehículo {vehicle.year} {vehicle.make} {vehicle.model}
+                    Modifica la información del vehículo {vehicle.year}{" "}
+                    {vehicle.make} {vehicle.model}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -320,7 +654,7 @@ export function EditVehicleForm({
                             </AlertDescription>
                         </Alert>
                     )}
-                    
+
                     {/* Basic Vehicle Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
@@ -371,7 +705,7 @@ export function EditVehicleForm({
                             </div>
                         </div>
                     </div>
-                    
+
                     {/* Vehicle Details */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
@@ -410,7 +744,7 @@ export function EditVehicleForm({
                             </p>
                         </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <Label htmlFor="color">Color *</Label>
@@ -447,120 +781,167 @@ export function EditVehicleForm({
                             <Label htmlFor="fuelType">
                                 Tipo de Combustible
                             </Label>
-                            <Select
-                                value={vehicleData.fuelType}
-                                onValueChange={(value) =>
-                                    handleInputChange("fuelType", value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Gasolina">
-                                        Gasolina
-                                    </SelectItem>
-                                    <SelectItem value="Diesel">
-                                        Diésel
-                                    </SelectItem>
-                                    <SelectItem value="Híbrido">
-                                        Híbrido
-                                    </SelectItem>
-                                    <SelectItem value="Eléctrico">
-                                        Eléctrico
-                                    </SelectItem>
-                                    <SelectItem value="GLP">GLP</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            {isDataLoaded ? (
+                                <Select
+                                    key={`fuelType-${vehicleData.fuelType}`}
+                                    value={vehicleData.fuelType || ""}
+                                    onValueChange={(value) => {
+                                        console.log(
+                                            "⛽ Cambiando fuelType a:",
+                                            value
+                                        );
+                                        handleInputChange("fuelType", value);
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona combustible" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Gasolina">
+                                            Gasolina
+                                        </SelectItem>
+                                        <SelectItem value="Diesel">
+                                            Diésel
+                                        </SelectItem>
+                                        <SelectItem value="Híbrido">
+                                            Híbrido
+                                        </SelectItem>
+                                        <SelectItem value="Eléctrico">
+                                            Eléctrico
+                                        </SelectItem>
+                                        <SelectItem value="GLP">GLP</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <div className="h-10 bg-gray-100 animate-pulse rounded-md"></div>
+                            )}
                         </div>
                     </div>
-                    
+
                     {/* Vehicle Type and Usage */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <Label htmlFor="transmission">Transmisión</Label>
-                            <Select
-                                value={vehicleData.transmission}
-                                onValueChange={(value) =>
-                                    handleInputChange("transmission", value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Manual">
-                                        Manual
-                                    </SelectItem>
-                                    <SelectItem value="Automático">
-                                        Automática
-                                    </SelectItem>
-                                    <SelectItem value="CVT">CVT</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            {isDataLoaded ? (
+                                <Select
+                                    key={`transmission-${vehicleData.transmission}`}
+                                    value={vehicleData.transmission || ""}
+                                    onValueChange={(value) => {
+                                        console.log(
+                                            "🔧 Cambiando transmission a:",
+                                            value
+                                        );
+                                        handleInputChange(
+                                            "transmission",
+                                            value
+                                        );
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona transmisión" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Manual">
+                                            Manual
+                                        </SelectItem>
+                                        <SelectItem value="Automatico">
+                                            Automática
+                                        </SelectItem>
+                                        <SelectItem value="CVT">CVT</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <div className="h-10 bg-gray-100 animate-pulse rounded-md"></div>
+                            )}
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="vehicleType">
                                 Tipo de Vehículo
                             </Label>
-                            <Select
-                                value={vehicleData.vehicleType}
-                                onValueChange={(value) =>
-                                    handleInputChange("vehicleType", value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Sedán">Sedán</SelectItem>
-                                    <SelectItem value="Hatchback">
-                                        Hatchback
-                                    </SelectItem>
-                                    <SelectItem value="SUV">SUV</SelectItem>
-                                    <SelectItem value="Pickup">
-                                        Pickup
-                                    </SelectItem>
-                                    <SelectItem value="Coupé">Coupé</SelectItem>
-                                    <SelectItem value="Convertible">
-                                        Convertible
-                                    </SelectItem>
-                                    <SelectItem value="Wagon">
-                                        Station Wagon
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
+                            {isDataLoaded ? (
+                                <Select
+                                    key={`vehicleType-${vehicleData.vehicleType}`}
+                                    value={vehicleData.vehicleType || ""}
+                                    onValueChange={(value) => {
+                                        console.log(
+                                            "🚙 Cambiando vehicleType a:",
+                                            value
+                                        );
+                                        handleInputChange("vehicleType", value);
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona tipo de vehículo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Sedán">
+                                            Sedán
+                                        </SelectItem>
+                                        <SelectItem value="Hatchback">
+                                            Hatchback
+                                        </SelectItem>
+                                        <SelectItem value="SUV">SUV</SelectItem>
+                                        <SelectItem value="Pickup">
+                                            Pickup
+                                        </SelectItem>
+                                        <SelectItem value="Coupé">
+                                            Coupé
+                                        </SelectItem>
+                                        <SelectItem value="Convertible">
+                                            Convertible
+                                        </SelectItem>
+                                        <SelectItem value="Wagon">
+                                            Station Wagon
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <div className="h-10 bg-gray-100 animate-pulse rounded-md"></div>
+                            )}
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="usageType">Uso del Vehículo</Label>
-                            <Select
-                                value={vehicleData.usageType}
-                                onValueChange={(value) =>
-                                    handleInputChange("usageType", value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="personal">
-                                        Personal
-                                    </SelectItem>
-                                    <SelectItem value="commercial">
-                                        Comercial
-                                    </SelectItem>
-                                    <SelectItem value="taxi">Taxi</SelectItem>
-                                    <SelectItem value="delivery">
-                                        Delivery
-                                    </SelectItem>
-                                    <SelectItem value="other">Otro</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            {isDataLoaded ? (
+                                <Select
+                                    key={`usageType-${vehicleData.usageType}`}
+                                    value={vehicleData.usageType || ""}
+                                    onValueChange={(value) => {
+                                        console.log(
+                                            "🎯 Cambiando usageType a:",
+                                            value
+                                        );
+                                        handleInputChange("usageType", value);
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona uso del vehículo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="personal">
+                                            Personal
+                                        </SelectItem>
+                                        <SelectItem value="commercial">
+                                            Comercial
+                                        </SelectItem>
+                                        <SelectItem value="taxi">
+                                            Taxi
+                                        </SelectItem>
+                                        <SelectItem value="delivery">
+                                            Delivery
+                                        </SelectItem>
+                                        <SelectItem value="other">
+                                            Otro
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <div className="h-10 bg-gray-100 animate-pulse rounded-md"></div>
+                            )}
                         </div>
                     </div>
-                    
+
                     {/* Financial and Usage Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
@@ -635,33 +1016,44 @@ export function EditVehicleForm({
                             </div>
                         </div>
                     </div>
-                    
+
                     {/* Garage Type */}
                     <div className="space-y-2">
                         <Label htmlFor="garageType">
                             Tipo de Estacionamiento
                         </Label>
-                        <Select
-                            value={vehicleData.garageType}
-                            onValueChange={(value) =>
-                                handleInputChange("garageType", value)
-                            }
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="enclosed">
-                                    Garage cerrado
-                                </SelectItem>
-                                <SelectItem value="covered">
-                                    Cochera techada
-                                </SelectItem>
-                                <SelectItem value="street">Calle</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {isDataLoaded ? (
+                            <Select
+                                key={`garageType-${vehicleData.garageType}`}
+                                value={vehicleData.garageType || ""}
+                                onValueChange={(value) => {
+                                    console.log(
+                                        "🏠 Cambiando garageType a:",
+                                        value
+                                    );
+                                    handleInputChange("garageType", value);
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona tipo de estacionamiento" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="enclosed">
+                                        Garage cerrado
+                                    </SelectItem>
+                                    <SelectItem value="covered">
+                                        Cochera techada
+                                    </SelectItem>
+                                    <SelectItem value="street">
+                                        Calle
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <div className="h-10 bg-gray-100 animate-pulse rounded-md"></div>
+                        )}
                     </div>
-                    
+
                     {/* Safety Features */}
                     <div className="space-y-4">
                         <Label>Características de Seguridad</Label>
@@ -689,7 +1081,7 @@ export function EditVehicleForm({
                             ))}
                         </div>
                     </div>
-                    
+
                     {/* Anti-theft Devices */}
                     <div className="space-y-4">
                         <Label>Dispositivos Antirrobo</Label>
@@ -717,7 +1109,7 @@ export function EditVehicleForm({
                             ))}
                         </div>
                     </div>
-                    
+
                     {/* Actions */}
                     <div className="flex gap-4 pt-6">
                         <Button
