@@ -24,7 +24,16 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
-import { Shield, Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
+import {
+    Shield,
+    Mail,
+    Lock,
+    User,
+    Phone,
+    Eye,
+    EyeOff,
+    Home,
+} from "lucide-react";
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
@@ -158,6 +167,18 @@ export default function RegisterPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+            {/* Botón de volver al inicio - Posición superior */}
+            <Link href="/" className="fixed top-6 left-6 z-50 group">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-600 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white dark:hover:bg-gray-700"
+                >
+                    <Home className="h-4 w-4 mr-2 text-primary group-hover:text-primary/80 transition-colors" />
+                    <span className="font-medium">Inicio</span>
+                </Button>
+            </Link>
+
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center mb-4">
@@ -395,14 +416,6 @@ export default function RegisterPage() {
                                     Inicia sesión aquí
                                 </Link>
                             </p>
-                            <div className="pt-2 border-t border-border">
-                                <Link
-                                    href="/"
-                                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                                >
-                                    ← Volver al inicio
-                                </Link>
-                            </div>
                         </div>
                     </CardContent>
                 </Card>
