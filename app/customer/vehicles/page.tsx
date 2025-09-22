@@ -300,7 +300,7 @@ export default function CustomerVehiclesPage() {
                                                                 <Badge
                                                                     key={index}
                                                                     variant="outline"
-                                                                    className="text-xs"
+                                                                    className="text-xs dark:border-gray-600 dark:text-gray-300"
                                                                 >
                                                                     {feature}
                                                                 </Badge>
@@ -310,7 +310,7 @@ export default function CustomerVehiclesPage() {
                                                         .length > 3 && (
                                                         <Badge
                                                             variant="outline"
-                                                            className="text-xs"
+                                                            className="text-xs dark:border-gray-600 dark:text-gray-300"
                                                         >
                                                             +
                                                             {vehicle
@@ -329,7 +329,7 @@ export default function CustomerVehiclesPage() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="flex-1"
+                                                className="flex-1 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white"
                                                 asChild
                                             >
                                                 <Link
@@ -342,7 +342,7 @@ export default function CustomerVehiclesPage() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="flex-1"
+                                                className="flex-1 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white"
                                                 asChild
                                             >
                                                 <Link
