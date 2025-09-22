@@ -23,7 +23,13 @@ export function useCustomerData() {
     const supabase = createClient();
 
     const fetchCustomerData = useCallback(async () => {
+        console.log(
+            "🔄 fetchCustomerData iniciado - userProfile:",
+            userProfile
+        );
+
         if (!userProfile?.id) {
+            console.log("❌ No hay userProfile.id");
             setLoading(false);
             return;
         }
@@ -31,19 +37,26 @@ export function useCustomerData() {
         try {
             setLoading(true);
             setError(null);
+            console.log(
+                "📊 Iniciando fetch para userProfile.id:",
+                userProfile.id
+            );
 
             // Cache simple para evitar consultas repetidas
             const cacheKey = `customer_data_${userProfile.id}`;
             const cached = sessionStorage.getItem(cacheKey);
+            console.log("🗄️ Cache check:", { cacheKey, cached: !!cached });
 
             if (cached) {
                 const parsed = JSON.parse(cached);
                 // Cache válido por 5 minutos
                 if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+                    console.log("✅ Usando datos del cache");
                     setCustomerData(parsed.data);
                     setLoading(false);
                     return;
                 }
+                console.log("⏰ Cache expirado, haciendo nueva consulta");
             }
 
             const { data: customer, error: customerError } = await supabase
@@ -67,13 +80,27 @@ export function useCustomerData() {
                 .eq("user_id", userProfile.id)
                 .single();
 
+            console.log("🔍 Resultado de consulta customer:", {
+                customer,
+                customerError,
+                userProfileId: userProfile.id,
+            });
+
             if (customerError) {
-                console.error("Error fetching customer data:", customerError);
+                console.error(
+                    "❌ Error fetching customer data:",
+                    customerError
+                );
                 setError("Error al cargar los datos del cliente");
                 return;
             }
 
             if (customer) {
+                console.log("👤 Datos de customer encontrados:", customer);
+                console.log("👤 Datos de user:", customer.user);
+                console.log("👤 Datos de customer encontrados:", customer);
+                console.log("👤 Datos de user:", customer.user);
+
                 const customerInfo = {
                     id: customer.id,
                     user_id: customer.user_id,
@@ -87,6 +114,7 @@ export function useCustomerData() {
                     has_claims: customer.user[0].has_claims,
                 };
 
+                console.log("✅ CustomerInfo creado:", customerInfo);
                 setCustomerData(customerInfo);
 
                 // Guardar en cache
@@ -98,12 +126,14 @@ export function useCustomerData() {
                     })
                 );
             } else {
+                console.log("❌ No se encontró customer");
                 setError("No se encontró el perfil de cliente");
             }
         } catch (error) {
-            console.error("Error fetching customer data:", error);
+            console.error("💥 Error inesperado fetching customer data:", error);
             setError("Error inesperado al cargar los datos del cliente");
         } finally {
+            console.log("🏁 fetchCustomerData finalizado");
             setLoading(false);
         }
     }, [userProfile?.id, supabase]);
