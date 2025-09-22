@@ -24,7 +24,7 @@ import {
 export function PoliciesSection() {
     const policies = [
         {
-            name: "Básico",
+            name: "Básica",
             description: "Protección esencial para conductores responsables",
             price: "Desde $299",
             period: "/mes",
@@ -44,7 +44,7 @@ export function PoliciesSection() {
             ],
         },
         {
-            name: "Completo",
+            name: "Limitada",
             description: "La protección ideal para la mayoría de conductores",
             price: "Desde $599",
             period: "/mes",
@@ -64,7 +64,7 @@ export function PoliciesSection() {
             ],
         },
         {
-            name: "Premium",
+            name: "Amplia",
             description: "Máxima protección sin límites ni restricciones",
             price: "Desde $899",
             period: "/mes",
@@ -270,7 +270,12 @@ export function PoliciesSection() {
                                         Calcular Mi Seguro
                                     </Link>
                                 </Button>
-                                <Button variant="outline" size="lg" className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white" asChild>
+                                <Button
+                                    variant="outline"
+                                    size="lg"
+                                    className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white"
+                                    asChild
+                                >
                                     <Link href="#contacto">
                                         Hablar con un Agente
                                     </Link>

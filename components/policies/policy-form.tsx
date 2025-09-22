@@ -23,6 +23,12 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "@/lib/supabase/client";
+import {
+    POLICY_PLANS,
+    getPlanInfo,
+    getPlanCoverages,
+    calculateBasePrice,
+} from "@/lib/policy-plans";
 import type { Customer, Vehicle, CoverageType } from "@/lib/types/database";
 import { CalendarIcon, Car, Shield, Calculator } from "lucide-react";
 import { format } from "date-fns";
@@ -40,12 +46,10 @@ export function PolicyForm({
 }: PolicyFormProps) {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-    const [coverageTypes, setCoverageTypes] = useState<CoverageType[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState(customerId || "");
     const [selectedVehicle, setSelectedVehicle] = useState("");
-    const [selectedCoverages, setSelectedCoverages] = useState<string[]>([]);
     const [policyData, setPolicyData] = useState({
-        policyType: "Amplia",
+        policyType: "basica",
         startDate: format(new Date(), "yyyy-MM-dd"),
         endDate: format(
             new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
@@ -54,7 +58,6 @@ export function PolicyForm({
         paymentFrequency: "monthly",
         autoRenewal: true,
     });
-    const [calculatedPremium, setCalculatedPremium] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -70,10 +73,6 @@ export function PolicyForm({
         }
     }, [selectedCustomer]);
 
-    useEffect(() => {
-        calculatePremium();
-    }, [selectedCoverages, selectedVehicle, selectedCustomer]);
-
     const fetchInitialData = async () => {
         try {
             // Fetch customers
@@ -88,35 +87,6 @@ export function PolicyForm({
                 .order("created_at", { ascending: false });
 
             if (customersData) setCustomers(customersData);
-
-            // Fetch coverage types
-            const { data: coverageData, error: coverageError } = await supabase
-                .from("coverage_types")
-                .select("*")
-                .order("name");
-
-            if (coverageError) {
-                console.error("Error fetching coverage types:", coverageError);
-                setError("Error al cargar los tipos de cobertura");
-                return;
-            }
-
-            if (coverageData) {
-                console.log("Coberturas cargadas:", coverageData.length);
-                setCoverageTypes(coverageData);
-                // Auto-select mandatory coverages
-                const mandatoryCoverages = coverageData
-                    .filter((c) => c.is_mandatory)
-                    .map((c) => c.id);
-                setSelectedCoverages(mandatoryCoverages);
-                console.log(
-                    "Coberturas obligatorias seleccionadas:",
-                    mandatoryCoverages
-                );
-            } else {
-                console.log("No se encontraron coberturas");
-                setError("No se encontraron tipos de cobertura disponibles");
-            }
         } catch (error) {
             console.error("Error fetching initial data:", error);
             setError("Error cargando datos iniciales");
@@ -137,86 +107,11 @@ export function PolicyForm({
         }
     };
 
-    const calculatePremium = async () => {
-        if (
-            !selectedCustomer ||
-            !selectedVehicle ||
-            selectedCoverages.length === 0
-        ) {
-            setCalculatedPremium(0);
-            return;
-        }
-
-        try {
-            // Get customer risk score
-            const { data: customer } = await supabase
-                .from("customers")
-                .select("risk_score")
-                .eq("id", selectedCustomer)
-                .single();
-
-            // Get vehicle data
-            const { data: vehicle } = await supabase
-                .from("vehicles")
-                .select("*")
-                .eq("id", selectedVehicle)
-                .single();
-
-            // Get selected coverage types
-            const { data: coverages } = await supabase
-                .from("coverage_types")
-                .select("*")
-                .in("id", selectedCoverages);
-
-            if (customer && vehicle && coverages) {
-                let totalPremium = 0;
-
-                coverages.forEach((coverage) => {
-                    let coveragePremium = coverage.base_premium;
-
-                    // Apply risk factor (risk_score: 0-100, where 50 is average)
-                    const riskMultiplier = customer.risk_score / 50;
-                    coveragePremium *= riskMultiplier;
-
-                    // Apply vehicle value factor
-                    if (vehicle.estimated_value) {
-                        const valueMultiplier = Math.min(
-                            vehicle.estimated_value / 200000,
-                            2
-                        ); // Cap at 2x
-                        coveragePremium *= valueMultiplier;
-                    }
-
-                    // Apply vehicle age factor
-                    const currentYear = new Date().getFullYear();
-                    const vehicleAge = currentYear - vehicle.year;
-                    const ageMultiplier = Math.max(0.8, 1 - vehicleAge * 0.02); // Newer cars get slight discount
-                    coveragePremium *= ageMultiplier;
-
-                    totalPremium += coveragePremium;
-                });
-
-                setCalculatedPremium(Math.round(totalPremium * 100) / 100);
-            }
-        } catch (error) {
-            console.error("Error calculating premium:", error);
-        }
-    };
-
-    const handleCoverageChange = (coverageId: string, checked: boolean) => {
-        if (checked) {
-            setSelectedCoverages((prev) => [...prev, coverageId]);
-        } else {
-            // Check if it's mandatory
-            const coverage = coverageTypes.find((c) => c.id === coverageId);
-            if (coverage?.is_mandatory) {
-                setError("No puedes desmarcar coberturas obligatorias");
-                return;
-            }
-            setSelectedCoverages((prev) =>
-                prev.filter((id) => id !== coverageId)
-            );
-        }
+    // Calculate price based on selected plan
+    const calculatePrice = () => {
+        const selectedPlan =
+            POLICY_PLANS[policyData.policyType as keyof typeof POLICY_PLANS];
+        return selectedPlan?.basePrice || 0;
     };
 
     const generatePolicyNumber = () => {
@@ -245,13 +140,9 @@ export function PolicyForm({
                 return;
             }
 
-            if (selectedCoverages.length === 0) {
-                setError("Debe seleccionar al menos una cobertura");
-                return;
-            }
-
-            if (calculatedPremium <= 0) {
-                setError("La prima calculada debe ser mayor a 0");
+            const monthlyPrice = calculatePrice();
+            if (monthlyPrice <= 0) {
+                setError("Error en el cálculo del precio");
                 return;
             }
 
@@ -260,8 +151,10 @@ export function PolicyForm({
                 customer_id: selectedCustomer,
                 vehicle_id: selectedVehicle,
                 policy_type: policyData.policyType,
-                premium_amount: calculatedPremium,
-                coverages: selectedCoverages.length,
+                premium_amount: monthlyPrice,
+                plan: POLICY_PLANS[
+                    policyData.policyType as keyof typeof POLICY_PLANS
+                ]?.name,
             });
 
             const policyNumber = generatePolicyNumber();
@@ -278,7 +171,7 @@ export function PolicyForm({
                     status: "active",
                     start_date: policyData.startDate,
                     end_date: policyData.endDate,
-                    premium_amount: calculatedPremium,
+                    premium_amount: monthlyPrice,
                     payment_frequency: policyData.paymentFrequency,
                     auto_renewal: policyData.autoRenewal,
                 })
@@ -294,48 +187,72 @@ export function PolicyForm({
 
             console.log("Póliza creada exitosamente:", policy);
 
-            // Create policy coverages
-            const coverageInserts = selectedCoverages
-                .map((coverageId) => {
-                    const coverage = coverageTypes.find(
-                        (c) => c.id === coverageId
-                    );
-                    if (!coverage) {
-                        console.warn(`Cobertura no encontrada: ${coverageId}`);
-                        return null;
+            // Auto-create policy coverages based on selected plan
+            const selectedPlan =
+                POLICY_PLANS[
+                    policyData.policyType as keyof typeof POLICY_PLANS
+                ];
+            if (selectedPlan) {
+                // Get all coverage types to match with plan coverages
+                const { data: allCoverageTypes } = await supabase
+                    .from("coverage_types")
+                    .select("*");
+
+                if (allCoverageTypes) {
+                    const coverageInserts = selectedPlan.coverages
+                        .filter((planCoverage) => planCoverage.included)
+                        .map((planCoverage) => {
+                            const coverage = allCoverageTypes.find(
+                                (ct) =>
+                                    ct.name
+                                        .toLowerCase()
+                                        .includes(
+                                            planCoverage.name.toLowerCase()
+                                        ) ||
+                                    planCoverage.name
+                                        .toLowerCase()
+                                        .includes(ct.name.toLowerCase())
+                            );
+
+                            if (coverage) {
+                                return {
+                                    policy_id: policy.id,
+                                    coverage_type_id: coverage.id,
+                                    coverage_limit:
+                                        planCoverage.maxAmount ||
+                                        coverage.max_coverage_amount,
+                                    deductible: coverage.deductible || 0,
+                                };
+                            }
+                            return null;
+                        })
+                        .filter(Boolean);
+
+                    if (coverageInserts.length > 0) {
+                        const { data: coverageData, error: coverageError } =
+                            await supabase
+                                .from("policy_coverages")
+                                .insert(coverageInserts)
+                                .select();
+
+                        if (coverageError) {
+                            console.error(
+                                "Error creando coberturas:",
+                                coverageError
+                            );
+                            // Don't throw here, policy was created successfully
+                        } else {
+                            console.log(
+                                "Coberturas creadas exitosamente:",
+                                coverageData
+                            );
+                        }
                     }
-
-                    return {
-                        policy_id: policy.id,
-                        coverage_type_id: coverageId,
-                        coverage_limit: coverage.coverage_limit,
-                        deductible: coverage.deductible,
-                        premium: coverage.base_premium,
-                    };
-                })
-                .filter(Boolean);
-
-            console.log("Insertando coberturas:", coverageInserts);
-
-            if (coverageInserts.length > 0) {
-                const { data: coverageData, error: coverageError } =
-                    await supabase
-                        .from("policy_coverages")
-                        .insert(coverageInserts)
-                        .select();
-
-                if (coverageError) {
-                    console.error("Error creando coberturas:", coverageError);
-                    throw new Error(
-                        `Error al crear las coberturas: ${coverageError.message}`
-                    );
                 }
-
-                console.log("Coberturas creadas exitosamente:", coverageData);
             }
 
             setSuccess(
-                `Póliza ${policyNumber} creada exitosamente con ${coverageInserts.length} coberturas`
+                `Póliza ${policyNumber} creada exitosamente con plan ${selectedPlan?.name}`
             );
 
             if (onSuccess) {
@@ -486,14 +403,14 @@ export function PolicyForm({
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Amplia">
-                                        Cobertura Amplia
+                                    <SelectItem value="basica">
+                                        Básica
                                     </SelectItem>
-                                    <SelectItem value="Básica">
-                                        Responsabilidad Civil
+                                    <SelectItem value="limitada">
+                                        Limitada
                                     </SelectItem>
-                                    <SelectItem value="Limitada">
-                                        Cobertura Básica
+                                    <SelectItem value="amplia">
+                                        Amplia
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
@@ -578,107 +495,96 @@ export function PolicyForm({
                         </div>
                     </div>
 
-                    {/* Coverage Selection */}
+                    {/* Plan Coverages Display */}
                     <div className="space-y-4">
-                        <Label>Coberturas</Label>
+                        <Label>
+                            Coberturas del Plan {policyData.policyType}
+                        </Label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {coverageTypes.map((coverage) => (
+                            {POLICY_PLANS[
+                                policyData.policyType as keyof typeof POLICY_PLANS
+                            ]?.coverages.map((coverage, index) => (
                                 <div
-                                    key={coverage.id}
-                                    className="flex items-start space-x-3 p-4 border rounded-lg"
+                                    key={index}
+                                    className={`flex items-start space-x-3 p-4 border rounded-lg ${
+                                        coverage.included
+                                            ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
+                                            : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30"
+                                    }`}
                                 >
-                                    <Checkbox
-                                        id={coverage.id}
-                                        checked={selectedCoverages.includes(
-                                            coverage.id
-                                        )}
-                                        onCheckedChange={(checked) =>
-                                            handleCoverageChange(
-                                                coverage.id,
-                                                checked as boolean
-                                            )
-                                        }
-                                        disabled={coverage.is_mandatory}
-                                    />
+                                    <div
+                                        className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                                            coverage.included
+                                                ? "bg-green-500 text-white"
+                                                : "bg-red-500 text-white"
+                                        }`}
+                                    >
+                                        {coverage.included ? "✓" : "✗"}
+                                    </div>
                                     <div className="flex-1 space-y-1">
-                                        <Label
-                                            htmlFor={coverage.id}
-                                            className="text-sm font-medium"
-                                        >
+                                        <Label className="text-sm font-medium">
                                             {coverage.name}
-                                            {coverage.is_mandatory && (
-                                                <span className="text-xs text-destructive ml-1">
-                                                    (Obligatoria)
-                                                </span>
-                                            )}
                                         </Label>
                                         <p className="text-xs text-muted-foreground">
                                             {coverage.description}
                                         </p>
-                                        <div className="text-xs text-muted-foreground">
-                                            Prima base: $
-                                            {coverage.base_premium.toLocaleString()}
-                                            {coverage.coverage_limit && (
-                                                <span>
-                                                    {" "}
-                                                    | Límite: $
-                                                    {coverage.coverage_limit.toLocaleString()}
-                                                </span>
+                                        {coverage.included &&
+                                            coverage.maxAmount && (
+                                                <div className="text-xs text-green-600 dark:text-green-400">
+                                                    Cobertura máxima: $
+                                                    {coverage.maxAmount.toLocaleString()}
+                                                </div>
                                             )}
-                                            {coverage.deductible && (
-                                                <span>
-                                                    {" "}
-                                                    | Deducible: $
-                                                    {coverage.deductible.toLocaleString()}
-                                                </span>
+                                        {coverage.included &&
+                                            coverage.percentage && (
+                                                <div className="text-xs text-green-600 dark:text-green-400">
+                                                    Cobertura:{" "}
+                                                    {coverage.percentage}%
+                                                </div>
                                             )}
-                                        </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Premium Calculation */}
-                    {calculatedPremium > 0 && (
-                        <Card className="bg-muted/50">
-                            <CardContent className="pt-6">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Calculator className="h-5 w-5 text-primary" />
-                                        <span className="font-medium">
-                                            Prima Calculada
-                                        </span>
+                    {/* Price Display */}
+                    <Card className="bg-muted/50">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Calculator className="h-5 w-5 text-primary" />
+                                    <span className="font-medium">
+                                        Plan {policyData.policyType}
+                                    </span>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-2xl font-bold text-primary">
+                                        ${calculatePrice().toLocaleString()}
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-2xl font-bold text-primary">
-                                            $
-                                            {calculatedPremium.toLocaleString()}
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                            {policyData.paymentFrequency ===
-                                                "monthly" &&
-                                                `$${(
-                                                    calculatedPremium / 12
-                                                ).toFixed(2)} mensual`}
-                                            {policyData.paymentFrequency ===
-                                                "quarterly" &&
-                                                `$${(
-                                                    calculatedPremium / 4
-                                                ).toFixed(2)} trimestral`}
-                                            {policyData.paymentFrequency ===
-                                                "biannual" &&
-                                                `$${(
-                                                    calculatedPremium / 2
-                                                ).toFixed(2)} semestral`}
-                                            {policyData.paymentFrequency ===
-                                                "annual" && "anual"}
-                                        </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {policyData.paymentFrequency ===
+                                            "monthly" && "por mes"}
+                                        {policyData.paymentFrequency ===
+                                            "quarterly" &&
+                                            `$${(
+                                                calculatePrice() * 3
+                                            ).toLocaleString()} trimestral`}
+                                        {policyData.paymentFrequency ===
+                                            "biannual" &&
+                                            `$${(
+                                                calculatePrice() * 6
+                                            ).toLocaleString()} semestral`}
+                                        {policyData.paymentFrequency ===
+                                            "annual" &&
+                                            `$${(
+                                                calculatePrice() * 12
+                                            ).toLocaleString()} anual`}
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    )}
+                            </div>
+                        </CardContent>
+                    </Card>
 
                     {/* Auto Renewal */}
                     <div className="flex items-center space-x-2">
@@ -705,7 +611,7 @@ export function PolicyForm({
                                 loading ||
                                 !selectedCustomer ||
                                 !selectedVehicle ||
-                                selectedCoverages.length === 0
+                                calculatePrice() <= 0
                             }
                             className="flex-1"
                         >
