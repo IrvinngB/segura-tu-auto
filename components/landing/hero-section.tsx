@@ -14,9 +14,9 @@ import {
 
 export function HeroSection() {
     return (
-        <section className="relative bg-gradient-to-br from-background via-muted/50 to-background py-20 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <section className="relative bg-gradient-to-br from-background via-muted/50 to-background h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center h-full">
                     {/* Content */}
                     <div className="space-y-8">
                         <div className="space-y-4">
