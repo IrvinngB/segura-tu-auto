@@ -316,7 +316,10 @@ export default function HomePage() {
                                 SeguraTuAuto
                             </h1>
                             {userProfile?.role && (
-                                <Badge variant="outline" className="capitalize">
+                                <Badge
+                                    variant="outline"
+                                    className="capitalize dark:text-purple-200 dark:border-purple-300"
+                                >
                                     {userProfile.role === "customer"
                                         ? "Cliente"
                                         : userProfile.role === "agent"
@@ -329,7 +332,8 @@ export default function HomePage() {
                         </div>
                         <div className="flex items-center space-x-4">
                             <span className="text-sm text-muted-foreground">
-                                Bienvenido, {user?.email}
+                                Bienvenido, {userProfile?.first_name}{" "}
+                                {userProfile?.last_name}
                             </span>
                             <Button
                                 variant="outline"
