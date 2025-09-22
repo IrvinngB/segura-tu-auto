@@ -66,33 +66,44 @@ export function VehicleForm({
 
     // Función para validar si todos los campos obligatorios están llenos
     const isFormValid = () => {
-        const requiredFields = [
-            vehicleData.make.trim(),
-            vehicleData.model.trim(),
-            vehicleData.year,
-            vehicleData.vin.trim(),
-            vehicleData.licensePlate.trim(),
-            vehicleData.color.trim(),
-            vehicleData.engineSize.trim(),
-            vehicleData.estimatedValue.trim(),
-            vehicleData.mileage.trim(),
-            vehicleData.annualMileage.trim(),
-        ];
+        // Validar campos de texto obligatorios
+        const textFieldsValid =
+            vehicleData.make.trim() !== "" &&
+            vehicleData.model.trim() !== "" &&
+            vehicleData.vin.trim() !== "" &&
+            vehicleData.licensePlate.trim() !== "" &&
+            vehicleData.color.trim() !== "" &&
+            vehicleData.engineSize.trim() !== "";
 
-        // Verificar que todos los campos requeridos tengan valor
-        const allFieldsFilled = requiredFields.every((field) => {
-            if (typeof field === "number") {
-                return field > 0;
-            }
-            return field && field.length > 0;
-        });
+        // Validar campos numéricos obligatorios
+        const numericFieldsValid =
+            vehicleData.estimatedValue.trim() !== "" &&
+            !isNaN(Number(vehicleData.estimatedValue)) &&
+            Number(vehicleData.estimatedValue) > 0 &&
+            vehicleData.mileage.trim() !== "" &&
+            !isNaN(Number(vehicleData.mileage)) &&
+            Number(vehicleData.mileage) >= 0 &&
+            vehicleData.annualMileage.trim() !== "" &&
+            !isNaN(Number(vehicleData.annualMileage)) &&
+            Number(vehicleData.annualMileage) >= 0;
 
         // Verificar que el año sea válido
         const validYear =
             vehicleData.year >= 1990 &&
             vehicleData.year <= new Date().getFullYear() + 1;
 
-        return allFieldsFilled && validYear;
+        const isValid = textFieldsValid && numericFieldsValid && validYear;
+
+        // Debug para ver qué está fallando
+        console.log("Validación del formulario:", {
+            textFieldsValid,
+            numericFieldsValid,
+            validYear,
+            isValid,
+            data: vehicleData,
+        });
+
+        return isValid;
     };
 
     const handleFeatureToggle = (
@@ -286,8 +297,69 @@ export function VehicleForm({
                     {!isFormValid() && (
                         <Alert>
                             <AlertDescription>
-                                Por favor, rellene todos los campos requeridos
-                                marcados con asterisco (*) para continuar.
+                                <div className="space-y-2">
+                                    <p className="font-medium">
+                                        Por favor, rellene todos los campos
+                                        requeridos:
+                                    </p>
+                                    <ul className="text-sm list-disc list-inside space-y-1">
+                                        {!vehicleData.make.trim() && (
+                                            <li>Marca</li>
+                                        )}
+                                        {!vehicleData.model.trim() && (
+                                            <li>Modelo</li>
+                                        )}
+                                        {!(
+                                            vehicleData.year >= 1990 &&
+                                            vehicleData.year <=
+                                                new Date().getFullYear() + 1
+                                        ) && (
+                                            <li>
+                                                Año válido (1990-
+                                                {new Date().getFullYear() + 1})
+                                            </li>
+                                        )}
+                                        {!vehicleData.vin.trim() && (
+                                            <li>VIN</li>
+                                        )}
+                                        {!vehicleData.licensePlate.trim() && (
+                                            <li>Placas</li>
+                                        )}
+                                        {!vehicleData.color.trim() && (
+                                            <li>Color</li>
+                                        )}
+                                        {!vehicleData.engineSize.trim() && (
+                                            <li>Tamaño del Motor</li>
+                                        )}
+                                        {!(
+                                            vehicleData.estimatedValue.trim() &&
+                                            !isNaN(
+                                                Number(
+                                                    vehicleData.estimatedValue
+                                                )
+                                            ) &&
+                                            Number(vehicleData.estimatedValue) >
+                                                0
+                                        ) && <li>Valor Estimado válido</li>}
+                                        {!(
+                                            vehicleData.mileage.trim() &&
+                                            !isNaN(
+                                                Number(vehicleData.mileage)
+                                            ) &&
+                                            Number(vehicleData.mileage) >= 0
+                                        ) && <li>Kilometraje Actual válido</li>}
+                                        {!(
+                                            vehicleData.annualMileage.trim() &&
+                                            !isNaN(
+                                                Number(
+                                                    vehicleData.annualMileage
+                                                )
+                                            ) &&
+                                            Number(vehicleData.annualMileage) >=
+                                                0
+                                        ) && <li>Kilometraje Anual válido</li>}
+                                    </ul>
+                                </div>
                             </AlertDescription>
                         </Alert>
                     )}{" "}

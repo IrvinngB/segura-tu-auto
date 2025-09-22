@@ -408,29 +408,64 @@ export function PolicyForm({
 
                         <div className="space-y-2">
                             <Label htmlFor="vehicle">Vehículo</Label>
-                            <Select
-                                value={selectedVehicle}
-                                onValueChange={setSelectedVehicle}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar vehículo" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {vehicles.map((vehicle) => (
-                                        <SelectItem
-                                            key={vehicle.id}
-                                            value={vehicle.id}
+                            {vehicles.length === 0 && selectedCustomer ? (
+                                <div className="space-y-4">
+                                    <Alert>
+                                        <Car className="h-4 w-4" />
+                                        <AlertDescription>
+                                            No hay vehículos registrados para
+                                            este cliente.
+                                            {customerId
+                                                ? " Debes registrar al menos un vehículo antes de crear una póliza."
+                                                : " Selecciona un cliente que tenga vehículos registrados o registra un vehículo primero."}
+                                        </AlertDescription>
+                                    </Alert>
+                                    {customerId && (
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            className="w-full"
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <Car className="h-4 w-4" />
-                                                {vehicle.year} {vehicle.make}{" "}
-                                                {vehicle.model} -{" "}
-                                                {vehicle.license_plate}
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                            <a href="/customer/vehicles/new">
+                                                <Car className="h-4 w-4 mr-2" />
+                                                Registrar Vehículo
+                                            </a>
+                                        </Button>
+                                    )}
+                                </div>
+                            ) : (
+                                <Select
+                                    value={selectedVehicle}
+                                    onValueChange={setSelectedVehicle}
+                                    disabled={vehicles.length === 0}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue
+                                            placeholder={
+                                                vehicles.length === 0
+                                                    ? "No hay vehículos disponibles"
+                                                    : "Seleccionar vehículo"
+                                            }
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {vehicles.map((vehicle) => (
+                                            <SelectItem
+                                                key={vehicle.id}
+                                                value={vehicle.id}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <Car className="h-4 w-4" />
+                                                    {vehicle.year}{" "}
+                                                    {vehicle.make}{" "}
+                                                    {vehicle.model} -{" "}
+                                                    {vehicle.license_plate}
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
                     </div>
 
