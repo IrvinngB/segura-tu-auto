@@ -16,6 +16,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Select,
     SelectContent,
@@ -33,6 +34,8 @@ import {
     Eye,
     EyeOff,
     Home,
+    Calendar,
+    Car,
 } from "lucide-react";
 
 export default function RegisterPage() {
@@ -44,6 +47,11 @@ export default function RegisterPage() {
         lastName: "",
         phone: "",
         role: "customer",
+        // Driver information
+        birthDate: "",
+        licenseYear: "",
+        hasAccidents: false,
+        hasClaims: false,
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -53,7 +61,7 @@ export default function RegisterPage() {
     const router = useRouter();
     const supabase = createClient();
 
-    const handleInputChange = (field: string, value: string) => {
+    const handleInputChange = (field: string, value: string | boolean) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -112,6 +120,13 @@ export default function RegisterPage() {
                         phone: formData.phone,
                         role: formData.role,
                         password_hash: "handled_by_supabase_auth",
+                        // Driver information
+                        birth_date: formData.birthDate || null,
+                        license_year: formData.licenseYear
+                            ? parseInt(formData.licenseYear)
+                            : null,
+                        has_accidents: formData.hasAccidents,
+                        has_claims: formData.hasClaims,
                     })
                     .select();
 
@@ -396,6 +411,112 @@ export default function RegisterPage() {
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Driver Information Section - Only for customers */}
+                            {formData.role === "customer" && (
+                                <>
+                                    <div className="pt-4 border-t border-border">
+                                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                            <Car className="h-5 w-5" />
+                                            Información del Conductor
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground mb-4">
+                                            Esta información nos ayuda a
+                                            calcular cotizaciones personalizadas
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="birthDate">
+                                                Fecha de Nacimiento
+                                            </Label>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    id="birthDate"
+                                                    type="date"
+                                                    value={formData.birthDate}
+                                                    onChange={(e) =>
+                                                        handleInputChange(
+                                                            "birthDate",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="pl-10"
+                                                    max={
+                                                        new Date()
+                                                            .toISOString()
+                                                            .split("T")[0]
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="licenseYear">
+                                                Año que Obtuvo la Licencia
+                                            </Label>
+                                            <Input
+                                                id="licenseYear"
+                                                type="number"
+                                                placeholder="2010"
+                                                value={formData.licenseYear}
+                                                onChange={(e) =>
+                                                    handleInputChange(
+                                                        "licenseYear",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                min="1970"
+                                                max={new Date().getFullYear()}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="hasAccidents"
+                                                checked={formData.hasAccidents}
+                                                onCheckedChange={(checked) =>
+                                                    handleInputChange(
+                                                        "hasAccidents",
+                                                        checked as boolean
+                                                    )
+                                                }
+                                            />
+                                            <Label
+                                                htmlFor="hasAccidents"
+                                                className="text-sm"
+                                            >
+                                                He tenido accidentes en los
+                                                últimos 3 años
+                                            </Label>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="hasClaims"
+                                                checked={formData.hasClaims}
+                                                onCheckedChange={(checked) =>
+                                                    handleInputChange(
+                                                        "hasClaims",
+                                                        checked as boolean
+                                                    )
+                                                }
+                                            />
+                                            <Label
+                                                htmlFor="hasClaims"
+                                                className="text-sm"
+                                            >
+                                                He hecho reclamaciones en los
+                                                últimos 3 años
+                                            </Label>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             <Button
                                 type="submit"
