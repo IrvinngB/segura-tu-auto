@@ -63,11 +63,16 @@ export function useCustomerDataSimple() {
                 // Obtener datos adicionales del usuario
                 const { data: userData, error: userError } = await supabase
                     .from("users")
-                    .select("birth_date, license_year, has_accidents, has_claims")
+                    .select(
+                        "birth_date, license_year, has_accidents, has_claims"
+                    )
                     .eq("id", userProfile.id)
                     .single();
 
-                console.log("🔍 SIMPLE: User data result:", { userData, userError });
+                console.log("🔍 SIMPLE: User data result:", {
+                    userData,
+                    userError,
+                });
 
                 // Usar datos del userProfile y userData
                 const customerInfo: CustomerData = {
