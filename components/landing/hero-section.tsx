@@ -101,49 +101,49 @@ export function HeroSection() {
                     {/* Visual */}
                     <div className="relative">
                         <div className="grid grid-cols-2 gap-4">
-                            <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-                                <CardContent className="p-6 text-center">
-                                    <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
-                                    <h3 className="font-semibold text-foreground">
+                            <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 h-44 flex items-center justify-center">
+                                <CardContent className="p-4 text-center w-full flex flex-col items-center justify-center">
+                                    <Shield className="h-10 w-10 text-primary mx-auto mb-3" />
+                                    <h3 className="font-semibold text-foreground text-sm mb-2">
                                         Protección Total
                                     </h3>
-                                    <p className="text-sm text-muted-foreground mt-2">
+                                    <p className="text-xs text-muted-foreground leading-tight">
                                         Cobertura completa contra todo riesgo
                                     </p>
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20 mt-8">
-                                <CardContent className="p-6 text-center">
-                                    <Car className="h-12 w-12 text-secondary mx-auto mb-4" />
-                                    <h3 className="font-semibold text-foreground">
+                            <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20 h-44 flex items-center justify-center">
+                                <CardContent className="p-4 text-center w-full flex flex-col items-center justify-center">
+                                    <Car className="h-10 w-10 text-secondary mx-auto mb-3" />
+                                    <h3 className="font-semibold text-foreground text-sm mb-2">
                                         Todo Vehículo
                                     </h3>
-                                    <p className="text-sm text-muted-foreground mt-2">
+                                    <p className="text-xs text-muted-foreground leading-tight">
                                         Autos, motos, camiones y más
                                     </p>
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20 -mt-4">
-                                <CardContent className="p-6 text-center">
-                                    <Star className="h-12 w-12 text-accent mx-auto mb-4" />
-                                    <h3 className="font-semibold text-foreground">
+                            <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20 h-44 flex items-center justify-center">
+                                <CardContent className="p-4 text-center w-full flex flex-col items-center justify-center">
+                                    <Star className="h-10 w-10 text-accent mx-auto mb-3" />
+                                    <h3 className="font-semibold text-foreground text-sm mb-2">
                                         5 Estrellas
                                     </h3>
-                                    <p className="text-sm text-muted-foreground mt-2">
+                                    <p className="text-xs text-muted-foreground leading-tight">
                                         Calificación de nuestros clientes
                                     </p>
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 mt-4">
-                                <CardContent className="p-6 text-center">
-                                    <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-                                    <h3 className="font-semibold text-foreground">
+                            <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 h-44 flex items-center justify-center">
+                                <CardContent className="p-4 text-center w-full flex flex-col items-center justify-center">
+                                    <Users className="h-10 w-10 text-primary mx-auto mb-3" />
+                                    <h3 className="font-semibold text-foreground text-sm mb-2">
                                         Equipo Experto
                                     </h3>
-                                    <p className="text-sm text-muted-foreground mt-2">
+                                    <p className="text-xs text-muted-foreground leading-tight">
                                         Agentes certificados y especializados
                                     </p>
                                 </CardContent>

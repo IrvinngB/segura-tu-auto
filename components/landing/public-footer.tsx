@@ -273,7 +273,7 @@ export function PublicFooter() {
                 <div className="py-6 border-t border-border">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="text-sm text-muted-foreground">
-                            © 2024 SeguraTuAuto. Todos los derechos reservados.
+                            © 2025 SeguraTuAuto. Todos los derechos reservados.
                         </div>
 
                         <div className="flex flex-wrap gap-4">
