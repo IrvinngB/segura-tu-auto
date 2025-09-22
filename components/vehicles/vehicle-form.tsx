@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,6 +59,7 @@ export function VehicleForm({
     const [success, setSuccess] = useState("");
     const [countdown, setCountdown] = useState(0);
     const supabase = createClient();
+    const errorRef = useRef<HTMLDivElement>(null);
 
     // Efecto para el temporizador del modal de éxito
     useEffect(() => {
@@ -75,6 +76,30 @@ export function VehicleForm({
             }
         }
     }, [success, countdown, onSuccess]);
+
+    // Efecto para hacer scroll hacia el error cuando aparece
+    useEffect(() => {
+        if (error && errorRef.current) {
+            // Pequeño retraso para asegurar que el elemento se ha renderizado
+            setTimeout(() => {
+                errorRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                    inline: 'nearest'
+                });
+                
+                // También intentar con window.scrollTo como respaldo
+                const rect = errorRef.current?.getBoundingClientRect();
+                if (rect) {
+                    const offsetTop = rect.top + window.pageYOffset - 100; // 100px de margen
+                    window.scrollTo({
+                        top: offsetTop,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 100);
+        }
+    }, [error]);
 
     const handleInputChange = (field: string, value: string | number) => {
         console.log(`Cambiando campo ${field} a:`, value);
@@ -340,9 +365,11 @@ export function VehicleForm({
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {error && (
-                            <Alert variant="destructive">
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
+                            <div ref={errorRef} className="animate-in slide-in-from-top-2 duration-300">
+                                <Alert variant="destructive" className="border-2 border-red-500">
+                                    <AlertDescription className="font-medium">{error}</AlertDescription>
+                                </Alert>
+                            </div>
                         )}
                         {/* Indicador de campos requeridos */}
                         {!isFormValid() && (
