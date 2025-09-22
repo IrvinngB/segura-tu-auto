@@ -270,7 +270,7 @@ export function PoliciesSection() {
                                         Calcular Mi Seguro
                                     </Link>
                                 </Button>
-                                <Button variant="outline" size="lg" asChild>
+                                <Button variant="outline" size="lg" className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white" asChild>
                                     <Link href="#contacto">
                                         Hablar con un Agente
                                     </Link>

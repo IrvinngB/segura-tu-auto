@@ -75,7 +75,7 @@ export function HeroSection() {
                                 variant="outline"
                                 size="lg"
                                 asChild
-                                className="text-lg px-8"
+                                className="text-lg px-8 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white"
                             >
                                 <Link href="#servicios">Conocer Más</Link>
                             </Button>

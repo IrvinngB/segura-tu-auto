@@ -184,7 +184,7 @@ export function TestimonialsSection() {
                                 </p>
 
                                 {/* Plan Badge */}
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs dark:border-gray-600 dark:text-gray-300">
                                     {testimonial.plan}
                                 </Badge>
                             </CardContent>

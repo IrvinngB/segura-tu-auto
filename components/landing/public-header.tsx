@@ -77,7 +77,7 @@ export function PublicHeader() {
 
                         {/* Desktop Auth Buttons */}
                         <div className="hidden md:flex space-x-2">
-                            <Button variant="outline" asChild>
+                            <Button variant="outline" className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white" asChild>
                                 <Link href="/login">Iniciar Sesión</Link>
                             </Button>
                             <Button asChild>
@@ -134,7 +134,7 @@ export function PublicHeader() {
                                 Contacto
                             </a>
                             <div className="flex flex-col space-y-2 pt-4 border-t border-border">
-                                <Button variant="outline" asChild>
+                                <Button variant="outline" className="dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white" asChild>
                                     <Link href="/login">Iniciar Sesión</Link>
                                 </Button>
                                 <Button asChild>
