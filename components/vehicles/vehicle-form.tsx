@@ -94,14 +94,33 @@ export function VehicleForm({
 
         const isValid = textFieldsValid && numericFieldsValid && validYear;
 
-        // Debug para ver qué está fallando
-        console.log("Validación del formulario:", {
-            textFieldsValid,
-            numericFieldsValid,
-            validYear,
-            isValid,
-            data: vehicleData,
+        // Debug detallado para ver qué está fallando
+        console.log("=== VALIDACIÓN DETALLADA ===");
+        console.log("Campos de texto:", {
+            make: `"${vehicleData.make}" - ${vehicleData.make.trim() !== ""}`,
+            model: `"${vehicleData.model}" - ${vehicleData.model.trim() !== ""}`,
+            vin: `"${vehicleData.vin}" - ${vehicleData.vin.trim() !== ""}`,
+            licensePlate: `"${vehicleData.licensePlate}" - ${vehicleData.licensePlate.trim() !== ""}`,
+            color: `"${vehicleData.color}" - ${vehicleData.color.trim() !== ""}`,
+            engineSize: `"${vehicleData.engineSize}" - ${vehicleData.engineSize.trim() !== ""}`,
+            textFieldsValid
         });
+        
+        console.log("Campos numéricos:", {
+            estimatedValue: `"${vehicleData.estimatedValue}" - ${vehicleData.estimatedValue.trim() !== "" && !isNaN(Number(vehicleData.estimatedValue)) && Number(vehicleData.estimatedValue) > 0}`,
+            mileage: `"${vehicleData.mileage}" - ${vehicleData.mileage.trim() !== "" && !isNaN(Number(vehicleData.mileage)) && Number(vehicleData.mileage) >= 0}`,
+            annualMileage: `"${vehicleData.annualMileage}" - ${vehicleData.annualMileage.trim() !== "" && !isNaN(Number(vehicleData.annualMileage)) && Number(vehicleData.annualMileage) >= 0}`,
+            numericFieldsValid
+        });
+        
+        console.log("Año:", {
+            year: vehicleData.year,
+            validYear,
+            range: `${1990} - ${new Date().getFullYear() + 1}`
+        });
+        
+        console.log("RESULTADO FINAL:", { isValid });
+        console.log("=========================");
 
         return isValid;
     };
