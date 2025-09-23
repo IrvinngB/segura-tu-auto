@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
+import { LogoutButton } from "@/components/auth/logout-button";
 import {
     Shield,
     FileText,
@@ -19,7 +20,6 @@ import {
     Home,
     Car,
     CreditCard,
-    LogOut,
     User,
     ClipboardList,
     MessageSquare,
@@ -153,7 +153,7 @@ const navigationItems: NavigationItem[] = [
 export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
     const [isOpen, setIsOpen] = useState(false);
     const pathname = usePathname();
-    const { userProfile, signOut } = useAuth();
+    const { userProfile } = useAuth();
 
     // Filtrar navegación basada en el rol del usuario
     const filteredNavigation = useMemo(
@@ -228,14 +228,6 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
         },
         []
     );
-
-    const handleSignOut = async () => {
-        try {
-            await signOut();
-        } catch (error) {
-            console.error("Error signing out:", error);
-        }
-    };
 
     const renderNavigationGroup = (items: NavigationItem[], title?: string) => {
         if (items.length === 0) return null;
@@ -357,15 +349,13 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
 
                 {/* Footer */}
                 <div className="border-t border-border p-4">
-                    <Button
+                    <LogoutButton
                         variant="ghost"
                         size="sm"
-                        onClick={handleSignOut}
                         className="w-full justify-start text-muted-foreground hover:text-foreground"
-                    >
-                        <LogOut className="mr-3 h-4 w-4" />
-                        Cerrar Sesión
-                    </Button>
+                        showIcon={true}
+                        iconOnly={false}
+                    />
                 </div>
             </div>
 

@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogoutButton } from "@/components/auth/logout-button";
 import {
     Car,
     FileText,
@@ -336,7 +335,6 @@ export default function HomePage() {
                                 Bienvenido, {userProfile?.first_name}{" "}
                                 {userProfile?.last_name}
                             </span>
-                            <LogoutButton />
                         </div>
                     </div>
                 </div>
