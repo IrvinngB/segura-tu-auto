@@ -335,12 +335,6 @@ export default function HomePage() {
                                 Bienvenido, {userProfile?.first_name}{" "}
                                 {userProfile?.last_name}
                             </span>
-                            <Button
-                                variant="outline"
-                                onClick={() => supabase.auth.signOut()}
-                            >
-                                Cerrar Sesión
-                            </Button>
                         </div>
                     </div>
                 </div>
