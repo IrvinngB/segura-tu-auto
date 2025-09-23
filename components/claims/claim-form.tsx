@@ -29,7 +29,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
   const [claimData, setClaimData] = useState({
     incidentDate: format(new Date(), "yyyy-MM-dd"),
     incidentTime: "12:00",
-    claimType: "collision",
+    claimType: "Colisión",
     incidentDescription: "",
     incidentLocation: "",
     policeReportNumber: "",
@@ -115,6 +115,12 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
     setSuccess("")
 
     try {
+      console.log("🔍 Starting claim submission:", { customerId, selectedPolicy })
+      
+      if (!customerId) {
+        throw new Error("ID de cliente no disponible")
+      }
+
       if (!selectedPolicy) {
         throw new Error("Debe seleccionar una póliza")
       }
@@ -124,8 +130,19 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
         throw new Error("Póliza no encontrada")
       }
 
+      console.log("📋 Policy found:", policy)
+
       const claimNumber = generateClaimNumber()
       const incidentDateTime = new Date(`${claimData.incidentDate}T${claimData.incidentTime}:00`)
+
+      console.log("📝 Creating claim with data:", {
+        claim_number: claimNumber,
+        policy_id: selectedPolicy,
+        customer_id: customerId,
+        incident_date: incidentDateTime.toISOString(),
+        claim_type: claimData.claimType,
+        incident_description: claimData.incidentDescription,
+      })
 
       // Create claim
       const { data: claim, error: claimError } = await supabase
@@ -133,47 +150,57 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
         .insert({
           claim_number: claimNumber,
           policy_id: selectedPolicy,
-          customer_id: policy.customer_id,
+          customer_id: customerId,
           incident_date: incidentDateTime.toISOString(),
           claim_type: claimData.claimType,
           status: "submitted",
           incident_description: claimData.incidentDescription,
           incident_location: claimData.incidentLocation || null,
-          police_report_number: claimData.policeReportNumber || null,
           estimated_damage_cost: claimData.estimatedDamageCost
             ? Number.parseFloat(claimData.estimatedDamageCost)
             : null,
-          third_party_involved: claimData.thirdPartyInvolved,
-          injury_involved: claimData.injuryInvolved,
           priority: claimData.priority,
         })
         .select()
         .single()
 
+      console.log("✅ Claim creation result:", { claim, claimError })
+
       if (claimError) throw claimError
 
       // Upload files if any
       if (uploadedFiles.length > 0) {
+        console.log("📁 Uploading files:", uploadedFiles.length)
         for (const file of uploadedFiles) {
           const fileName = `${claim.id}/${Date.now()}-${file.name}`
+          console.log("⬆️ Uploading file:", fileName)
+          
           const { data: uploadData, error: uploadError } = await supabase.storage
-            .from("claim-documents")
+            .from("documents")
             .upload(fileName, file)
 
           if (uploadError) {
-            console.error("Error uploading file:", uploadError)
+            console.error("❌ Error uploading file:", uploadError)
+            // Continue with other files instead of stopping
             continue
           }
 
+          console.log("✅ File uploaded:", uploadData)
+
           // Save document record
-          await supabase.from("claim_documents").insert({
+          const { error: docError } = await supabase.from("documents").insert({
             claim_id: claim.id,
-            document_type: file.type.startsWith("image/") ? "photo" : "document",
+            customer_id: customerId,
+            document_type: file.type.startsWith("image/") ? "photo" : "other",
             file_name: file.name,
             file_path: uploadData.path,
             file_size: file.size,
             mime_type: file.type,
           })
+
+          if (docError) {
+            console.error("❌ Error saving document record:", docError)
+          }
         }
       }
 
@@ -183,22 +210,30 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
         setTimeout(() => onSuccess(), 1500)
       }
     } catch (error) {
-      console.error("Error creating claim:", error)
-      setError(error instanceof Error ? error.message : "Error al crear la reclamación")
+      console.error("💥 Error creating claim:", error)
+      let errorMessage = "Error al crear la reclamación"
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = String(error.message)
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
   const claimTypes = [
-    { value: "collision", label: "Colisión" },
-    { value: "theft", label: "Robo" },
-    { value: "vandalism", label: "Vandalismo" },
-    { value: "fire", label: "Incendio" },
-    { value: "flood", label: "Inundación" },
-    { value: "hail", label: "Granizo" },
-    { value: "glass", label: "Cristales" },
-    { value: "other", label: "Otro" },
+    { value: "Colisión", label: "Colisión" },
+    { value: "Robo", label: "Robo" },
+    { value: "Vandalismo", label: "Vandalismo" },
+    { value: "Incendio", label: "Incendio" },
+    { value: "Daño por clima", label: "Inundación" },
+    { value: "Daño por granizo", label: "Granizo" },
+    { value: "Otros", label: "Cristales" },
+    { value: "Otros", label: "Otro" },
   ]
 
   return (
