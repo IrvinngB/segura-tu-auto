@@ -30,7 +30,7 @@ import {
     calculateBasePrice,
 } from "@/lib/policy-plans";
 import type { Customer, Vehicle, CoverageType } from "@/lib/types/database";
-import { CalendarIcon, Car, Shield, Calculator } from "lucide-react";
+import { CalendarIcon, Car, Shield, Calculator, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 
 interface PolicyFormProps {
@@ -61,7 +61,24 @@ export function PolicyForm({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [countdown, setCountdown] = useState(0);
     const supabase = createClient();
+
+    // Efecto para el temporizador del modal de éxito
+    useEffect(() => {
+        if (success && countdown > 0) {
+            const timer = setTimeout(() => {
+                setCountdown(countdown - 1);
+            }, 1000);
+            return () => clearTimeout(timer);
+        } else if (success && countdown === 0) {
+            // Cuando llegue a 0, cerrar el modal y ejecutar onSuccess
+            setSuccess("");
+            if (onSuccess) {
+                onSuccess();
+            }
+        }
+    }, [success, countdown, onSuccess]);
 
     useEffect(() => {
         fetchInitialData();
@@ -254,10 +271,9 @@ export function PolicyForm({
             setSuccess(
                 `Póliza ${policyNumber} creada exitosamente con plan ${selectedPlan?.name}`
             );
+            setCountdown(1); // Iniciar countdown de 1 segundo
 
-            if (onSuccess) {
-                setTimeout(() => onSuccess(), 1500);
-            }
+            // El modal se cerrará automáticamente después de 1 segundo
         } catch (error) {
             console.error("Error creating policy:", error);
             setError(
@@ -271,7 +287,8 @@ export function PolicyForm({
     };
 
     return (
-        <Card className="w-full max-w-4xl mx-auto">
+        <>
+            <Card className="w-full max-w-4xl mx-auto">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5" />
@@ -287,12 +304,6 @@ export function PolicyForm({
                     {error && (
                         <Alert variant="destructive">
                             <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    )}
-
-                    {success && (
-                        <Alert>
-                            <AlertDescription>{success}</AlertDescription>
                         </Alert>
                     )}
 
@@ -630,5 +641,23 @@ export function PolicyForm({
                 </form>
             </CardContent>
         </Card>
+
+        {/* Modal de Éxito */}
+        {success && (
+            <div className="fixed inset-0 flex items-center justify-center z-50 animate-in fade-in duration-300">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md mx-4 text-center shadow-2xl border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
+                    <div className="flex justify-center mb-4">
+                        <CheckCircle className="h-16 w-16 text-green-500" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                        ¡Éxito!
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                        {success}
+                    </p>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
