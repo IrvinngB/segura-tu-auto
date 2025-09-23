@@ -34,7 +34,6 @@ import {
     Edit,
     FileText,
     Calendar,
-    DollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -372,7 +371,6 @@ export function PolicyList({
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-1">
-                                                <DollarSign className="h-3 w-3" />
                                                 <span className="font-medium">
                                                     $
                                                     {policy.premium_amount.toLocaleString()}
