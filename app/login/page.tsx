@@ -28,6 +28,30 @@ export default function LoginPage() {
     const router = useRouter();
     const supabase = createClient();
 
+    // Función para traducir mensajes de error a español
+    const getErrorMessage = (errorMessage: string) => {
+        const errorMap: { [key: string]: string } = {
+            "Invalid login credentials": "Correo electrónico o contraseña incorrectos",
+            "Email not confirmed": "Tu cuenta aún no ha sido verificada. Revisa tu correo electrónico",
+            "Too many requests": "Demasiados intentos de inicio de sesión. Inténtalo de nuevo más tarde",
+            "User not found": "No se encontró una cuenta con este correo electrónico",
+            "Invalid email": "El formato del correo electrónico no es válido",
+            "Password should be at least 6 characters": "La contraseña debe tener al menos 6 caracteres",
+            "Network error": "Error de conexión. Verifica tu conexión a internet",
+            "An unexpected error occurred": "Ocurrió un error inesperado. Por favor, inténtalo de nuevo"
+        };
+
+        // Buscar coincidencias exactas o parciales
+        for (const [key, value] of Object.entries(errorMap)) {
+            if (errorMessage.toLowerCase().includes(key.toLowerCase())) {
+                return value;
+            }
+        }
+
+        // Si no encuentra una traducción específica, devolver un mensaje genérico
+        return "Error de autenticación. Verifica tus credenciales e inténtalo de nuevo";
+    };
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -49,7 +73,7 @@ export default function LoginPage() {
             });
 
             if (error) {
-                setError(error.message);
+                setError(getErrorMessage(error.message));
                 return;
             }
 
@@ -78,7 +102,7 @@ export default function LoginPage() {
             }
         } catch (err) {
             console.error("Login error:", err);
-            setError("An unexpected error occurred");
+            setError(getErrorMessage("An unexpected error occurred"));
         } finally {
             setLoading(false);
         }

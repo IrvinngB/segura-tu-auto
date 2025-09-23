@@ -120,13 +120,6 @@ export default function RegisterPage() {
                         phone: formData.phone,
                         role: formData.role,
                         password_hash: "handled_by_supabase_auth",
-                        // Driver information
-                        birth_date: formData.birthDate || null,
-                        license_year: formData.licenseYear
-                            ? parseInt(formData.licenseYear)
-                            : null,
-                        has_accidents: formData.hasAccidents,
-                        has_claims: formData.hasClaims,
                     })
                     .select();
 
@@ -142,11 +135,21 @@ export default function RegisterPage() {
 
                 // If customer, create customer profile
                 if (formData.role === "customer") {
+                    // Calculate driving experience from license year
+                    const currentYear = new Date().getFullYear();
+                    const drivingExperience = formData.licenseYear 
+                        ? currentYear - parseInt(formData.licenseYear) 
+                        : null;
+
                     const { data: customerData, error: customerError } =
                         await supabase
                             .from("customers")
                             .insert({
                                 user_id: data.user.id,
+                                date_of_birth: formData.birthDate || null,
+                                driving_experience_years: drivingExperience,
+                                has_accidents: formData.hasAccidents,
+                                has_claims: formData.hasClaims,
                             })
                             .select();
 
