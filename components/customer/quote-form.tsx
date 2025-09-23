@@ -230,6 +230,19 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                 POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS],
         };
 
+        console.log("Sending contract data:", policyData);
+        console.log("Selected plan type:", selectedPlan);
+        console.log("Available POLICY_PLANS keys:", Object.keys(POLICY_PLANS));
+
+        // Verify the plan exists
+        if (!POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS]) {
+            console.error(
+                "Selected plan not found in POLICY_PLANS:",
+                selectedPlan
+            );
+            return;
+        }
+
         // Store the data in sessionStorage so it can be accessed by the policy form
         sessionStorage.setItem(
             "policyContractData",

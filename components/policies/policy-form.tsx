@@ -69,36 +69,82 @@ export function PolicyForm({
     const [success, setSuccess] = useState("");
     const [countdown, setCountdown] = useState(0);
     const [contractData, setContractData] = useState<any>(null);
+    const [isContractDataLoaded, setIsContractDataLoaded] = useState(false);
     const supabase = createClient();
 
     // Check for pre-filled data from quote contract
     useEffect(() => {
-        const contractDataStr = sessionStorage.getItem("policyContractData");
-        if (contractDataStr) {
-            try {
-                const data = JSON.parse(contractDataStr);
-                setContractData(data);
+        // Use setTimeout to ensure this runs after component is fully mounted
+        const timer = setTimeout(() => {
+            const contractDataStr =
+                sessionStorage.getItem("policyContractData");
+            console.log("Checking for contract data...", contractDataStr);
 
-                // Set the selected vehicle if it exists
-                if (data.vehicleId) {
-                    setSelectedVehicle(data.vehicleId);
+            if (contractDataStr) {
+                try {
+                    const data = JSON.parse(contractDataStr);
+                    console.log("Contract data received:", data);
+                    setContractData(data);
+
+                    // Set the selected vehicle if it exists
+                    if (data.vehicleId) {
+                        console.log("Setting vehicle ID:", data.vehicleId);
+                        setSelectedVehicle(data.vehicleId);
+                    }
+
+                    // Set the policy type from the quote
+                    if (data.planType) {
+                        console.log(
+                            "Setting policy type from contract:",
+                            data.planType
+                        );
+                        setPolicyData((prev) => {
+                            const newData = {
+                                ...prev,
+                                policyType: data.planType,
+                            };
+                            console.log(
+                                "New policyData after contract:",
+                                newData
+                            );
+                            return newData;
+                        });
+                    }
+
+                    setIsContractDataLoaded(true);
+
+                    // Clear the session storage after using it
+                    sessionStorage.removeItem("policyContractData");
+                } catch (error) {
+                    console.error("Error parsing contract data:", error);
                 }
-
-                // Set the policy type from the quote
-                if (data.planType) {
-                    setPolicyData((prev) => ({
-                        ...prev,
-                        policyType: data.planType,
-                    }));
-                }
-
-                // Clear the session storage after using it
-                sessionStorage.removeItem("policyContractData");
-            } catch (error) {
-                console.error("Error parsing contract data:", error);
+            } else {
+                setIsContractDataLoaded(true);
             }
-        }
+        }, 100);
+
+        return () => clearTimeout(timer);
     }, []);
+
+    // Debug useEffect to track policyData changes
+    useEffect(() => {
+        console.log("PolicyData updated:", policyData);
+        console.log("Current policyType:", policyData.policyType);
+    }, [policyData]);
+
+    // Force re-render when contract data is loaded
+    useEffect(() => {
+        if (isContractDataLoaded && contractData?.planType) {
+            console.log(
+                "Forcing policyType update after contract load:",
+                contractData.planType
+            );
+            setPolicyData((prev) => ({
+                ...prev,
+                policyType: contractData.planType,
+            }));
+        }
+    }, [isContractDataLoaded, contractData]);
 
     // Efecto para el temporizador del modal de éxito
     useEffect(() => {
@@ -454,30 +500,39 @@ export function PolicyForm({
                                 <Label htmlFor="policyType">
                                     Tipo de Póliza
                                 </Label>
-                                <Select
-                                    value={policyData.policyType}
-                                    onValueChange={(value) =>
-                                        setPolicyData((prev) => ({
-                                            ...prev,
-                                            policyType: value,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="basica">
-                                            Básica
-                                        </SelectItem>
-                                        <SelectItem value="limitada">
-                                            Limitada
-                                        </SelectItem>
-                                        <SelectItem value="amplia">
-                                            Amplia
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                {isContractDataLoaded ? (
+                                    <Select
+                                        key={`policy-type-${policyData.policyType}-${isContractDataLoaded}`}
+                                        value={policyData.policyType}
+                                        onValueChange={(value) => {
+                                            console.log(
+                                                "Select onChange triggered with value:",
+                                                value
+                                            );
+                                            setPolicyData((prev) => ({
+                                                ...prev,
+                                                policyType: value,
+                                            }));
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Seleccione un tipo de póliza" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="basica">
+                                                Básica
+                                            </SelectItem>
+                                            <SelectItem value="limitada">
+                                                Limitada
+                                            </SelectItem>
+                                            <SelectItem value="amplia">
+                                                Amplia
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    <div className="h-10 bg-muted animate-pulse rounded-md"></div>
+                                )}
                             </div>
 
                             <div className="space-y-2">
