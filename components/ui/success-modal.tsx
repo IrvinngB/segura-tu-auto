@@ -25,11 +25,15 @@ export function SuccessModal({
                 onClose();
             }, duration);
 
-            return () => clearTimeout(timer);
+            return () => {
+                clearTimeout(timer);
+            };
         }
     }, [show, duration, onClose]);
 
-    if (!show) return null;
+    if (!show) {
+        return null;
+    }
 
     return (
         <Portal>
