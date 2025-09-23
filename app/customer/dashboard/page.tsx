@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useAuth } from "@/components/auth/auth-provider"
+import { LogoutButton } from "@/components/auth/logout-button"
 import { createClient } from "@/lib/supabase/client"
 import type { Policy, Claim, Payment } from "@/lib/types/database"
 import { Shield, FileText, DollarSign, Car, Plus, Eye, Calendar, AlertTriangle } from "lucide-react"
@@ -136,11 +137,14 @@ export default function CustomerDashboard() {
     <ProtectedRoute allowedRoles={["customer"]}>
       <div className="container mx-auto py-8 px-4">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">
-            Bienvenido, {userProfile?.first_name} {userProfile?.last_name}
-          </h1>
-          <p className="text-muted-foreground">Gestiona tus pólizas y reclamaciones de seguro</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">
+              Bienvenido, {userProfile?.first_name} {userProfile?.last_name}
+            </h1>
+            <p className="text-muted-foreground">Gestiona tus pólizas y reclamaciones de seguro</p>
+          </div>
+          <LogoutButton />
         </div>
 
         {/* Quick Stats */}
