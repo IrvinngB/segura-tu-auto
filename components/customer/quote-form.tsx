@@ -3,6 +3,7 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,12 +21,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
-import type { CoverageType, Vehicle } from "@/lib/types/database";
-import { Calculator, Car, Shield, DollarSign, Plus } from "lucide-react";
+import { POLICY_PLANS } from "@/lib/policy-plans";
+import type { Vehicle } from "@/lib/types/database";
+import {
+    Calculator,
+    Car,
+    Shield,
+    DollarSign,
+    Plus,
+    Check,
+    X,
+    Star,
+    Crown,
+} from "lucide-react";
 
 interface QuoteFormProps {
     onSuccess?: (quote: any) => void;
@@ -34,8 +45,10 @@ interface QuoteFormProps {
 
 export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     const { customerData, loading: customerLoading } = useCustomerDataSimple();
+    const router = useRouter();
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
+    const [selectedPlan, setSelectedPlan] = useState<string>("basica"); // Plan por defecto básico
     const [vehicleData, setVehicleData] = useState({
         make: "",
         model: "",
@@ -45,22 +58,13 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         annualMileage: "15000",
     });
     const [driverData, setDriverData] = useState({
-        age: "",
-        drivingExperience: "",
+        age: "30", // Valor por defecto
+        drivingExperience: "5", // Valor por defecto
         hasAccidents: false,
         hasClaims: false,
     });
-    const [coverageTypes, setCoverageTypes] = useState<CoverageType[]>([]);
-    const [selectedCoverages, setSelectedCoverages] = useState<string[]>([]);
     const [calculatedQuote, setCalculatedQuote] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
     const supabase = createClient();
-
-    useEffect(() => {
-        fetchCoverageTypes();
-    }, []);
 
     useEffect(() => {
         if (customerData && !customerLoading) {
@@ -69,8 +73,8 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             // Calculate driver data from user profile
             const calculateDriverData = () => {
                 const currentYear = new Date().getFullYear();
-                let age = "";
-                let drivingExperience = "";
+                let age = "30"; // Default value
+                let drivingExperience = "5"; // Default value
 
                 // Calculate age from birth_date
                 if (customerData.birth_date) {
@@ -87,6 +91,18 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                     ).toString();
                 }
 
+                // Ensure we always have valid values
+                if (!age || age === "NaN" || parseInt(age) < 18) {
+                    age = "30";
+                }
+                if (
+                    !drivingExperience ||
+                    drivingExperience === "NaN" ||
+                    parseInt(drivingExperience) < 0
+                ) {
+                    drivingExperience = "5";
+                }
+
                 setDriverData({
                     age,
                     drivingExperience,
@@ -101,7 +117,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
     useEffect(() => {
         calculateQuote();
-    }, [vehicleData, driverData, selectedCoverages]);
+    }, [vehicleData, driverData, selectedPlan]);
 
     useEffect(() => {
         if (selectedVehicleId && vehicles.length > 0) {
@@ -112,9 +128,9 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                 setVehicleData({
                     make: selectedVehicle.make,
                     model: selectedVehicle.model,
-                    year: selectedVehicle.year,
+                    year: selectedVehicle.year || new Date().getFullYear(),
                     estimatedValue:
-                        selectedVehicle.estimated_value?.toString() || "",
+                        selectedVehicle.estimated_value?.toString() || "200000",
                     usageType: selectedVehicle.usage_type || "personal",
                     annualMileage:
                         selectedVehicle.annual_mileage?.toString() || "15000",
@@ -136,7 +152,6 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
             if (error) {
                 console.error("Error fetching vehicles:", error);
-                setError("Error al cargar los vehículos");
                 return;
             }
 
@@ -153,155 +168,76 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             }
         } catch (error) {
             console.error("Error fetching vehicles:", error);
-            setError("Error inesperado al cargar los vehículos");
-        }
-    };
-
-    const fetchCoverageTypes = async () => {
-        try {
-            console.log("Buscando tipos de cobertura...");
-            const { data, error } = await supabase
-                .from("coverage_types")
-                .select("*")
-                .order("name");
-
-            if (error) {
-                console.error("Error fetching coverage types:", error);
-                setError("Error al cargar los tipos de cobertura");
-                return;
-            }
-
-            if (data) {
-                console.log("Tipos de cobertura encontrados:", data.length);
-                setCoverageTypes(data);
-                // Auto-select mandatory coverages
-                const mandatoryCoverages = data
-                    .filter((c) => c.is_mandatory)
-                    .map((c) => c.id);
-                setSelectedCoverages(mandatoryCoverages);
-                console.log(
-                    "Coberturas obligatorias seleccionadas:",
-                    mandatoryCoverages
-                );
-            } else {
-                console.log("No se encontraron tipos de cobertura");
-                setError("No se encontraron tipos de cobertura disponibles");
-            }
-        } catch (error) {
-            console.error("Error fetching coverage types:", error);
-            setError("Error inesperado al cargar los tipos de cobertura");
         }
     };
 
     const calculateQuote = () => {
-        if (selectedCoverages.length === 0) {
+        if (!vehicleData?.year || !driverData?.age || !selectedPlan) {
             setCalculatedQuote(0);
             return;
         }
 
-        let totalPremium = 0;
-
-        selectedCoverages.forEach((coverageId) => {
-            const coverage = coverageTypes.find((c) => c.id === coverageId);
-            if (!coverage) return;
-
-            let coveragePremium = coverage.base_premium;
-
-            // Age factor
-            if (driverData.age) {
-                const age = Number.parseInt(driverData.age);
-                if (age < 25) coveragePremium *= 1.3;
-                else if (age > 65) coveragePremium *= 1.1;
-                else coveragePremium *= 0.9;
+        try {
+            const plan =
+                POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS];
+            if (!plan) {
+                setCalculatedQuote(0);
+                return;
             }
 
-            // Experience factor
-            if (driverData.drivingExperience) {
-                const experience = Number.parseInt(
-                    driverData.drivingExperience
-                );
-                if (experience < 2) coveragePremium *= 1.2;
-                else if (experience > 10) coveragePremium *= 0.85;
-            }
+            let basePrice = plan.basePrice;
 
-            // Vehicle value factor
-            if (vehicleData.estimatedValue) {
-                const value = Number.parseFloat(vehicleData.estimatedValue);
-                const valueMultiplier = Math.min(value / 200000, 2);
-                coveragePremium *= valueMultiplier;
-            }
+            // Age-based adjustments
+            const age = parseInt(driverData.age);
+            if (age < 25) basePrice *= 1.25;
+            else if (age > 65) basePrice *= 1.15;
 
-            // Vehicle age factor
+            // Experience adjustments
+            const experience = parseInt(driverData.drivingExperience || "0");
+            if (experience < 2) basePrice *= 1.2;
+
+            // Vehicle age adjustments
             const vehicleAge = new Date().getFullYear() - vehicleData.year;
-            const ageMultiplier = Math.max(0.8, 1 - vehicleAge * 0.02);
-            coveragePremium *= ageMultiplier;
+            if (vehicleAge < 2) basePrice *= 1.1;
+            else if (vehicleAge > 10) basePrice *= 0.9;
 
-            // Usage factor
-            if (vehicleData.usageType === "commercial") coveragePremium *= 1.2;
-            else if (vehicleData.usageType === "mixed") coveragePremium *= 1.1;
+            // Accident and claims history
+            if (driverData.hasAccidents) basePrice *= 1.15;
+            if (driverData.hasClaims) basePrice *= 1.2;
 
-            // Annual mileage factor
-            const mileage = Number.parseInt(vehicleData.annualMileage);
-            if (mileage > 20000) coveragePremium *= 1.15;
-            else if (mileage < 10000) coveragePremium *= 0.9;
-
-            // Risk factors
-            if (driverData.hasAccidents) coveragePremium *= 1.25;
-            if (driverData.hasClaims) coveragePremium *= 1.2;
-
-            totalPremium += coveragePremium;
-        });
-
-        setCalculatedQuote(Math.round(totalPremium * 100) / 100);
+            // Calculate annual price (basePrice is monthly)
+            const finalPrice = Math.round(basePrice * 12);
+            setCalculatedQuote(finalPrice);
+        } catch (error) {
+            console.error("Error calculating quote:", error);
+            setCalculatedQuote(0);
+        }
     };
 
     const handleVehicleChange = (field: string, value: string | number) => {
         setVehicleData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleCoverageChange = (coverageId: string, checked: boolean) => {
-        if (checked) {
-            setSelectedCoverages((prev) => [...prev, coverageId]);
-        } else {
-            const coverage = coverageTypes.find((c) => c.id === coverageId);
-            if (coverage?.is_mandatory) {
-                setError("No puedes desmarcar coberturas obligatorias");
-                return;
-            }
-            setSelectedCoverages((prev) =>
-                prev.filter((id) => id !== coverageId)
-            );
-        }
-    };
+    const handleContractPolicy = () => {
+        // Prepare the data to pass to the policy creation form
+        const policyData = {
+            vehicleId: selectedVehicleId,
+            vehicleData: vehicleData,
+            planType: selectedPlan,
+            driverData: driverData,
+            calculatedPremium: calculatedQuote,
+            planDetails:
+                POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS],
+        };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError("");
-        setSuccess("");
+        // Store the data in sessionStorage so it can be accessed by the policy form
+        sessionStorage.setItem(
+            "policyContractData",
+            JSON.stringify(policyData)
+        );
 
-        try {
-            const quoteData = {
-                vehicle: vehicleData,
-                driver: driverData,
-                coverages: selectedCoverages,
-                calculatedPremium: calculatedQuote,
-                userId: customerData?.user_id,
-                customerId: customerData?.id,
-                createdAt: new Date().toISOString(),
-            };
-
-            setSuccess("Cotización calculada exitosamente");
-
-            if (onSuccess) {
-                onSuccess(quoteData);
-            }
-        } catch (error) {
-            console.error("Error processing quote:", error);
-            setError("Error al procesar la cotización");
-        } finally {
-            setLoading(false);
-        }
+        // Navigate to the policy creation page using Next.js router
+        router.push("/customer/policies/new");
     };
 
     return (
@@ -317,19 +253,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {error && (
-                        <Alert variant="destructive">
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    )}
-
-                    {success && (
-                        <Alert>
-                            <AlertDescription>{success}</AlertDescription>
-                        </Alert>
-                    )}
-
+                <div className="space-y-6">
                     {/* Vehicle Information */}
                     <Card>
                         <CardHeader>
@@ -524,63 +448,120 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Coverage Selection */}
+                    {/* Plan Selection */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <Shield className="h-4 w-4" />
-                                Coberturas
+                                Planes de Cobertura
                             </CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                Selecciona el plan que mejor se adapte a tus
+                                necesidades
+                            </p>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {coverageTypes.map((coverage) => (
-                                    <div
-                                        key={coverage.id}
-                                        className="flex items-start space-x-3 p-4 border rounded-lg"
-                                    >
-                                        <Checkbox
-                                            id={coverage.id}
-                                            checked={selectedCoverages.includes(
-                                                coverage.id
-                                            )}
-                                            onCheckedChange={(checked) =>
-                                                handleCoverageChange(
-                                                    coverage.id,
-                                                    checked as boolean
-                                                )
-                                            }
-                                            disabled={coverage.is_mandatory}
-                                        />
-                                        <div className="flex-1 space-y-1">
-                                            <Label
-                                                htmlFor={coverage.id}
-                                                className="text-sm font-medium"
-                                            >
-                                                {coverage.name}
-                                                {coverage.is_mandatory && (
-                                                    <span className="text-xs text-destructive ml-1">
-                                                        (Obligatoria)
-                                                    </span>
-                                                )}
-                                            </Label>
-                                            <p className="text-xs text-muted-foreground">
-                                                {coverage.description}
-                                            </p>
-                                            <div className="text-xs text-muted-foreground">
-                                                Prima base: $
-                                                {coverage.base_premium.toLocaleString()}
-                                                {coverage.coverage_limit && (
-                                                    <span>
-                                                        {" "}
-                                                        | Límite: $
-                                                        {coverage.coverage_limit.toLocaleString()}
-                                                    </span>
-                                                )}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {Object.entries(POLICY_PLANS).map(
+                                    ([key, plan]) => (
+                                        <div
+                                            key={key}
+                                            className={`relative cursor-pointer rounded-lg border-2 p-6 transition-all ${
+                                                selectedPlan === key
+                                                    ? "border-primary bg-primary/5"
+                                                    : "border-muted hover:border-primary/50"
+                                            }`}
+                                            onClick={() => setSelectedPlan(key)}
+                                        >
+                                            <div className="flex flex-col space-y-4">
+                                                <div className="text-center">
+                                                    <h3 className="text-lg font-semibold capitalize">
+                                                        Plan {plan.name}
+                                                    </h3>
+                                                    <div className="mt-2 text-3xl font-bold text-primary">
+                                                        $
+                                                        {plan.basePrice.toLocaleString()}
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        por mes
+                                                    </p>
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    <h4 className="font-medium text-sm">
+                                                        Incluye:
+                                                    </h4>
+                                                    <ul className="space-y-1">
+                                                        {plan.coverages
+                                                            .filter(
+                                                                (c) =>
+                                                                    c.included
+                                                            )
+                                                            .map(
+                                                                (
+                                                                    coverage,
+                                                                    index
+                                                                ) => (
+                                                                    <li
+                                                                        key={
+                                                                            index
+                                                                        }
+                                                                        className="flex items-center text-xs"
+                                                                    >
+                                                                        <Check className="h-3 w-3 text-green-500 mr-2 flex-shrink-0" />
+                                                                        {
+                                                                            coverage.name
+                                                                        }
+                                                                    </li>
+                                                                )
+                                                            )}
+                                                    </ul>
+
+                                                    {plan.coverages.some(
+                                                        (c) => !c.included
+                                                    ) && (
+                                                        <>
+                                                            <h4 className="font-medium text-sm text-muted-foreground">
+                                                                No incluye:
+                                                            </h4>
+                                                            <ul className="space-y-1">
+                                                                {plan.coverages
+                                                                    .filter(
+                                                                        (c) =>
+                                                                            !c.included
+                                                                    )
+                                                                    .map(
+                                                                        (
+                                                                            coverage,
+                                                                            index
+                                                                        ) => (
+                                                                            <li
+                                                                                key={
+                                                                                    index
+                                                                                }
+                                                                                className="flex items-center text-xs text-muted-foreground"
+                                                                            >
+                                                                                <X className="h-3 w-3 text-red-500 mr-2 flex-shrink-0" />
+                                                                                {
+                                                                                    coverage.name
+                                                                                }
+                                                                            </li>
+                                                                        )
+                                                                    )}
+                                                            </ul>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
+
+                                            {selectedPlan === key && (
+                                                <div className="absolute -top-2 -right-2 rounded-full bg-primary p-1">
+                                                    <Check className="h-4 w-4 text-primary-foreground" />
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -638,21 +619,28 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
                     {/* Actions */}
                     {vehicles.length > 0 ? (
-                        <div className="flex gap-4 pt-6">
-                            <Button
-                                type="submit"
-                                disabled={loading || !selectedVehicleId}
-                                className="flex-1"
-                            >
-                                {loading
-                                    ? "Procesando..."
-                                    : "Obtener Cotización"}
-                            </Button>
+                        <div className="space-y-4 pt-6">
+                            {/* Contract Policy Button - shown when quote is calculated */}
+                            {calculatedQuote > 0 && (
+                                <Button
+                                    type="button"
+                                    variant="default"
+                                    size="lg"
+                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
+                                    onClick={handleContractPolicy}
+                                >
+                                    <Shield className="h-5 w-5 mr-2" />
+                                    Contratar Esta Póliza - $
+                                    {calculatedQuote.toLocaleString()}/año
+                                </Button>
+                            )}
+
                             {onCancel && (
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={onCancel}
+                                    className="w-full"
                                 >
                                     Cancelar
                                 </Button>
@@ -672,7 +660,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                             </Button>
                         </div>
                     )}
-                </form>
+                </div>
             </CardContent>
         </Card>
     );

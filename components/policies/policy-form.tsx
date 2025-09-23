@@ -30,7 +30,13 @@ import {
     calculateBasePrice,
 } from "@/lib/policy-plans";
 import type { Customer, Vehicle, CoverageType } from "@/lib/types/database";
-import { CalendarIcon, Car, Shield, Calculator, CheckCircle } from "lucide-react";
+import {
+    CalendarIcon,
+    Car,
+    Shield,
+    Calculator,
+    CheckCircle,
+} from "lucide-react";
 import { format } from "date-fns";
 
 interface PolicyFormProps {
@@ -62,7 +68,37 @@ export function PolicyForm({
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [countdown, setCountdown] = useState(0);
+    const [contractData, setContractData] = useState<any>(null);
     const supabase = createClient();
+
+    // Check for pre-filled data from quote contract
+    useEffect(() => {
+        const contractDataStr = sessionStorage.getItem("policyContractData");
+        if (contractDataStr) {
+            try {
+                const data = JSON.parse(contractDataStr);
+                setContractData(data);
+
+                // Set the selected vehicle if it exists
+                if (data.vehicleId) {
+                    setSelectedVehicle(data.vehicleId);
+                }
+
+                // Set the policy type from the quote
+                if (data.planType) {
+                    setPolicyData((prev) => ({
+                        ...prev,
+                        policyType: data.planType,
+                    }));
+                }
+
+                // Clear the session storage after using it
+                sessionStorage.removeItem("policyContractData");
+            } catch (error) {
+                console.error("Error parsing contract data:", error);
+            }
+        }
+    }, []);
 
     // Efecto para el temporizador del modal de éxito
     useEffect(() => {
@@ -289,375 +325,394 @@ export function PolicyForm({
     return (
         <>
             <Card className="w-full max-w-4xl mx-auto">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Nueva Póliza de Seguro
-                </CardTitle>
-                <CardDescription>
-                    Complete la información para crear una nueva póliza de
-                    seguro
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {error && (
-                        <Alert variant="destructive">
-                            <AlertDescription>{error}</AlertDescription>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        Nueva Póliza de Seguro
+                    </CardTitle>
+                    <CardDescription>
+                        Complete la información para crear una nueva póliza de
+                        seguro
+                    </CardDescription>
+
+                    {/* Contract from Quote Information */}
+                    {contractData && (
+                        <Alert className="bg-green-50 border-green-200">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <AlertDescription className="text-green-800">
+                                <strong>Contratando desde cotización:</strong>{" "}
+                                {contractData.planDetails?.name} - $
+                                {contractData.calculatedPremium?.toLocaleString()}
+                                /año para {contractData.vehicleData?.make}{" "}
+                                {contractData.vehicleData?.model}{" "}
+                                {contractData.vehicleData?.year}
+                            </AlertDescription>
                         </Alert>
                     )}
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {error && (
+                            <Alert variant="destructive">
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
 
-                    {/* Customer Selection */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="customer">Cliente</Label>
-                            <Select
-                                value={selectedCustomer}
-                                onValueChange={setSelectedCustomer}
-                                disabled={!!customerId}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar cliente" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {customers.map((customer) => (
-                                        <SelectItem
-                                            key={customer.id}
-                                            value={customer.id}
-                                        >
-                                            {customer.user?.first_name}{" "}
-                                            {customer.user?.last_name} -{" "}
-                                            {customer.user?.email}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="vehicle">Vehículo</Label>
-                            {vehicles.length === 0 && selectedCustomer ? (
-                                <div className="space-y-4">
-                                    <Alert>
-                                        <Car className="h-4 w-4" />
-                                        <AlertDescription>
-                                            No hay vehículos registrados para
-                                            este cliente.
-                                            {customerId
-                                                ? " Debes registrar al menos un vehículo antes de crear una póliza."
-                                                : " Selecciona un cliente que tenga vehículos registrados o registra un vehículo primero."}
-                                        </AlertDescription>
-                                    </Alert>
-                                    {customerId && (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            className="w-full"
-                                        >
-                                            <a href="/customer/vehicles/new">
-                                                <Car className="h-4 w-4 mr-2" />
-                                                Registrar Vehículo
-                                            </a>
-                                        </Button>
-                                    )}
-                                </div>
-                            ) : (
+                        {/* Customer Selection */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="customer">Cliente</Label>
                                 <Select
-                                    value={selectedVehicle}
-                                    onValueChange={setSelectedVehicle}
-                                    disabled={vehicles.length === 0}
+                                    value={selectedCustomer}
+                                    onValueChange={setSelectedCustomer}
+                                    disabled={!!customerId}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue
-                                            placeholder={
-                                                vehicles.length === 0
-                                                    ? "No hay vehículos disponibles"
-                                                    : "Seleccionar vehículo"
-                                            }
-                                        />
+                                        <SelectValue placeholder="Seleccionar cliente" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {vehicles.map((vehicle) => (
+                                        {customers.map((customer) => (
                                             <SelectItem
-                                                key={vehicle.id}
-                                                value={vehicle.id}
+                                                key={customer.id}
+                                                value={customer.id}
                                             >
-                                                <div className="flex items-center gap-2">
-                                                    <Car className="h-4 w-4" />
-                                                    {vehicle.year}{" "}
-                                                    {vehicle.make}{" "}
-                                                    {vehicle.model} -{" "}
-                                                    {vehicle.license_plate}
-                                                </div>
+                                                {customer.user?.first_name}{" "}
+                                                {customer.user?.last_name} -{" "}
+                                                {customer.user?.email}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
-                            )}
-                        </div>
-                    </div>
+                            </div>
 
-                    {/* Policy Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="policyType">Tipo de Póliza</Label>
-                            <Select
-                                value={policyData.policyType}
-                                onValueChange={(value) =>
-                                    setPolicyData((prev) => ({
-                                        ...prev,
-                                        policyType: value,
-                                    }))
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="basica">
-                                        Básica
-                                    </SelectItem>
-                                    <SelectItem value="limitada">
-                                        Limitada
-                                    </SelectItem>
-                                    <SelectItem value="amplia">
-                                        Amplia
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="paymentFrequency">
-                                Frecuencia de Pago
-                            </Label>
-                            <Select
-                                value={policyData.paymentFrequency}
-                                onValueChange={(value) =>
-                                    setPolicyData((prev) => ({
-                                        ...prev,
-                                        paymentFrequency: value,
-                                    }))
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="monthly">
-                                        Mensual
-                                    </SelectItem>
-                                    <SelectItem value="quarterly">
-                                        Trimestral
-                                    </SelectItem>
-                                    <SelectItem value="biannual">
-                                        Semestral
-                                    </SelectItem>
-                                    <SelectItem value="annual">
-                                        Anual
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-
-                    {/* Dates */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="startDate">Fecha de Inicio</Label>
-                            <div className="relative">
-                                <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    id="startDate"
-                                    type="date"
-                                    value={policyData.startDate}
-                                    onChange={(e) =>
-                                        setPolicyData((prev) => ({
-                                            ...prev,
-                                            startDate: e.target.value,
-                                        }))
-                                    }
-                                    className="pl-10"
-                                    required
-                                />
+                            <div className="space-y-2">
+                                <Label htmlFor="vehicle">Vehículo</Label>
+                                {vehicles.length === 0 && selectedCustomer ? (
+                                    <div className="space-y-4">
+                                        <Alert>
+                                            <Car className="h-4 w-4" />
+                                            <AlertDescription>
+                                                No hay vehículos registrados
+                                                para este cliente.
+                                                {customerId
+                                                    ? " Debes registrar al menos un vehículo antes de crear una póliza."
+                                                    : " Selecciona un cliente que tenga vehículos registrados o registra un vehículo primero."}
+                                            </AlertDescription>
+                                        </Alert>
+                                        {customerId && (
+                                            <Button
+                                                asChild
+                                                variant="outline"
+                                                className="w-full"
+                                            >
+                                                <a href="/customer/vehicles/new">
+                                                    <Car className="h-4 w-4 mr-2" />
+                                                    Registrar Vehículo
+                                                </a>
+                                            </Button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <Select
+                                        value={selectedVehicle}
+                                        onValueChange={setSelectedVehicle}
+                                        disabled={vehicles.length === 0}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue
+                                                placeholder={
+                                                    vehicles.length === 0
+                                                        ? "No hay vehículos disponibles"
+                                                        : "Seleccionar vehículo"
+                                                }
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {vehicles.map((vehicle) => (
+                                                <SelectItem
+                                                    key={vehicle.id}
+                                                    value={vehicle.id}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <Car className="h-4 w-4" />
+                                                        {vehicle.year}{" "}
+                                                        {vehicle.make}{" "}
+                                                        {vehicle.model} -{" "}
+                                                        {vehicle.license_plate}
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="endDate">
-                                Fecha de Vencimiento
-                            </Label>
-                            <div className="relative">
-                                <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    id="endDate"
-                                    type="date"
-                                    value={policyData.endDate}
-                                    onChange={(e) =>
+                        {/* Policy Details */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="policyType">
+                                    Tipo de Póliza
+                                </Label>
+                                <Select
+                                    value={policyData.policyType}
+                                    onValueChange={(value) =>
                                         setPolicyData((prev) => ({
                                             ...prev,
-                                            endDate: e.target.value,
+                                            policyType: value,
                                         }))
                                     }
-                                    className="pl-10"
-                                    required
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Plan Coverages Display */}
-                    <div className="space-y-4">
-                        <Label>
-                            Coberturas del Plan {policyData.policyType}
-                        </Label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {POLICY_PLANS[
-                                policyData.policyType as keyof typeof POLICY_PLANS
-                            ]?.coverages.map((coverage, index) => (
-                                <div
-                                    key={index}
-                                    className={`flex items-start space-x-3 p-4 border rounded-lg ${
-                                        coverage.included
-                                            ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
-                                            : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30"
-                                    }`}
                                 >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="basica">
+                                            Básica
+                                        </SelectItem>
+                                        <SelectItem value="limitada">
+                                            Limitada
+                                        </SelectItem>
+                                        <SelectItem value="amplia">
+                                            Amplia
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="paymentFrequency">
+                                    Frecuencia de Pago
+                                </Label>
+                                <Select
+                                    value={policyData.paymentFrequency}
+                                    onValueChange={(value) =>
+                                        setPolicyData((prev) => ({
+                                            ...prev,
+                                            paymentFrequency: value,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="monthly">
+                                            Mensual
+                                        </SelectItem>
+                                        <SelectItem value="quarterly">
+                                            Trimestral
+                                        </SelectItem>
+                                        <SelectItem value="biannual">
+                                            Semestral
+                                        </SelectItem>
+                                        <SelectItem value="annual">
+                                            Anual
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Dates */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="startDate">
+                                    Fecha de Inicio
+                                </Label>
+                                <div className="relative">
+                                    <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="startDate"
+                                        type="date"
+                                        value={policyData.startDate}
+                                        onChange={(e) =>
+                                            setPolicyData((prev) => ({
+                                                ...prev,
+                                                startDate: e.target.value,
+                                            }))
+                                        }
+                                        className="pl-10"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="endDate">
+                                    Fecha de Vencimiento
+                                </Label>
+                                <div className="relative">
+                                    <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="endDate"
+                                        type="date"
+                                        value={policyData.endDate}
+                                        onChange={(e) =>
+                                            setPolicyData((prev) => ({
+                                                ...prev,
+                                                endDate: e.target.value,
+                                            }))
+                                        }
+                                        className="pl-10"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Plan Coverages Display */}
+                        <div className="space-y-4">
+                            <Label>
+                                Coberturas del Plan {policyData.policyType}
+                            </Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {POLICY_PLANS[
+                                    policyData.policyType as keyof typeof POLICY_PLANS
+                                ]?.coverages.map((coverage, index) => (
                                     <div
-                                        className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                                        key={index}
+                                        className={`flex items-start space-x-3 p-4 border rounded-lg ${
                                             coverage.included
-                                                ? "bg-green-500 text-white"
-                                                : "bg-red-500 text-white"
+                                                ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
+                                                : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30"
                                         }`}
                                     >
-                                        {coverage.included ? "✓" : "✗"}
+                                        <div
+                                            className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                                                coverage.included
+                                                    ? "bg-green-500 text-white"
+                                                    : "bg-red-500 text-white"
+                                            }`}
+                                        >
+                                            {coverage.included ? "✓" : "✗"}
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                            <Label className="text-sm font-medium">
+                                                {coverage.name}
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                {coverage.description}
+                                            </p>
+                                            {coverage.included &&
+                                                coverage.maxAmount && (
+                                                    <div className="text-xs text-green-600 dark:text-green-400">
+                                                        Cobertura máxima: $
+                                                        {coverage.maxAmount.toLocaleString()}
+                                                    </div>
+                                                )}
+                                            {coverage.included &&
+                                                coverage.percentage && (
+                                                    <div className="text-xs text-green-600 dark:text-green-400">
+                                                        Cobertura:{" "}
+                                                        {coverage.percentage}%
+                                                    </div>
+                                                )}
+                                        </div>
                                     </div>
-                                    <div className="flex-1 space-y-1">
-                                        <Label className="text-sm font-medium">
-                                            {coverage.name}
-                                        </Label>
-                                        <p className="text-xs text-muted-foreground">
-                                            {coverage.description}
-                                        </p>
-                                        {coverage.included &&
-                                            coverage.maxAmount && (
-                                                <div className="text-xs text-green-600 dark:text-green-400">
-                                                    Cobertura máxima: $
-                                                    {coverage.maxAmount.toLocaleString()}
-                                                </div>
-                                            )}
-                                        {coverage.included &&
-                                            coverage.percentage && (
-                                                <div className="text-xs text-green-600 dark:text-green-400">
-                                                    Cobertura:{" "}
-                                                    {coverage.percentage}%
-                                                </div>
-                                            )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Price Display */}
-                    <Card className="bg-muted/50">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Calculator className="h-5 w-5 text-primary" />
-                                    <span className="font-medium">
-                                        Plan {policyData.policyType}
-                                    </span>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-2xl font-bold text-primary">
-                                        ${calculatePrice().toLocaleString()}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground">
-                                        {policyData.paymentFrequency ===
-                                            "monthly" && "por mes"}
-                                        {policyData.paymentFrequency ===
-                                            "quarterly" &&
-                                            `$${(
-                                                calculatePrice() * 3
-                                            ).toLocaleString()} trimestral`}
-                                        {policyData.paymentFrequency ===
-                                            "biannual" &&
-                                            `$${(
-                                                calculatePrice() * 6
-                                            ).toLocaleString()} semestral`}
-                                        {policyData.paymentFrequency ===
-                                            "annual" &&
-                                            `$${(
-                                                calculatePrice() * 12
-                                            ).toLocaleString()} anual`}
-                                    </div>
-                                </div>
+                                ))}
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
 
-                    {/* Auto Renewal */}
-                    <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="autoRenewal"
-                            checked={policyData.autoRenewal}
-                            onCheckedChange={(checked) =>
-                                setPolicyData((prev) => ({
-                                    ...prev,
-                                    autoRenewal: checked as boolean,
-                                }))
-                            }
-                        />
-                        <Label htmlFor="autoRenewal">
-                            Renovación automática
-                        </Label>
-                    </div>
+                        {/* Price Display */}
+                        <Card className="bg-muted/50">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Calculator className="h-5 w-5 text-primary" />
+                                        <span className="font-medium">
+                                            Plan {policyData.policyType}
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-2xl font-bold text-primary">
+                                            ${calculatePrice().toLocaleString()}
+                                        </div>
+                                        <div className="text-sm text-muted-foreground">
+                                            {policyData.paymentFrequency ===
+                                                "monthly" && "por mes"}
+                                            {policyData.paymentFrequency ===
+                                                "quarterly" &&
+                                                `$${(
+                                                    calculatePrice() * 3
+                                                ).toLocaleString()} trimestral`}
+                                            {policyData.paymentFrequency ===
+                                                "biannual" &&
+                                                `$${(
+                                                    calculatePrice() * 6
+                                                ).toLocaleString()} semestral`}
+                                            {policyData.paymentFrequency ===
+                                                "annual" &&
+                                                `$${(
+                                                    calculatePrice() * 12
+                                                ).toLocaleString()} anual`}
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                    {/* Actions */}
-                    <div className="flex gap-4 pt-6">
-                        <Button
-                            type="submit"
-                            disabled={
-                                loading ||
-                                !selectedCustomer ||
-                                !selectedVehicle ||
-                                calculatePrice() <= 0
-                            }
-                            className="flex-1"
-                        >
-                            {loading ? "Creando póliza..." : "Crear Póliza"}
-                        </Button>
-                        {onCancel && (
+                        {/* Auto Renewal */}
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="autoRenewal"
+                                checked={policyData.autoRenewal}
+                                onCheckedChange={(checked) =>
+                                    setPolicyData((prev) => ({
+                                        ...prev,
+                                        autoRenewal: checked as boolean,
+                                    }))
+                                }
+                            />
+                            <Label htmlFor="autoRenewal">
+                                Renovación automática
+                            </Label>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-4 pt-6">
                             <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onCancel}
+                                type="submit"
+                                disabled={
+                                    loading ||
+                                    !selectedCustomer ||
+                                    !selectedVehicle ||
+                                    calculatePrice() <= 0
+                                }
+                                className="flex-1"
                             >
-                                Cancelar
+                                {loading ? "Creando póliza..." : "Crear Póliza"}
                             </Button>
-                        )}
-                    </div>
-                </form>
-            </CardContent>
-        </Card>
+                            {onCancel && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={onCancel}
+                                >
+                                    Cancelar
+                                </Button>
+                            )}
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
 
-        {/* Modal de Éxito */}
-        {success && (
-            <div className="fixed inset-0 flex items-center justify-center z-50 animate-in fade-in duration-300">
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md mx-4 text-center shadow-2xl border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
-                    <div className="flex justify-center mb-4">
-                        <CheckCircle className="h-16 w-16 text-green-500" />
+            {/* Modal de Éxito */}
+            {success && (
+                <div className="fixed inset-0 flex items-center justify-center z-50 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md mx-4 text-center shadow-2xl border border-gray-200 dark:border-gray-700 animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
+                        <div className="flex justify-center mb-4">
+                            <CheckCircle className="h-16 w-16 text-green-500" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                            ¡Éxito!
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-300">
+                            {success}
+                        </p>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                        ¡Éxito!
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-300">
-                        {success}
-                    </p>
                 </div>
-            </div>
-        )}
+            )}
         </>
     );
 }
