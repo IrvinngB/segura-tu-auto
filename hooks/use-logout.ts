@@ -12,9 +12,9 @@ export function useLogout() {
 
     const handleSignOut = async () => {
         if (isSigningOut) return;
-        
+
         setIsSigningOut(true);
-        
+
         try {
             await signOut();
             setShowSuccessModal(true);
@@ -30,7 +30,7 @@ export function useLogout() {
     const handleModalClose = () => {
         setShowSuccessModal(false);
         // Redirigir a la página pública después de cerrar el modal
-        router.push('/');
+        router.push("/");
     };
 
     return {

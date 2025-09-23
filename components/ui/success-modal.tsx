@@ -11,12 +11,12 @@ interface SuccessModalProps {
     onClose: () => void;
 }
 
-export function SuccessModal({ 
-    show, 
-    title = "¡Éxito!", 
-    message, 
-    duration = 2000, 
-    onClose 
+export function SuccessModal({
+    show,
+    title = "¡Éxito!",
+    message,
+    duration = 2000,
+    onClose,
 }: SuccessModalProps) {
     useEffect(() => {
         if (show && duration > 0) {

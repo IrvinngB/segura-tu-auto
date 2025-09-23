@@ -6,21 +6,28 @@ import { useLogout } from "@/hooks/use-logout";
 import { LogOut } from "lucide-react";
 
 interface LogoutButtonProps {
-    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+    variant?:
+        | "default"
+        | "destructive"
+        | "outline"
+        | "secondary"
+        | "ghost"
+        | "link";
     size?: "default" | "sm" | "lg" | "icon";
     className?: string;
     showIcon?: boolean;
     iconOnly?: boolean;
 }
 
-export function LogoutButton({ 
-    variant = "outline", 
-    size = "sm", 
+export function LogoutButton({
+    variant = "outline",
+    size = "sm",
     className = "",
     showIcon = true,
-    iconOnly = false 
+    iconOnly = false,
 }: LogoutButtonProps) {
-    const { isSigningOut, showSuccessModal, handleSignOut, handleModalClose } = useLogout();
+    const { isSigningOut, showSuccessModal, handleSignOut, handleModalClose } =
+        useLogout();
 
     return (
         <>
@@ -33,7 +40,9 @@ export function LogoutButton({
             >
                 {showIcon && <LogOut className="h-4 w-4" />}
                 {!iconOnly && (
-                    <span>{isSigningOut ? "Cerrando..." : "Cerrar Sesión"}</span>
+                    <span>
+                        {isSigningOut ? "Cerrando..." : "Cerrar Sesión"}
+                    </span>
                 )}
             </Button>
 
