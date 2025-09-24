@@ -384,8 +384,10 @@ export function ClaimForm({
 
                         {/* Customer Selection - Only show if no customerId (for agents) */}
                         {!customerId && (
-                            <div className="space-y-2">
-                                <Label htmlFor="customer">Cliente *</Label>
+                            <div className="space-y-3">
+                                <Label htmlFor="customer" className="text-sm font-medium">
+                                    Cliente *
+                                </Label>
                                 <Select
                                     value={selectedCustomer}
                                     onValueChange={(value) => {
@@ -397,7 +399,7 @@ export function ClaimForm({
                                     }}
                                     disabled={loadingCustomers}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="h-12 px-6 py-4 text-sm">
                                         <SelectValue
                                             placeholder={
                                                 loadingCustomers
@@ -406,13 +408,14 @@ export function ClaimForm({
                                             }
                                         />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-60 bg-popover border border-border shadow-lg">
                                         {loadingCustomers ? (
                                             <SelectItem
                                                 value="__loading__"
                                                 disabled
+                                                className="py-3 px-4 text-muted-foreground"
                                             >
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-3">
                                                     <Loader2 className="h-4 w-4 animate-spin" />
                                                     <span>
                                                         Cargando clientes...
@@ -423,10 +426,11 @@ export function ClaimForm({
                                             <SelectItem
                                                 value="__no_customers__"
                                                 disabled
+                                                className="py-3 px-4 text-muted-foreground"
                                             >
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-3">
                                                     <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                                                    <span>
+                                                    <span className="text-foreground/70">
                                                         No hay clientes
                                                         disponibles
                                                     </span>
@@ -437,11 +441,12 @@ export function ClaimForm({
                                                 <SelectItem
                                                     key={customer.id}
                                                     value={customer.id}
+                                                    className="py-3 px-4 cursor-pointer hover:bg-accent/80 focus:bg-accent data-[highlighted]:bg-accent/60 transition-colors border-b border-border/20 last:border-0 group"
                                                 >
-                                                    <div className="flex items-center gap-2">
-                                                        <Users className="h-4 w-4" />
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium">
+                                                    <div className="flex items-center gap-3">
+                                                        <Users className="h-4 w-4 text-muted-foreground group-hover:text-white group-focus:text-white group-data-[highlighted]:text-white" />
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="font-medium text-sm text-foreground group-hover:text-white group-focus:text-white group-data-[highlighted]:text-white">
                                                                 {
                                                                     customer
                                                                         .user
@@ -453,7 +458,7 @@ export function ClaimForm({
                                                                         ?.last_name
                                                                 }
                                                             </span>
-                                                            <span className="text-sm text-muted-foreground">
+                                                            <span className="text-xs text-muted-foreground/80 group-hover:text-white/90 group-focus:text-white/90 group-data-[highlighted]:text-white/90">
                                                                 {
                                                                     customer
                                                                         .user
@@ -486,8 +491,10 @@ export function ClaimForm({
                         )}
 
                         {/* Policy Selection */}
-                        <div className="space-y-2">
-                            <Label htmlFor="policy">Póliza *</Label>
+                        <div className="space-y-3">
+                            <Label htmlFor="policy" className="text-sm font-medium">
+                                Póliza *
+                            </Label>
                             <Select
                                 value={selectedPolicy}
                                 onValueChange={(value) => {
@@ -502,7 +509,7 @@ export function ClaimForm({
                                     loadingPolicies
                                 }
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-12 px-6 py-4 text-sm">
                                     <SelectValue
                                         placeholder={
                                             !selectedCustomer
@@ -515,13 +522,14 @@ export function ClaimForm({
                                         }
                                     />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="max-h-60 bg-popover border border-border shadow-lg">
                                     {loadingPolicies ? (
                                         <SelectItem
                                             value="__loading_policies__"
                                             disabled
+                                            className="py-3 px-4 text-muted-foreground"
                                         >
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-3">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                 <span>Cargando pólizas...</span>
                                             </div>
@@ -530,10 +538,11 @@ export function ClaimForm({
                                         <SelectItem
                                             value="__no_policies__"
                                             disabled
+                                            className="py-3 px-4 text-muted-foreground"
                                         >
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-3">
                                                 <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                                                <span>
+                                                <span className="text-foreground/70">
                                                     No hay pólizas activas para
                                                     este cliente
                                                 </span>
@@ -544,12 +553,13 @@ export function ClaimForm({
                                             <SelectItem
                                                 key={policy.id}
                                                 value={policy.id}
+                                                className="py-3 px-4 hover:bg-accent/80 focus:bg-accent data-[highlighted]:bg-accent/60 cursor-pointer border-b border-border/20 last:border-0 transition-colors group"
                                             >
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="font-medium text-sm text-foreground group-hover:text-white group-focus:text-white group-data-[highlighted]:text-white">
                                                         {policy.policy_number}
                                                     </span>
-                                                    <span className="text-sm text-muted-foreground">
+                                                    <span className="text-xs text-muted-foreground/80 group-hover:text-white/90 group-focus:text-white/90 group-data-[highlighted]:text-white/90">
                                                         {policy.vehicle?.year}{" "}
                                                         {policy.vehicle?.make}{" "}
                                                         {policy.vehicle?.model}{" "}
