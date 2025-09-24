@@ -39,7 +39,8 @@ export function useLogout() {
     const handleSuccessModalClose = () => {
         setShowSuccessModal(false);
         // Redirigir a la página pública después de cerrar el modal
-        router.push("/");
+        console.log("🔄 Redirigiendo a página principal después de logout...");
+        window.location.href = "/"; // Usar window.location para forzar recarga completa
     };
 
     return {
