@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Sidebar } from "@/components/navigation/sidebar"
 import { Upload, FileText, ImageIcon, AlertCircle, CheckCircle, X } from "lucide-react"
 
 interface UploadedDocument {
@@ -186,9 +185,7 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <div className="flex-1 lg:ml-64">
+      <div className="flex-1">
         <div className="max-w-6xl mx-auto p-6">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Gestión de Documentos</h1>

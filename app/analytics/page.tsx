@@ -6,7 +6,6 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sidebar } from "@/components/navigation/sidebar"
 import { createBrowserClient } from "@supabase/ssr"
 import {
   BarChart,
@@ -212,8 +211,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <div className="flex-1 lg:ml-64">
+        <div className="flex-1">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
           </div>
@@ -224,9 +222,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <div className="flex-1 lg:ml-64">
+      <div className="flex-1">
         <div className="max-w-7xl mx-auto p-6">
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
