@@ -385,7 +385,10 @@ export function ClaimForm({
                         {/* Customer Selection - Only show if no customerId (for agents) */}
                         {!customerId && (
                             <div className="space-y-3">
-                                <Label htmlFor="customer" className="text-sm font-medium">
+                                <Label
+                                    htmlFor="customer"
+                                    className="text-sm font-medium"
+                                >
                                     Cliente *
                                 </Label>
                                 <Select
@@ -492,7 +495,10 @@ export function ClaimForm({
 
                         {/* Policy Selection */}
                         <div className="space-y-3">
-                            <Label htmlFor="policy" className="text-sm font-medium">
+                            <Label
+                                htmlFor="policy"
+                                className="text-sm font-medium"
+                            >
                                 Póliza *
                             </Label>
                             <Select
