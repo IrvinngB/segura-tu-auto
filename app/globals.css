@@ -5,74 +5,139 @@
 
 :root {
   /* SeguraTuAuto Insurance Theme - Professional & Trustworthy */
-  --background: #ecfeff; /* Light Cyan for overall background */
-  --foreground: #475569; /* Dark Gray for text */
-  --card: #ffffff; /* White for card backgrounds */
-  --card-foreground: #475569; /* Dark Gray for card text */
-  --popover: #ffffff; /* White for popover backgrounds */
-  --popover-foreground: #475569; /* Dark Gray for popover text */
-  --primary: #164e63; /* Cyan-800 for primary actions and buttons */
-  --primary-foreground: #ffffff; /* White for text on primary buttons */
-  --secondary: #84cc16; /* Bright Green for secondary actions */
-  --secondary-foreground: #ffffff; /* White for text on secondary buttons */
-  --muted: #f0fdf4; /* Soft background for muted elements */
-  --muted-foreground: #374151; /* Dark Gray for muted text */
-  --accent: #84cc16; /* Accent color for highlights */
-  --accent-foreground: #164e63; /* Dark Cyan for text on accents */
-  --destructive: #dc2626; /* Red for error messages */
-  --destructive-foreground: #ffffff; /* White for text on error messages */
-  --border: #d1d5db; /* Light Gray for borders */
-  --input: #ffffff; /* White for input fields */
-  --ring: #84cc16; /* Bright Green for focus rings */
-  --chart-1: #1d4ed8; /* Chart color 1 */
-  --chart-2: #9333ea; /* Chart color 2 */
-  --chart-3: #f59e0b; /* Chart color 3 */
-  --chart-4: #2563eb; /* Chart color 4 */
-  --chart-5: #ec4899; /* Chart color 5 */
-  --radius: 0.5rem; /* Corner rounding for elements */
-  --sidebar: #ffffff; /* White for sidebar background */
-  --sidebar-foreground: #475569; /* Dark Gray for sidebar text */
-  --sidebar-primary: #164e63; /* Cyan-800 for primary sidebar elements */
-  --sidebar-primary-foreground: #ffffff; /* White for primary sidebar text */
-  --sidebar-accent: #84cc16; /* Bright Green for sidebar accents */
-  --sidebar-accent-foreground: #164e63; /* Dark Cyan for text on sidebar accents */
-  --sidebar-border: #d1d5db; /* Light Gray for sidebar borders */
-  --sidebar-ring: #84cc16; /* Bright Green for focus rings in sidebar */
+  --background: #ecfeff;
+  /* Light Cyan for overall background */
+  --foreground: #475569;
+  /* Dark Gray for text */
+  --card: #ffffff;
+  /* White for card backgrounds */
+  --card-foreground: #475569;
+  /* Dark Gray for card text */
+  --popover: #ffffff;
+  /* White for popover backgrounds */
+  --popover-foreground: #475569;
+  /* Dark Gray for popover text */
+  --primary: #164e63;
+  /* Cyan-800 for primary actions and buttons */
+  --primary-foreground: #ffffff;
+  /* White for text on primary buttons */
+  --secondary: #84cc16;
+  /* Bright Green for secondary actions */
+  --secondary-foreground: #ffffff;
+  /* White for text on secondary buttons */
+  --muted: #f0fdf4;
+  /* Soft background for muted elements */
+  --muted-foreground: #374151;
+  /* Dark Gray for muted text */
+  --accent: #84cc16;
+  /* Accent color for highlights */
+  --accent-foreground: #164e63;
+  /* Dark Cyan for text on accents */
+  --destructive: #dc2626;
+  /* Red for error messages */
+  --destructive-foreground: #ffffff;
+  /* White for text on error messages */
+  --border: #d1d5db;
+  /* Light Gray for borders */
+  --input: #ffffff;
+  /* White for input fields */
+  --ring: #84cc16;
+  /* Bright Green for focus rings */
+  --chart-1: #1d4ed8;
+  /* Chart color 1 */
+  --chart-2: #9333ea;
+  /* Chart color 2 */
+  --chart-3: #f59e0b;
+  /* Chart color 3 */
+  --chart-4: #2563eb;
+  /* Chart color 4 */
+  --chart-5: #ec4899;
+  /* Chart color 5 */
+  --radius: 0.5rem;
+  /* Corner rounding for elements */
+  --sidebar: #ffffff;
+  /* White for sidebar background */
+  --sidebar-foreground: #475569;
+  /* Dark Gray for sidebar text */
+  --sidebar-primary: #164e63;
+  /* Cyan-800 for primary sidebar elements */
+  --sidebar-primary-foreground: #ffffff;
+  /* White for primary sidebar text */
+  --sidebar-accent: #84cc16;
+  /* Bright Green for sidebar accents */
+  --sidebar-accent-foreground: #164e63;
+  /* Dark Cyan for text on sidebar accents */
+  --sidebar-border: #d1d5db;
+  /* Light Gray for sidebar borders */
+  --sidebar-ring: #84cc16;
+  /* Bright Green for focus rings in sidebar */
 }
 
 .dark {
-  --background: #0f172a; /* Dark slate for dark mode background */
-  --foreground: #f1f5f9; /* Light slate for dark mode text */
-  --card: #1e293b; /* Dark slate for card backgrounds */
-  --card-foreground: #f1f5f9; /* Light slate for card text */
-  --popover: #1e293b; /* Dark slate for popover backgrounds */
-  --popover-foreground: #f1f5f9; /* Light slate for popover text */
-  --primary: #0891b2; /* Cyan-600 for primary actions in dark mode */
-  --primary-foreground: #ffffff; /* White for text on primary buttons */
-  --secondary: #65a30d; /* Green-600 for secondary actions in dark mode */
-  --secondary-foreground: #ffffff; /* White for text on secondary buttons */
-  --muted: #334155; /* Slate-700 for muted elements */
-  --muted-foreground: #94a3b8; /* Slate-400 for muted text */
-  --accent: #65a30d; /* Green-600 for accents in dark mode */
-  --accent-foreground: #f1f5f9; /* Light slate for text on accents */
-  --destructive: #ef4444; /* Red-500 for error messages */
-  --destructive-foreground: #ffffff; /* White for text on error messages */
-  --border: #475569; /* Slate-600 for more prominent borders in dark mode */
-  --input: #1e293b; /* Dark slate for input fields */
-  --ring: #65a30d; /* Green-600 for focus rings */
-  --chart-1: #3b82f6; /* Blue-500 for charts */
-  --chart-2: #a855f7; /* Purple-500 for charts */
-  --chart-3: #f59e0b; /* Amber-500 for charts */
-  --chart-4: #06b6d4; /* Cyan-500 for charts */
-  --chart-5: #ec4899; /* Pink-500 for charts */
-  --sidebar: #1e293b; /* Dark slate for sidebar background */
-  --sidebar-foreground: #f1f5f9; /* Light slate for sidebar text */
-  --sidebar-primary: #0891b2; /* Cyan-600 for primary sidebar elements */
-  --sidebar-primary-foreground: #ffffff; /* White for primary sidebar text */
-  --sidebar-accent: #65a30d; /* Green-600 for sidebar accents */
-  --sidebar-accent-foreground: #f1f5f9; /* Light slate for text on sidebar accents */
-  --sidebar-border: #475569; /* Slate-600 for more prominent sidebar borders in dark mode */
-  --sidebar-ring: #65a30d; /* Green-600 for focus rings in sidebar */
+  --background: #0f172a;
+  /* Dark slate for dark mode background */
+  --foreground: #f1f5f9;
+  /* Light slate for dark mode text */
+  --card: #1e293b;
+  /* Dark slate for card backgrounds */
+  --card-foreground: #f1f5f9;
+  /* Light slate for card text */
+  --popover: #1e293b;
+  /* Dark slate for popover backgrounds */
+  --popover-foreground: #f1f5f9;
+  /* Light slate for popover text */
+  --primary: #0891b2;
+  /* Cyan-600 for primary actions in dark mode */
+  --primary-foreground: #ffffff;
+  /* White for text on primary buttons */
+  --secondary: #65a30d;
+  /* Green-600 for secondary actions in dark mode */
+  --secondary-foreground: #ffffff;
+  /* White for text on secondary buttons */
+  --muted: #334155;
+  /* Slate-700 for muted elements */
+  --muted-foreground: #94a3b8;
+  /* Slate-400 for muted text */
+  --accent: #65a30d;
+  /* Green-600 for accents in dark mode */
+  --accent-foreground: #f1f5f9;
+  /* Light slate for text on accents */
+  --destructive: #ef4444;
+  /* Red-500 for error messages */
+  --destructive-foreground: #ffffff;
+  /* White for text on error messages */
+  --border: #475569;
+  /* Slate-600 for more prominent borders in dark mode */
+  --input: #1e293b;
+  /* Dark slate for input fields */
+  --ring: #65a30d;
+  /* Green-600 for focus rings */
+  --chart-1: #3b82f6;
+  /* Blue-500 for charts */
+  --chart-2: #a855f7;
+  /* Purple-500 for charts */
+  --chart-3: #f59e0b;
+  /* Amber-500 for charts */
+  --chart-4: #06b6d4;
+  /* Cyan-500 for charts */
+  --chart-5: #ec4899;
+  /* Pink-500 for charts */
+  --sidebar: #1e293b;
+  /* Dark slate for sidebar background */
+  --sidebar-foreground: #f1f5f9;
+  /* Light slate for sidebar text */
+  --sidebar-primary: #0891b2;
+  /* Cyan-600 for primary sidebar elements */
+  --sidebar-primary-foreground: #ffffff;
+  /* White for primary sidebar text */
+  --sidebar-accent: #65a30d;
+  /* Green-600 for sidebar accents */
+  --sidebar-accent-foreground: #f1f5f9;
+  /* Light slate for text on sidebar accents */
+  --sidebar-border: #475569;
+  /* Slate-600 for more prominent sidebar borders in dark mode */
+  --sidebar-ring: #65a30d;
+  /* Green-600 for focus rings in sidebar */
 }
 
 @theme inline {
@@ -120,10 +185,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
-  
+
   /* Asegurar que todos los elementos clickeables tengan cursor pointer */
   button,
   [role="button"],
@@ -135,7 +201,7 @@
   .cursor-pointer {
     cursor: pointer !important;
   }
-  
+
   /* Elementos que no deberían tener cursor pointer */
   button:disabled,
   [role="button"][aria-disabled="true"],

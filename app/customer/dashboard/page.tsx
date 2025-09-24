@@ -448,7 +448,12 @@ export default function CustomerDashboard() {
                                     </CardDescription>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button asChild size="sm" variant="outline" className="border-2 border-border/70 hover:border-border dark:border-border/60 dark:hover:border-border/90">
+                                    <Button
+                                        asChild
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-2 border-border/70 hover:border-border dark:border-border/60 dark:hover:border-border/90"
+                                    >
                                         <Link href="/customer/claims">
                                             Ver todas
                                         </Link>
