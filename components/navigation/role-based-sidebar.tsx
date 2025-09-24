@@ -218,7 +218,7 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
         () => (role: string) => {
             const roleColors = {
                 admin: "text-red-600",
-                agent: "text-blue-600",
+                agent: "text-blue-400 dark:text-blue-300",
                 adjuster: "text-green-600",
                 customer: "text-purple-600 dark:text-purple-200",
             };
