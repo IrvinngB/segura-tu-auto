@@ -444,11 +444,8 @@ export default function ClientsPage() {
                                                             <div className="flex items-center gap-1 text-sm">
                                                                 <MapPin className="h-3 w-3" />
                                                                 <span>
-                                                                    {customer.city ||
-                                                                        "N/A"}
-                                                                    ,{" "}
-                                                                    {customer.state ||
-                                                                        "N/A"}
+                                                                    {customer.country ||
+                                                                        "Panamá"}
                                                                 </span>
                                                             </div>
                                                         </TableCell>

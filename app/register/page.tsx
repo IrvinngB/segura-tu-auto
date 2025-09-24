@@ -47,6 +47,8 @@ export default function RegisterPage() {
         lastName: "",
         phone: "",
         role: "customer",
+        // Location information
+        country: "México",
         // Driver information
         birthDate: "",
         licenseYear: "",
@@ -133,7 +135,7 @@ export default function RegisterPage() {
 
                 console.log("Usuario insertado en tabla users:", userData);
 
-                // If customer, create customer profile
+                                // If customer, create customer profile
                 if (formData.role === "customer") {
                     // Calculate driving experience from license year
                     const currentYear = new Date().getFullYear();
@@ -147,13 +149,14 @@ export default function RegisterPage() {
                             .insert({
                                 user_id: data.user.id,
                                 date_of_birth: formData.birthDate || null,
+                                // Location field
+                                country: formData.country || "Panamá",
+                                // Driver information
                                 driving_experience_years: drivingExperience,
                                 has_accidents: formData.hasAccidents,
                                 has_claims: formData.hasClaims,
                             })
-                            .select();
-
-                    if (customerError) {
+                            .select();                    if (customerError) {
                         console.error(
                             "Error creando perfil de cliente:",
                             customerError
@@ -414,6 +417,108 @@ export default function RegisterPage() {
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Location Information Section - Only for customers */}
+                            {formData.role === "customer" && (
+                                <>
+                                    <div className="pt-4 border-t border-border">
+                                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                            <Home className="h-5 w-5" />
+                                            Información de Ubicación
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground mb-4">
+                                            Selecciona tu país de residencia
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="country">
+                                            País de Residencia *
+                                        </Label>
+                                        <Select
+                                            value={formData.country}
+                                            onValueChange={(value) =>
+                                                handleInputChange(
+                                                    "country",
+                                                    value
+                                                )
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecciona tu país *" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="México">
+                                                    México
+                                                </SelectItem>
+                                                <SelectItem value="Estados Unidos">
+                                                    Estados Unidos
+                                                </SelectItem>
+                                                <SelectItem value="Canadá">
+                                                    Canadá
+                                                </SelectItem>
+                                                <SelectItem value="Guatemala">
+                                                    Guatemala
+                                                </SelectItem>
+                                                <SelectItem value="Belice">
+                                                    Belice
+                                                </SelectItem>
+                                                <SelectItem value="El Salvador">
+                                                    El Salvador
+                                                </SelectItem>
+                                                <SelectItem value="Honduras">
+                                                    Honduras
+                                                </SelectItem>
+                                                <SelectItem value="Nicaragua">
+                                                    Nicaragua
+                                                </SelectItem>
+                                                <SelectItem value="Costa Rica">
+                                                    Costa Rica
+                                                </SelectItem>
+                                                <SelectItem value="Panamá">
+                                                    Panamá
+                                                </SelectItem>
+                                                <SelectItem value="Colombia">
+                                                    Colombia
+                                                </SelectItem>
+                                                <SelectItem value="Venezuela">
+                                                    Venezuela
+                                                </SelectItem>
+                                                <SelectItem value="Ecuador">
+                                                    Ecuador
+                                                </SelectItem>
+                                                <SelectItem value="Perú">
+                                                    Perú
+                                                </SelectItem>
+                                                <SelectItem value="Brasil">
+                                                    Brasil
+                                                </SelectItem>
+                                                <SelectItem value="Argentina">
+                                                    Argentina
+                                                </SelectItem>
+                                                <SelectItem value="Chile">
+                                                    Chile
+                                                </SelectItem>
+                                                <SelectItem value="Uruguay">
+                                                    Uruguay
+                                                </SelectItem>
+                                                <SelectItem value="Paraguay">
+                                                    Paraguay
+                                                </SelectItem>
+                                                <SelectItem value="Bolivia">
+                                                    Bolivia
+                                                </SelectItem>
+                                                <SelectItem value="España">
+                                                    España
+                                                </SelectItem>
+                                                <SelectItem value="Otro">
+                                                    Otro
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </>
+                            )}
 
                             {/* Driver Information Section - Only for customers */}
                             {formData.role === "customer" && (
