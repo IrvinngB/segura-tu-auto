@@ -14,6 +14,14 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useAuth } from "@/components/auth/auth-provider";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { createClient } from "@/lib/supabase/client";
+import {
+    simpleUpdateExpiredPolicies,
+    debugPolicyStatuses,
+} from "@/lib/simple-update-policies";
+import {
+    forceUpdateExpiredPolicies,
+    checkPolicyStatuses,
+} from "@/lib/force-update-policies";
 import type { Policy, Claim, Payment } from "@/lib/types/database";
 import {
     Shield,
@@ -45,6 +53,15 @@ export default function CustomerDashboard() {
 
     const fetchCustomerData = async () => {
         try {
+            // First, show current status for debugging
+            console.log("🔍 DEBUG: Verificando estado actual...");
+            await debugPolicyStatuses();
+
+            // Then update expired policies
+            console.log("🔄 Actualizando pólizas vencidas...");
+            const updateResult = await simpleUpdateExpiredPolicies();
+            console.log("📊 Resultado de actualización:", updateResult);
+
             // Get customer ID
             const { data: customer } = await supabase
                 .from("customers")
@@ -208,7 +225,32 @@ export default function CustomerDashboard() {
                             Gestiona tus pólizas y reclamaciones de seguro
                         </p>
                     </div>
-                    <LogoutButton />
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={async () => {
+                                console.log("� Verificando estado actual...");
+                                await debugPolicyStatuses();
+                                console.log(
+                                    "🔄 Actualizando pólizas vencidas..."
+                                );
+                                const result =
+                                    await simpleUpdateExpiredPolicies();
+                                console.log("📊 Resultado:", result);
+                                alert(
+                                    `Resultado: ${
+                                        result.message || result.error
+                                    }`
+                                );
+                                // Recargar datos después de actualizar
+                                fetchCustomerData();
+                            }}
+                            variant="outline"
+                            size="sm"
+                        >
+                            🔄 Actualizar Pólizas Vencidas
+                        </Button>
+                        <LogoutButton />
+                    </div>
                 </div>
 
                 {/* Quick Stats */}
