@@ -246,16 +246,17 @@ export default function CustomerDashboard() {
                             }}
                             variant="outline"
                             size="sm"
+                            className="border-2 border-border/70 hover:border-border dark:border-border/60 dark:hover:border-border/90 bg-background/50 dark:bg-background/30"
                         >
                             🔄 Actualizar Pólizas Vencidas
                         </Button>
-                        <LogoutButton />
+                        <LogoutButton className="border-2 border-border/70 hover:border-border dark:border-border/60 dark:hover:border-border/90" />
                     </div>
                 </div>
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <Card>
+                    <Card className="border hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200">
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -275,7 +276,7 @@ export default function CustomerDashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="border hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200">
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -291,7 +292,7 @@ export default function CustomerDashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="border hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200">
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -313,7 +314,7 @@ export default function CustomerDashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="border hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200">
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -332,7 +333,7 @@ export default function CustomerDashboard() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Policies Section */}
-                    <Card>
+                    <Card className="border hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
@@ -368,7 +369,7 @@ export default function CustomerDashboard() {
                                     policies.slice(0, 3).map((policy) => (
                                         <div
                                             key={policy.id}
-                                            className="flex items-center justify-between p-4 border rounded-lg"
+                                            className="flex items-center justify-between p-4 border rounded-lg hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200"
                                         >
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-1">
@@ -434,7 +435,7 @@ export default function CustomerDashboard() {
                     </Card>
 
                     {/* Claims Section */}
-                    <Card>
+                    <Card className="border hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
@@ -447,7 +448,7 @@ export default function CustomerDashboard() {
                                     </CardDescription>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button asChild size="sm" variant="outline">
+                                    <Button asChild size="sm" variant="outline" className="border-2 border-border/70 hover:border-border dark:border-border/60 dark:hover:border-border/90">
                                         <Link href="/customer/claims">
                                             Ver todas
                                         </Link>
@@ -474,7 +475,7 @@ export default function CustomerDashboard() {
                                     claims.map((claim) => (
                                         <div
                                             key={claim.id}
-                                            className="flex items-center justify-between p-4 border rounded-lg"
+                                            className="flex items-center justify-between p-4 border rounded-lg hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200"
                                         >
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-1">
@@ -534,7 +535,7 @@ export default function CustomerDashboard() {
 
                 {/* Recent Payments */}
                 {payments.length > 0 && (
-                    <Card className="mt-8">
+                    <Card className="mt-8 border hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <DollarSign className="h-5 w-5" />
@@ -549,7 +550,7 @@ export default function CustomerDashboard() {
                                 {payments.map((payment) => (
                                     <div
                                         key={payment.id}
-                                        className="flex items-center justify-between p-4 border rounded-lg"
+                                        className="flex items-center justify-between p-4 border rounded-lg hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200"
                                     >
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">

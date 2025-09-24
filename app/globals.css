@@ -57,7 +57,7 @@
   --accent-foreground: #f1f5f9; /* Light slate for text on accents */
   --destructive: #ef4444; /* Red-500 for error messages */
   --destructive-foreground: #ffffff; /* White for text on error messages */
-  --border: #334155; /* Slate-700 for borders */
+  --border: #475569; /* Slate-600 for more prominent borders in dark mode */
   --input: #1e293b; /* Dark slate for input fields */
   --ring: #65a30d; /* Green-600 for focus rings */
   --chart-1: #3b82f6; /* Blue-500 for charts */
@@ -71,7 +71,7 @@
   --sidebar-primary-foreground: #ffffff; /* White for primary sidebar text */
   --sidebar-accent: #65a30d; /* Green-600 for sidebar accents */
   --sidebar-accent-foreground: #f1f5f9; /* Light slate for text on sidebar accents */
-  --sidebar-border: #334155; /* Slate-700 for sidebar borders */
+  --sidebar-border: #475569; /* Slate-600 for more prominent sidebar borders in dark mode */
   --sidebar-ring: #65a30d; /* Green-600 for focus rings in sidebar */
 }
 
@@ -180,4 +180,38 @@
 
 .priority-low {
   @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+}
+
+/* Bordes más prominentes en modo oscuro */
+.border-enhanced {
+  @apply border border-border/50 dark:border-gray-600;
+}
+
+.border-enhanced-hover {
+  @apply border border-border/50 dark:border-gray-600 hover:border-border dark:hover:border-gray-500 transition-colors;
+}
+
+/* Cards con bordes más visibles en modo oscuro */
+.card-enhanced {
+  @apply border-border/50 dark:border-gray-600 hover:border-border dark:hover:border-gray-500 transition-all duration-200 shadow-sm dark:shadow-gray-900/50;
+}
+
+/* Bordes para elementos interactivos */
+.interactive-border {
+  @apply border border-border/40 dark:border-gray-600 hover:border-border dark:hover:border-gray-500 focus:border-primary dark:focus:border-primary transition-colors duration-200;
+}
+
+/* Enhanced button visibility for better UX */
+button[data-slot="button"][class*="outline"] {
+  @apply border-2 border-border/70 hover:border-border dark:border-border/60 dark:hover:border-border/90 transition-all duration-200;
+}
+
+/* Additional focus states for better accessibility */
+button[data-slot="button"]:focus-visible {
+  @apply ring-2 ring-ring/50 border-ring/80;
+}
+
+/* Dark mode specific enhancements */
+.dark button[data-slot="button"][class*="outline"] {
+  @apply bg-background/40 backdrop-blur-sm;
 }
