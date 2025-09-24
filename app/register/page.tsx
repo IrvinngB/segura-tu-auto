@@ -135,12 +135,12 @@ export default function RegisterPage() {
 
                 console.log("Usuario insertado en tabla users:", userData);
 
-                                // If customer, create customer profile
+                // If customer, create customer profile
                 if (formData.role === "customer") {
                     // Calculate driving experience from license year
                     const currentYear = new Date().getFullYear();
-                    const drivingExperience = formData.licenseYear 
-                        ? currentYear - parseInt(formData.licenseYear) 
+                    const drivingExperience = formData.licenseYear
+                        ? currentYear - parseInt(formData.licenseYear)
                         : null;
 
                     const { data: customerData, error: customerError } =
@@ -156,7 +156,8 @@ export default function RegisterPage() {
                                 has_accidents: formData.hasAccidents,
                                 has_claims: formData.hasClaims,
                             })
-                            .select();                    if (customerError) {
+                            .select();
+                    if (customerError) {
                         console.error(
                             "Error creando perfil de cliente:",
                             customerError
