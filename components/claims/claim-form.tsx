@@ -24,7 +24,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "@/lib/supabase/client";
-import type { Policy } from "@/lib/types/database";
+import type { Policy, Customer } from "@/lib/types/database";
 import {
     FileText,
     Calendar,
@@ -33,6 +33,8 @@ import {
     Upload,
     X,
     CheckCircle,
+    Users,
+    Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -49,8 +51,12 @@ export function ClaimForm({
     onSuccess,
     onCancel,
 }: ClaimFormProps) {
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [selectedCustomer, setSelectedCustomer] = useState(customerId || "");
+    const [loadingCustomers, setLoadingCustomers] = useState(false);
     const [policies, setPolicies] = useState<Policy[]>([]);
     const [selectedPolicy, setSelectedPolicy] = useState(policyId || "");
+    const [loadingPolicies, setLoadingPolicies] = useState(false);
     const [claimData, setClaimData] = useState({
         incidentDate: format(new Date(), "yyyy-MM-dd"),
         incidentTime: "12:00",
@@ -88,11 +94,49 @@ export function ClaimForm({
     }, [success, countdown, onSuccess]);
 
     useEffect(() => {
-        fetchPolicies();
+        // Si no hay customerId (caso de agentes), cargar lista de clientes
+        if (!customerId) {
+            fetchCustomers();
+        } else {
+            // Si hay customerId (caso de customer), usar ese ID
+            setSelectedCustomer(customerId);
+        }
     }, [customerId]);
+
+    useEffect(() => {
+        // Cargar pólizas cuando se selecciona un cliente
+        if (selectedCustomer) {
+            fetchPolicies();
+        } else {
+            setPolicies([]);
+            setSelectedPolicy("");
+        }
+    }, [selectedCustomer]);
+
+    const fetchCustomers = async () => {
+        try {
+            setLoadingCustomers(true);
+            const { data, error } = await supabase
+                .from("customers")
+                .select(`
+                    *,
+                    user:users(*)
+                `)
+                .order("created_at", { ascending: false });
+
+            if (error) throw error;
+            if (data) setCustomers(data);
+        } catch (error) {
+            console.error("Error fetching customers:", error);
+            setError("Error cargando clientes");
+        } finally {
+            setLoadingCustomers(false);
+        }
+    };
 
     const fetchPolicies = async () => {
         try {
+            setLoadingPolicies(true);
             let query = supabase
                 .from("policies")
                 .select(
@@ -108,8 +152,9 @@ export function ClaimForm({
                 .eq("status", "active")
                 .order("created_at", { ascending: false });
 
-            if (customerId) {
-                query = query.eq("customer_id", customerId);
+            // Usar selectedCustomer en lugar de customerId
+            if (selectedCustomer) {
+                query = query.eq("customer_id", selectedCustomer);
             }
 
             const { data, error } = await query;
@@ -119,6 +164,8 @@ export function ClaimForm({
         } catch (error) {
             console.error("Error fetching policies:", error);
             setError("Error cargando pólizas");
+        } finally {
+            setLoadingPolicies(false);
         }
     };
 
@@ -171,12 +218,12 @@ export function ClaimForm({
 
         try {
             console.log("🔍 Starting claim submission:", {
-                customerId,
+                selectedCustomer,
                 selectedPolicy,
             });
 
-            if (!customerId) {
-                throw new Error("ID de cliente no disponible");
+            if (!selectedCustomer) {
+                throw new Error("Debe seleccionar un cliente");
             }
 
             if (!selectedPolicy) {
@@ -198,7 +245,7 @@ export function ClaimForm({
             console.log("📝 Creating claim with data:", {
                 claim_number: claimNumber,
                 policy_id: selectedPolicy,
-                customer_id: customerId,
+                customer_id: selectedCustomer,
                 incident_date: incidentDateTime.toISOString(),
                 claim_type: claimData.claimType,
                 incident_description: claimData.incidentDescription,
@@ -210,7 +257,7 @@ export function ClaimForm({
                 .insert({
                     claim_number: claimNumber,
                     policy_id: selectedPolicy,
-                    customer_id: customerId,
+                    customer_id: selectedCustomer,
                     incident_date: incidentDateTime.toISOString(),
                     claim_type: claimData.claimType,
                     status: "submitted",
@@ -333,39 +380,139 @@ export function ClaimForm({
                             </Alert>
                         )}
 
+                        {/* Customer Selection - Only show if no customerId (for agents) */}
+                        {!customerId && (
+                            <div className="space-y-2">
+                                <Label htmlFor="customer">Cliente *</Label>
+                                <Select
+                                    value={selectedCustomer}
+                                    onValueChange={(value) => {
+                                        // Only process if it's not a special value
+                                        if (value && !value.startsWith('__')) {
+                                            setSelectedCustomer(value);
+                                            setSelectedPolicy(""); // Reset policy selection when customer changes
+                                        }
+                                    }}
+                                    disabled={loadingCustomers}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue 
+                                            placeholder={
+                                                loadingCustomers 
+                                                    ? "Cargando clientes..." 
+                                                    : "Seleccionar cliente"
+                                            } 
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {loadingCustomers ? (
+                                            <SelectItem value="__loading__" disabled>
+                                                <div className="flex items-center gap-2">
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    <span>Cargando clientes...</span>
+                                                </div>
+                                            </SelectItem>
+                                        ) : customers.length === 0 ? (
+                                            <SelectItem value="__no_customers__" disabled>
+                                                <div className="flex items-center gap-2">
+                                                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                                                    <span>No hay clientes disponibles</span>
+                                                </div>
+                                            </SelectItem>
+                                        ) : (
+                                            customers.map((customer) => (
+                                                <SelectItem
+                                                    key={customer.id}
+                                                    value={customer.id}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <Users className="h-4 w-4" />
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium">
+                                                                {customer.user?.first_name} {customer.user?.last_name}
+                                                            </span>
+                                                            <span className="text-sm text-muted-foreground">
+                                                                {customer.user?.email}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </SelectItem>
+                                            ))
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                {selectedCustomer && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Cliente seleccionado: {customers.find(c => c.id === selectedCustomer)?.user?.first_name} {customers.find(c => c.id === selectedCustomer)?.user?.last_name}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
                         {/* Policy Selection */}
                         <div className="space-y-2">
                             <Label htmlFor="policy">Póliza *</Label>
                             <Select
                                 value={selectedPolicy}
-                                onValueChange={setSelectedPolicy}
-                                disabled={!!policyId}
+                                onValueChange={(value) => {
+                                    // Only process if it's not a special value
+                                    if (value && !value.startsWith('__')) {
+                                        setSelectedPolicy(value);
+                                    }
+                                }}
+                                disabled={!!policyId || !selectedCustomer || loadingPolicies}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar póliza" />
+                                    <SelectValue 
+                                        placeholder={
+                                            !selectedCustomer 
+                                                ? "Primero seleccione un cliente" 
+                                                : loadingPolicies
+                                                ? "Cargando pólizas..."
+                                                : policies.length === 0 
+                                                ? "No hay pólizas activas para este cliente"
+                                                : "Seleccionar póliza"
+                                        } 
+                                    />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {policies.map((policy) => (
-                                        <SelectItem
-                                            key={policy.id}
-                                            value={policy.id}
-                                        >
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">
-                                                    {policy.policy_number}
-                                                </span>
-                                                <span className="text-sm text-muted-foreground">
-                                                    {policy.vehicle?.year}{" "}
-                                                    {policy.vehicle?.make}{" "}
-                                                    {policy.vehicle?.model} -{" "}
-                                                    {
-                                                        policy.vehicle
-                                                            ?.license_plate
-                                                    }
-                                                </span>
+                                    {loadingPolicies ? (
+                                        <SelectItem value="__loading_policies__" disabled>
+                                            <div className="flex items-center gap-2">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span>Cargando pólizas...</span>
                                             </div>
                                         </SelectItem>
-                                    ))}
+                                    ) : policies.length === 0 ? (
+                                        <SelectItem value="__no_policies__" disabled>
+                                            <div className="flex items-center gap-2">
+                                                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                                                <span>No hay pólizas activas para este cliente</span>
+                                            </div>
+                                        </SelectItem>
+                                    ) : (
+                                        policies.map((policy) => (
+                                            <SelectItem
+                                                key={policy.id}
+                                                value={policy.id}
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">
+                                                        {policy.policy_number}
+                                                    </span>
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {policy.vehicle?.year}{" "}
+                                                        {policy.vehicle?.make}{" "}
+                                                        {policy.vehicle?.model} -{" "}
+                                                        {
+                                                            policy.vehicle
+                                                                ?.license_plate
+                                                        }
+                                                    </span>
+                                                </div>
+                                            </SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
