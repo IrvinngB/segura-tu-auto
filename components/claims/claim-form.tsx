@@ -118,10 +118,12 @@ export function ClaimForm({
             setLoadingCustomers(true);
             const { data, error } = await supabase
                 .from("customers")
-                .select(`
+                .select(
+                    `
                     *,
                     user:users(*)
-                `)
+                `
+                )
                 .order("created_at", { ascending: false });
 
             if (error) throw error;
@@ -388,7 +390,7 @@ export function ClaimForm({
                                     value={selectedCustomer}
                                     onValueChange={(value) => {
                                         // Only process if it's not a special value
-                                        if (value && !value.startsWith('__')) {
+                                        if (value && !value.startsWith("__")) {
                                             setSelectedCustomer(value);
                                             setSelectedPolicy(""); // Reset policy selection when customer changes
                                         }
@@ -396,27 +398,38 @@ export function ClaimForm({
                                     disabled={loadingCustomers}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue 
+                                        <SelectValue
                                             placeholder={
-                                                loadingCustomers 
-                                                    ? "Cargando clientes..." 
+                                                loadingCustomers
+                                                    ? "Cargando clientes..."
                                                     : "Seleccionar cliente"
-                                            } 
+                                            }
                                         />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {loadingCustomers ? (
-                                            <SelectItem value="__loading__" disabled>
+                                            <SelectItem
+                                                value="__loading__"
+                                                disabled
+                                            >
                                                 <div className="flex items-center gap-2">
                                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                                    <span>Cargando clientes...</span>
+                                                    <span>
+                                                        Cargando clientes...
+                                                    </span>
                                                 </div>
                                             </SelectItem>
                                         ) : customers.length === 0 ? (
-                                            <SelectItem value="__no_customers__" disabled>
+                                            <SelectItem
+                                                value="__no_customers__"
+                                                disabled
+                                            >
                                                 <div className="flex items-center gap-2">
                                                     <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                                                    <span>No hay clientes disponibles</span>
+                                                    <span>
+                                                        No hay clientes
+                                                        disponibles
+                                                    </span>
                                                 </div>
                                             </SelectItem>
                                         ) : (
@@ -429,10 +442,23 @@ export function ClaimForm({
                                                         <Users className="h-4 w-4" />
                                                         <div className="flex flex-col">
                                                             <span className="font-medium">
-                                                                {customer.user?.first_name} {customer.user?.last_name}
+                                                                {
+                                                                    customer
+                                                                        .user
+                                                                        ?.first_name
+                                                                }{" "}
+                                                                {
+                                                                    customer
+                                                                        .user
+                                                                        ?.last_name
+                                                                }
                                                             </span>
                                                             <span className="text-sm text-muted-foreground">
-                                                                {customer.user?.email}
+                                                                {
+                                                                    customer
+                                                                        .user
+                                                                        ?.email
+                                                                }
                                                             </span>
                                                         </div>
                                                     </div>
@@ -443,7 +469,17 @@ export function ClaimForm({
                                 </Select>
                                 {selectedCustomer && (
                                     <p className="text-sm text-muted-foreground">
-                                        Cliente seleccionado: {customers.find(c => c.id === selectedCustomer)?.user?.first_name} {customers.find(c => c.id === selectedCustomer)?.user?.last_name}
+                                        Cliente seleccionado:{" "}
+                                        {
+                                            customers.find(
+                                                (c) => c.id === selectedCustomer
+                                            )?.user?.first_name
+                                        }{" "}
+                                        {
+                                            customers.find(
+                                                (c) => c.id === selectedCustomer
+                                            )?.user?.last_name
+                                        }
                                     </p>
                                 )}
                             </div>
@@ -456,38 +492,51 @@ export function ClaimForm({
                                 value={selectedPolicy}
                                 onValueChange={(value) => {
                                     // Only process if it's not a special value
-                                    if (value && !value.startsWith('__')) {
+                                    if (value && !value.startsWith("__")) {
                                         setSelectedPolicy(value);
                                     }
                                 }}
-                                disabled={!!policyId || !selectedCustomer || loadingPolicies}
+                                disabled={
+                                    !!policyId ||
+                                    !selectedCustomer ||
+                                    loadingPolicies
+                                }
                             >
                                 <SelectTrigger>
-                                    <SelectValue 
+                                    <SelectValue
                                         placeholder={
-                                            !selectedCustomer 
-                                                ? "Primero seleccione un cliente" 
+                                            !selectedCustomer
+                                                ? "Primero seleccione un cliente"
                                                 : loadingPolicies
                                                 ? "Cargando pólizas..."
-                                                : policies.length === 0 
+                                                : policies.length === 0
                                                 ? "No hay pólizas activas para este cliente"
                                                 : "Seleccionar póliza"
-                                        } 
+                                        }
                                     />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {loadingPolicies ? (
-                                        <SelectItem value="__loading_policies__" disabled>
+                                        <SelectItem
+                                            value="__loading_policies__"
+                                            disabled
+                                        >
                                             <div className="flex items-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                                 <span>Cargando pólizas...</span>
                                             </div>
                                         </SelectItem>
                                     ) : policies.length === 0 ? (
-                                        <SelectItem value="__no_policies__" disabled>
+                                        <SelectItem
+                                            value="__no_policies__"
+                                            disabled
+                                        >
                                             <div className="flex items-center gap-2">
                                                 <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                                                <span>No hay pólizas activas para este cliente</span>
+                                                <span>
+                                                    No hay pólizas activas para
+                                                    este cliente
+                                                </span>
                                             </div>
                                         </SelectItem>
                                     ) : (
@@ -503,7 +552,8 @@ export function ClaimForm({
                                                     <span className="text-sm text-muted-foreground">
                                                         {policy.vehicle?.year}{" "}
                                                         {policy.vehicle?.make}{" "}
-                                                        {policy.vehicle?.model} -{" "}
+                                                        {policy.vehicle?.model}{" "}
+                                                        -{" "}
                                                         {
                                                             policy.vehicle
                                                                 ?.license_plate

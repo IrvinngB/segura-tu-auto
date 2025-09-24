@@ -11,7 +11,7 @@ En el componente `ClaimForm`, estaba usando `SelectItem` con `value=""` para mos
 ```tsx
 // ❌ Problemático
 <SelectItem value="" disabled>
-  <span>Cargando clientes...</span>
+    <span>Cargando clientes...</span>
 </SelectItem>
 ```
 
@@ -47,37 +47,38 @@ onValueChange={(value) => {
   // Only process if it's not a special value
   if (value && !value.startsWith('__')) {
     setSelectedCustomer(value);
-    setSelectedPolicy(""); 
+    setSelectedPolicy("");
   }
 }}
 ```
 
 ## 📍 Archivos Modificados
 
-- `components/claims/claim-form.tsx`
-  - Reemplazados `value=""` por valores únicos:
-    - `__loading__` - Estado de carga de clientes
-    - `__no_customers__` - Sin clientes disponibles  
-    - `__loading_policies__` - Estado de carga de pólizas
-    - `__no_policies__` - Sin pólizas disponibles
-  - Agregada validación en `onValueChange` handlers
+-   `components/claims/claim-form.tsx`
+    -   Reemplazados `value=""` por valores únicos:
+        -   `__loading__` - Estado de carga de clientes
+        -   `__no_customers__` - Sin clientes disponibles
+        -   `__loading_policies__` - Estado de carga de pólizas
+        -   `__no_policies__` - Sin pólizas disponibles
+    -   Agregada validación en `onValueChange` handlers
 
 ## 🎯 Resultado
 
-- ✅ **Error eliminado**: No más advertencias sobre valores vacíos
-- ✅ **Funcionalidad preservada**: Estados de carga y mensajes funcionan igual
-- ✅ **UX intacta**: Usuario no nota diferencias en el comportamiento
-- ✅ **Compatibilidad**: Cumple con las reglas del componente Select
+-   ✅ **Error eliminado**: No más advertencias sobre valores vacíos
+-   ✅ **Funcionalidad preservada**: Estados de carga y mensajes funcionan igual
+-   ✅ **UX intacta**: Usuario no nota diferencias en el comportamiento
+-   ✅ **Compatibilidad**: Cumple con las reglas del componente Select
 
 ## 🧪 Testing
 
 Los siguientes casos siguen funcionando correctamente:
-- Carga inicial de clientes
-- Mensaje "No hay clientes disponibles"  
-- Carga de pólizas al seleccionar cliente
-- Mensaje "No hay pólizas activas"
-- Selección normal de clientes y pólizas
-- Validación del formulario
+
+-   Carga inicial de clientes
+-   Mensaje "No hay clientes disponibles"
+-   Carga de pólizas al seleccionar cliente
+-   Mensaje "No hay pólizas activas"
+-   Selección normal de clientes y pólizas
+-   Validación del formulario
 
 ---
 
