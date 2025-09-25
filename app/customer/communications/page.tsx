@@ -23,6 +23,15 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Communication {
     id: string;
@@ -51,6 +60,16 @@ export default function CustomerCommunicationsPage() {
     const [communications, setCommunications] = useState<Communication[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [filterType, setFilterType] = useState("");
+    const [filterDirection, setFilterDirection] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newCommunication, setNewCommunication] = useState({
+        type: "email",
+        direction: "outbound",
+        subject: "",
+        content: "",
+    });
     const supabase = createClient();
 
     useEffect(() => {
@@ -188,6 +207,50 @@ export default function CustomerCommunicationsPage() {
         }
     };
 
+    const filteredCommunications = communications.filter((communication) => {
+        return (
+            (!filterType || communication.communication_type === filterType) &&
+            (!filterDirection || communication.direction === filterDirection) &&
+            (!filterStatus || communication.status === filterStatus)
+        );
+    });
+
+    const handleCreateCommunication = async () => {
+        if (!customerData) {
+            setError("No se pudo identificar al cliente.");
+            return;
+        }
+
+        try {
+            const { data, error } = await supabase.from("communications").insert([
+                {
+                    communication_type: newCommunication.type,
+                    direction: newCommunication.direction,
+                    subject: newCommunication.subject,
+                    content: newCommunication.content,
+                    customer_id: customerData.id,
+                },
+            ]);
+
+            if (error) {
+                console.error("Error creating communication:", error);
+                setError("Error al crear la comunicación.");
+            } else if (data) {
+                setCommunications([data[0], ...communications]);
+                setIsModalOpen(false);
+                setNewCommunication({
+                    type: "email",
+                    direction: "outbound",
+                    subject: "",
+                    content: "",
+                });
+            }
+        } catch (err) {
+            console.error("Unexpected error:", err);
+            setError("Error inesperado al crear la comunicación.");
+        }
+    };
+
     if (customerLoading || loading) {
         return (
             <ProtectedRoute allowedRoles={["customer"]}>
@@ -222,167 +285,155 @@ export default function CustomerCommunicationsPage() {
     return (
         <ProtectedRoute allowedRoles={["customer"]}>
             <div className="container mx-auto py-8 px-4">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold">Comunicaciones</h1>
-                    <p className="text-muted-foreground">
-                        Mensajes y notificaciones de SeguraTuAuto
-                    </p>
+                {/* Header */}
+                <div className="mb-8 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-4xl font-extrabold text-primary">
+                            Comunicaciones
+                        </h1>
+                        <p className="text-muted-foreground">
+                            Gestiona tus mensajes y notificaciones de SeguraTuAuto.
+                        </p>
+                    </div>
+                    <Button
+                        variant="default"
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        + Nueva Comunicación
+                    </Button>
                 </div>
 
-                {error && (
-                    <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-md">
-                        <p className="text-destructive">{error}</p>
-                    </div>
-                )}
+                {/* Filtros */}
+                <div className="mb-6 flex gap-4">
+                    <select
+                        className="border border-border rounded-md p-2"
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                    >
+                        <option value="">Todos los Tipos</option>
+                        <option value="email">Email</option>
+                        <option value="phone">Teléfono</option>
+                        <option value="sms">SMS</option>
+                    </select>
+                    <select
+                        className="border border-border rounded-md p-2"
+                        value={filterDirection}
+                        onChange={(e) => setFilterDirection(e.target.value)}
+                    >
+                        <option value="">Todas las Direcciones</option>
+                        <option value="inbound">Recibido</option>
+                        <option value="outbound">Enviado</option>
+                    </select>
+                    <select
+                        className="border border-border rounded-md p-2"
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                    >
+                        <option value="">Todos los Estados</option>
+                        <option value="sent">Enviado</option>
+                        <option value="delivered">Entregado</option>
+                        <option value="read">Leído</option>
+                        <option value="failed">Fallido</option>
+                    </select>
+                </div>
 
-                {communications.length === 0 ? (
-                    <Card>
-                        <CardContent className="flex flex-col items-center justify-center py-12">
-                            <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-                            <h3 className="text-lg font-semibold mb-2">
-                                No tienes comunicaciones
-                            </h3>
-                            <p className="text-muted-foreground text-center">
-                                Los mensajes y notificaciones de SeguraTuAuto
-                                aparecerán aquí
-                            </p>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="space-y-6">
-                        {/* Resumen de comunicaciones */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">
-                                        Total Mensajes
-                                    </CardTitle>
-                                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold">
-                                        {communications.length}
+                {/* Lista de comunicaciones */}
+                <div className="space-y-4">
+                    {filteredCommunications.map((communication) => (
+                        <Card
+                            key={communication.id}
+                            className="hover:shadow-lg transition-shadow"
+                        >
+                            <CardHeader>
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        {getCommunicationIcon(
+                                            communication.communication_type
+                                        )}
+                                        <div>
+                                            <CardTitle className="text-lg font-semibold">
+                                                {communication.subject}
+                                            </CardTitle>
+                                            <CardDescription className="flex items-center gap-2 mt-1">
+                                                <Calendar className="h-4 w-4" />
+                                                {format(
+                                                    new Date(
+                                                        communication.created_at
+                                                    ),
+                                                    "dd/MM/yyyy HH:mm",
+                                                    { locale: es }
+                                                )}
+                                            </CardDescription>
+                                        </div>
                                     </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">
-                                        Recibidos
-                                    </CardTitle>
-                                    <Mail className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold">
-                                        {
-                                            communications.filter(
-                                                (c) => c.direction === "inbound"
-                                            ).length
-                                        }
+                                    <div className="flex gap-2">
+                                        {getDirectionBadge(communication.direction)}
+                                        {getStatusBadge(communication.status)}
                                     </div>
-                                </CardContent>
-                            </Card>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">
+                                    {communication.content}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
 
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">
-                                        Enviados
-                                    </CardTitle>
-                                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold">
-                                        {
-                                            communications.filter(
-                                                (c) =>
-                                                    c.direction === "outbound"
-                                            ).length
-                                        }
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Lista de comunicaciones */}
+                {/* Modal para nueva comunicación */}
+                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Nueva Comunicación</DialogTitle>
+                        </DialogHeader>
                         <div className="space-y-4">
-                            {communications.map((communication) => (
-                                <Card
-                                    key={communication.id}
-                                    className="hover:shadow-md transition-shadow"
-                                >
-                                    <CardHeader>
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-center gap-3">
-                                                {getCommunicationIcon(
-                                                    communication.communication_type
-                                                )}
-                                                <div>
-                                                    <CardTitle className="text-lg">
-                                                        {communication.subject}
-                                                    </CardTitle>
-                                                    <CardDescription className="flex items-center gap-2 mt-1">
-                                                        <Calendar className="h-3 w-3" />
-                                                        {format(
-                                                            new Date(
-                                                                communication.created_at
-                                                            ),
-                                                            "dd/MM/yyyy HH:mm",
-                                                            { locale: es }
-                                                        )}
-                                                    </CardDescription>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                {getDirectionBadge(
-                                                    communication.direction
-                                                )}
-                                                {getStatusBadge(
-                                                    communication.status
-                                                )}
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-4">
-                                            <p className="text-sm text-muted-foreground">
-                                                {communication.content}
-                                            </p>
-
-                                            <div className="flex items-center justify-between pt-4 border-t">
-                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                    <User className="h-4 w-4" />
-                                                    <span>
-                                                        {communication.direction ===
-                                                        "inbound"
-                                                            ? "De:"
-                                                            : "Para:"}
-                                                        {communication.agent
-                                                            ? ` ${communication.agent.first_name} ${communication.agent.last_name}`
-                                                            : " SeguraTuAuto"}
-                                                    </span>
-                                                </div>
-
-                                                {communication.policy && (
-                                                    <Badge
-                                                        variant="outline"
-                                                        className="text-xs"
-                                                    >
-                                                        Póliza:{" "}
-                                                        {
-                                                            communication.policy
-                                                                .policy_number
-                                                        }
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+                            <select
+                                className="border border-border rounded-md p-2 w-full"
+                                value={newCommunication.type}
+                                onChange={(e) =>
+                                    setNewCommunication({ ...newCommunication, type: e.target.value })
+                                }
+                            >
+                                <option value="email">Email</option>
+                                <option value="phone">Teléfono</option>
+                                <option value="sms">SMS</option>
+                            </select>
+                            <select
+                                className="border border-border rounded-md p-2 w-full"
+                                value={newCommunication.direction}
+                                onChange={(e) =>
+                                    setNewCommunication({ ...newCommunication, direction: e.target.value })
+                                }
+                            >
+                                <option value="inbound">Recibido</option>
+                                <option value="outbound">Enviado</option>
+                            </select>
+                            <Input
+                                placeholder="Asunto"
+                                value={newCommunication.subject}
+                                onChange={(e) =>
+                                    setNewCommunication({ ...newCommunication, subject: e.target.value })
+                                }
+                            />
+                            <Textarea
+                                placeholder="Contenido"
+                                value={newCommunication.content}
+                                onChange={(e) =>
+                                    setNewCommunication({ ...newCommunication, content: e.target.value })
+                                }
+                            />
                         </div>
-                    </div>
-                )}
+                        <DialogFooter>
+                            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
+                                Cancelar
+                            </Button>
+                            <Button variant="default" onClick={handleCreateCommunication}>
+                                Crear
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </ProtectedRoute>
     );
