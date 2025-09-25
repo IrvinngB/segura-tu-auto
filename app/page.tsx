@@ -248,9 +248,15 @@ export default function HomePage() {
     const getPriorityBadge = (priority: string) => {
         const priorityConfig = {
             low: { label: "Baja", classes: "priority-badge priority-low" },
-            medium: { label: "Media", classes: "priority-badge priority-medium" },
+            medium: {
+                label: "Media",
+                classes: "priority-badge priority-medium",
+            },
             high: { label: "Alta", classes: "priority-badge priority-high" },
-            urgent: { label: "Urgente", classes: "priority-badge priority-urgent" },
+            urgent: {
+                label: "Urgente",
+                classes: "priority-badge priority-urgent",
+            },
         };
 
         const config = priorityConfig[
@@ -554,8 +560,18 @@ export default function HomePage() {
                                                     {claim.claim_type}
                                                 </p>
                                             </div>
-                                            <span className={getPriorityBadge(claim.priority).classes}>
-                                                {getPriorityBadge(claim.priority).label}
+                                            <span
+                                                className={
+                                                    getPriorityBadge(
+                                                        claim.priority
+                                                    ).classes
+                                                }
+                                            >
+                                                {
+                                                    getPriorityBadge(
+                                                        claim.priority
+                                                    ).label
+                                                }
                                             </span>
                                         </div>
                                     ))

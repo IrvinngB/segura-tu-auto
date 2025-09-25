@@ -188,9 +188,15 @@ export function ClaimList({
     const getPriorityBadge = (priority: string) => {
         const priorityConfig = {
             low: { label: "Baja", classes: "priority-badge priority-low" },
-            medium: { label: "Media", classes: "priority-badge priority-medium" },
+            medium: {
+                label: "Media",
+                classes: "priority-badge priority-medium",
+            },
             high: { label: "Alta", classes: "priority-badge priority-high" },
-            urgent: { label: "Urgente", classes: "priority-badge priority-urgent" },
+            urgent: {
+                label: "Urgente",
+                classes: "priority-badge priority-urgent",
+            },
         };
 
         const config = priorityConfig[
@@ -330,7 +336,9 @@ export function ClaimList({
                                 <TableHead>Póliza</TableHead>
                                 <TableHead>Tipo</TableHead>
                                 <TableHead>Estado</TableHead>
-                                <TableHead className="text-center">Prioridad</TableHead>
+                                <TableHead className="text-center">
+                                    Prioridad
+                                </TableHead>
                                 <TableHead>Fecha</TableHead>
                                 <TableHead>Monto</TableHead>
                                 <TableHead>Acciones</TableHead>
