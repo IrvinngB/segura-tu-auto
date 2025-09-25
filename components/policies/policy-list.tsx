@@ -185,7 +185,8 @@ export function PolicyList({
         const daysUntilExpiry = Math.ceil(
             (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         );
-        return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+        // Mostrar "vence pronto" si vence en 30 días o menos, O si ya venció (daysUntilExpiry <= 0)
+        return daysUntilExpiry <= 30;
     };
 
     if (loading) {
@@ -336,7 +337,7 @@ export function PolicyList({
                                                 {getStatusBadge(policy.status)}
                                                 {isExpiringSoon(
                                                     policy.end_date
-                                                ) && (
+                                                ) && policy.status !== "expired" && (
                                                     <Badge
                                                         variant="outline"
                                                         className="text-xs"

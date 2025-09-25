@@ -78,11 +78,11 @@ interface Payment {
     id: string;
     amount: number;
     payment_type: string;
-    payment_method: string;
+    payment_method: string | null;
     payment_status: string;
-    payment_date: string;
-    due_date: string;
-    reference_number: string;
+    payment_date: string | null;
+    due_date: string | null;
+    reference_number: string | null;
     description: string;
     fees?: number;
     discount?: number;
@@ -93,7 +93,14 @@ interface Payment {
         payment_frequency: string;
         next_payment_date: string;
         status: string;
-    };
+    } | null;
+    // Campos adicionales de la base de datos
+    policy_id?: string;
+    customer_id?: string;
+    claim_id?: string | null;
+    transaction_id?: string | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 interface PaymentMethod {
@@ -250,17 +257,111 @@ export default function CustomerPaymentsPage() {
         try {
             setLoading(true);
 
-            // En un entorno real, aquí cargarías los datos de la base de datos
-            // Por ahora usamos datos simulados para mostrar funcionalidad completa
-            setPayments(simulatedPayments);
-            setUpcomingPayments(simulatedUpcomingPayments);
+            // Obtener el customer_id del usuario logueado
+            const { data: customer } = await supabase
+                .from("customers")
+                .select("id")
+                .eq("user_id", userProfile?.id)
+                .single();
+
+            if (!customer) {
+                setError("No se encontró información del cliente");
+                return;
+            }
+
+            // Cargar pólizas del cliente con vehículos
+            const { data: policiesData } = await supabase
+                .from("policies")
+                .select(`
+                    *,
+                    vehicle:vehicles(*),
+                    agent:users(first_name, last_name, email)
+                `)
+                .eq("customer_id", customer.id)
+                .order("created_at", { ascending: false });
+
+            // Cargar pagos reales del cliente con información de póliza
+            const { data: paymentsData } = await supabase
+                .from("payments")
+                .select(`
+                    *,
+                    policy:policies(
+                        policy_number,
+                        premium_amount,
+                        status,
+                        auto_renewal,
+                        end_date,
+                        vehicle:vehicles(make, model, year)
+                    )
+                `)
+                .eq("customer_id", customer.id)
+                .order("created_at", { ascending: false });
+
+            // Procesar pagos reales
+            if (paymentsData) {
+                const processedPayments = paymentsData.map((payment) => ({
+                    ...payment,
+                    payment_date: payment.payment_date || payment.created_at,
+                    description: `Pago ${payment.payment_type === "premium" ? "de prima" : payment.payment_type} - ${payment.policy?.vehicle ? `${payment.policy.vehicle.make} ${payment.policy.vehicle.model}` : "Póliza"}`,
+                    policy: payment.policy ? {
+                        id: payment.policy_id || "",
+                        policy_number: payment.policy.policy_number,
+                        premium_amount: payment.policy.premium_amount,
+                        payment_frequency: payment.policy.auto_renewal ? "monthly" : "manual",
+                        next_payment_date: payment.policy.end_date,
+                        status: payment.policy.status,
+                    } : null
+                }));
+                setPayments(processedPayments);
+            } else {
+                setPayments([]);
+            }
+
+            // Calcular próximos pagos basados en pólizas activas
+            if (policiesData) {
+                const upcomingPaymentsData: UpcomingPayment[] = [];
+                
+                policiesData
+                    .filter(policy => policy.status === "active" && policy.auto_renewal)
+                    .forEach(policy => {
+                        // Calcular próximo pago basado en la fecha de fin de la póliza
+                        const endDate = new Date(policy.end_date);
+                        const today = new Date();
+                        
+                        // Si la póliza vence pronto, generar pago próximo
+                        const daysUntilExpiry = differenceInDays(endDate, today);
+                        
+                        // Si la póliza vence en menos de 30 días, el pago es próximo
+                        if (daysUntilExpiry <= 30 && daysUntilExpiry >= 0) {
+                            // Calcular monto mensual (prima anual / 12)
+                            const monthlyAmount = Math.round(policy.premium_amount / 12);
+                            
+                            upcomingPaymentsData.push({
+                                id: `upcoming_${policy.id}`,
+                                policy_number: policy.policy_number,
+                                amount: monthlyAmount,
+                                due_date: endDate.toISOString().split('T')[0],
+                                payment_type: "Prima Mensual",
+                                status: daysUntilExpiry <= 3 ? 
+                                    (daysUntilExpiry < 0 ? "overdue" : "grace_period") : 
+                                    "upcoming"
+                            });
+                        }
+                    });
+                
+                setUpcomingPayments(upcomingPaymentsData);
+            } else {
+                setUpcomingPayments([]);
+            }
+
+            // Por ahora usar métodos de pago simulados hasta implementar la tabla real
             setPaymentMethods(simulatedPaymentMethods);
             setAutopayEnabled(
                 simulatedPaymentMethods.some((pm) => pm.is_autopay)
             );
         } catch (error) {
-            console.error("Error:", error);
-            setError("Error inesperado al cargar los datos de pago");
+            console.error("Error cargando datos de pago:", error);
+            setError("Error al cargar los datos de pago");
         } finally {
             setLoading(false);
         }
@@ -765,20 +866,19 @@ export default function CustomerPaymentsPage() {
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                        {format(
-                                                            new Date(
-                                                                payment.payment_date
-                                                            ),
-                                                            "dd/MM/yyyy",
-                                                            { locale: es }
-                                                        )}
+                                                        {payment.payment_date 
+                                                            ? format(
+                                                                new Date(payment.payment_date),
+                                                                "dd/MM/yyyy",
+                                                                { locale: es }
+                                                            )
+                                                            : "Pendiente"
+                                                        }
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="font-medium">
-                                                        {payment.policy
-                                                            ?.policy_number ||
-                                                            "N/A"}
+                                                        {payment.policy?.policy_number || "N/A"}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
@@ -792,9 +892,7 @@ export default function CustomerPaymentsPage() {
                                                             "credit_card"
                                                         )}
                                                         <span className="text-sm">
-                                                            {
-                                                                payment.payment_method
-                                                            }
+                                                            {payment.payment_method || "No especificado"}
                                                         </span>
                                                     </div>
                                                 </TableCell>
