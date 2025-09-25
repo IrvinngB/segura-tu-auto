@@ -192,6 +192,30 @@ export default function RegisterPage() {
         router.push("/login");
     };
 
+    // Función para verificar si todos los campos requeridos están completos
+    const isFormValid = () => {
+        // Campos básicos requeridos para todos los roles
+        const basicFieldsComplete =
+            formData.firstName &&
+            formData.lastName &&
+            formData.email &&
+            formData.password &&
+            formData.confirmPassword &&
+            formData.phone &&
+            formData.birthDate;
+
+        // Si es customer, verificar campos adicionales requeridos
+        if (formData.role === "customer") {
+            const customerFieldsComplete =
+                formData.country && formData.licenseYear;
+
+            return basicFieldsComplete && customerFieldsComplete;
+        }
+
+        // Para agent, solo campos básicos
+        return basicFieldsComplete;
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
             {/* Botón de volver al inicio - Posición superior */}
@@ -627,7 +651,7 @@ export default function RegisterPage() {
                             <Button
                                 type="submit"
                                 className="w-full"
-                                disabled={loading}
+                                disabled={loading || !isFormValid()}
                             >
                                 {loading ? "Creando cuenta..." : "Crear Cuenta"}
                             </Button>
@@ -653,7 +677,7 @@ export default function RegisterPage() {
                 show={showSuccessModal}
                 title="¡Registro Exitoso!"
                 message="Tu cuenta ha sido creada correctamente."
-                duration={1000}
+                duration={1300}
                 onClose={handleSuccessModalClose}
             />
         </div>
