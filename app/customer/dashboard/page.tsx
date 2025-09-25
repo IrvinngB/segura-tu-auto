@@ -123,13 +123,22 @@ export default function CustomerDashboard() {
     ) => {
         if (type === "policy") {
             const config = {
-                active: { label: "Activa", classes: "status-badge status-active" },
-                expired: { label: "Vencida", classes: "status-badge status-expired" },
+                active: {
+                    label: "Activa",
+                    classes: "status-badge status-active",
+                },
+                expired: {
+                    label: "Vencida",
+                    classes: "status-badge status-expired",
+                },
                 cancelled: {
                     label: "Cancelada",
                     classes: "status-badge status-cancelled",
                 },
-                suspended: { label: "Suspendida", classes: "status-badge status-suspended" },
+                suspended: {
+                    label: "Suspendida",
+                    classes: "status-badge status-suspended",
+                },
             };
             const statusConfig = config[status as keyof typeof config] || {
                 label: status,
@@ -144,7 +153,10 @@ export default function CustomerDashboard() {
 
         if (type === "claim") {
             const config = {
-                submitted: { label: "Enviada", classes: "status-badge status-submitted" },
+                submitted: {
+                    label: "Enviada",
+                    classes: "status-badge status-submitted",
+                },
                 under_review: {
                     label: "En Revisión",
                     classes: "status-badge status-under-review",
@@ -153,10 +165,19 @@ export default function CustomerDashboard() {
                     label: "Investigando",
                     classes: "status-badge status-investigating",
                 },
-                approved: { label: "Aprobada", classes: "status-badge status-approved" },
-                denied: { label: "Denegada", classes: "status-badge status-denied" },
+                approved: {
+                    label: "Aprobada",
+                    classes: "status-badge status-approved",
+                },
+                denied: {
+                    label: "Denegada",
+                    classes: "status-badge status-denied",
+                },
                 paid: { label: "Pagada", classes: "status-badge status-paid" },
-                closed: { label: "Cerrada", classes: "status-badge status-closed" },
+                closed: {
+                    label: "Cerrada",
+                    classes: "status-badge status-closed",
+                },
             };
             const statusConfig = config[status as keyof typeof config] || {
                 label: status,
@@ -171,9 +192,18 @@ export default function CustomerDashboard() {
 
         if (type === "payment") {
             const config = {
-                pending: { label: "Pendiente", classes: "status-badge status-pending" },
-                completed: { label: "Completado", classes: "status-badge status-completed" },
-                failed: { label: "Fallido", classes: "status-badge status-failed" },
+                pending: {
+                    label: "Pendiente",
+                    classes: "status-badge status-pending",
+                },
+                completed: {
+                    label: "Completado",
+                    classes: "status-badge status-completed",
+                },
+                failed: {
+                    label: "Fallido",
+                    classes: "status-badge status-failed",
+                },
                 cancelled: {
                     label: "Cancelado",
                     classes: "status-badge status-cancelled",

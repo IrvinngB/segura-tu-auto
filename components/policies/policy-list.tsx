@@ -147,9 +147,18 @@ export function PolicyList({
     const getStatusBadge = (status: string) => {
         const statusConfig = {
             active: { label: "Activa", classes: "status-badge status-active" },
-            expired: { label: "Vencida", classes: "status-badge status-expired" },
-            cancelled: { label: "Cancelada", classes: "status-badge status-cancelled" },
-            suspended: { label: "Suspendida", classes: "status-badge status-suspended" },
+            expired: {
+                label: "Vencida",
+                classes: "status-badge status-expired",
+            },
+            cancelled: {
+                label: "Cancelada",
+                classes: "status-badge status-cancelled",
+            },
+            suspended: {
+                label: "Suspendida",
+                classes: "status-badge status-suspended",
+            },
             draft: { label: "Borrador", classes: "status-badge status-draft" },
         };
 
@@ -266,7 +275,9 @@ export function PolicyList({
                                 {!customerId && <TableHead>Cliente</TableHead>}
                                 <TableHead>Vehículo</TableHead>
                                 <TableHead>Tipo</TableHead>
-                                <TableHead className="text-center">Estado</TableHead>
+                                <TableHead className="text-center">
+                                    Estado
+                                </TableHead>
                                 <TableHead>Vigencia</TableHead>
                                 <TableHead>Prima</TableHead>
                                 <TableHead>Acciones</TableHead>
