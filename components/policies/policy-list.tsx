@@ -337,14 +337,16 @@ export function PolicyList({
                                                 {getStatusBadge(policy.status)}
                                                 {isExpiringSoon(
                                                     policy.end_date
-                                                ) && policy.status !== "expired" && (
-                                                    <Badge
-                                                        variant="outline"
-                                                        className="text-xs"
-                                                    >
-                                                        Vence pronto
-                                                    </Badge>
-                                                )}
+                                                ) &&
+                                                    policy.status !==
+                                                        "expired" && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="text-xs"
+                                                        >
+                                                            Vence pronto
+                                                        </Badge>
+                                                    )}
                                             </div>
                                         </TableCell>
                                         <TableCell>

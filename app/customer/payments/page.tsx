@@ -272,18 +272,21 @@ export default function CustomerPaymentsPage() {
             // Cargar pólizas del cliente con vehículos
             const { data: policiesData } = await supabase
                 .from("policies")
-                .select(`
+                .select(
+                    `
                     *,
                     vehicle:vehicles(*),
                     agent:users(first_name, last_name, email)
-                `)
+                `
+                )
                 .eq("customer_id", customer.id)
                 .order("created_at", { ascending: false });
 
             // Cargar pagos reales del cliente con información de póliza
             const { data: paymentsData } = await supabase
                 .from("payments")
-                .select(`
+                .select(
+                    `
                     *,
                     policy:policies(
                         policy_number,
@@ -293,7 +296,8 @@ export default function CustomerPaymentsPage() {
                         end_date,
                         vehicle:vehicles(make, model, year)
                     )
-                `)
+                `
+                )
                 .eq("customer_id", customer.id)
                 .order("created_at", { ascending: false });
 
@@ -302,15 +306,27 @@ export default function CustomerPaymentsPage() {
                 const processedPayments = paymentsData.map((payment) => ({
                     ...payment,
                     payment_date: payment.payment_date || payment.created_at,
-                    description: `Pago ${payment.payment_type === "premium" ? "de prima" : payment.payment_type} - ${payment.policy?.vehicle ? `${payment.policy.vehicle.make} ${payment.policy.vehicle.model}` : "Póliza"}`,
-                    policy: payment.policy ? {
-                        id: payment.policy_id || "",
-                        policy_number: payment.policy.policy_number,
-                        premium_amount: payment.policy.premium_amount,
-                        payment_frequency: payment.policy.auto_renewal ? "monthly" : "manual",
-                        next_payment_date: payment.policy.end_date,
-                        status: payment.policy.status,
-                    } : null
+                    description: `Pago ${
+                        payment.payment_type === "premium"
+                            ? "de prima"
+                            : payment.payment_type
+                    } - ${
+                        payment.policy?.vehicle
+                            ? `${payment.policy.vehicle.make} ${payment.policy.vehicle.model}`
+                            : "Póliza"
+                    }`,
+                    policy: payment.policy
+                        ? {
+                              id: payment.policy_id || "",
+                              policy_number: payment.policy.policy_number,
+                              premium_amount: payment.policy.premium_amount,
+                              payment_frequency: payment.policy.auto_renewal
+                                  ? "monthly"
+                                  : "manual",
+                              next_payment_date: payment.policy.end_date,
+                              status: payment.policy.status,
+                          }
+                        : null,
                 }));
                 setPayments(processedPayments);
             } else {
@@ -320,35 +336,46 @@ export default function CustomerPaymentsPage() {
             // Calcular próximos pagos basados en pólizas activas
             if (policiesData) {
                 const upcomingPaymentsData: UpcomingPayment[] = [];
-                
+
                 policiesData
-                    .filter(policy => policy.status === "active" && policy.auto_renewal)
-                    .forEach(policy => {
+                    .filter(
+                        (policy) =>
+                            policy.status === "active" && policy.auto_renewal
+                    )
+                    .forEach((policy) => {
                         // Calcular próximo pago basado en la fecha de fin de la póliza
                         const endDate = new Date(policy.end_date);
                         const today = new Date();
-                        
+
                         // Si la póliza vence pronto, generar pago próximo
-                        const daysUntilExpiry = differenceInDays(endDate, today);
-                        
+                        const daysUntilExpiry = differenceInDays(
+                            endDate,
+                            today
+                        );
+
                         // Si la póliza vence en menos de 30 días, el pago es próximo
                         if (daysUntilExpiry <= 30 && daysUntilExpiry >= 0) {
                             // Calcular monto mensual (prima anual / 12)
-                            const monthlyAmount = Math.round(policy.premium_amount / 12);
-                            
+                            const monthlyAmount = Math.round(
+                                policy.premium_amount / 12
+                            );
+
                             upcomingPaymentsData.push({
                                 id: `upcoming_${policy.id}`,
                                 policy_number: policy.policy_number,
                                 amount: monthlyAmount,
-                                due_date: endDate.toISOString().split('T')[0],
+                                due_date: endDate.toISOString().split("T")[0],
                                 payment_type: "Prima Mensual",
-                                status: daysUntilExpiry <= 3 ? 
-                                    (daysUntilExpiry < 0 ? "overdue" : "grace_period") : 
-                                    "upcoming"
+                                status:
+                                    daysUntilExpiry <= 3
+                                        ? daysUntilExpiry < 0
+                                            ? "overdue"
+                                            : "grace_period"
+                                        : "upcoming",
                             });
                         }
                     });
-                
+
                 setUpcomingPayments(upcomingPaymentsData);
             } else {
                 setUpcomingPayments([]);
@@ -866,19 +893,22 @@ export default function CustomerPaymentsPage() {
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                                                        {payment.payment_date 
+                                                        {payment.payment_date
                                                             ? format(
-                                                                new Date(payment.payment_date),
-                                                                "dd/MM/yyyy",
-                                                                { locale: es }
-                                                            )
-                                                            : "Pendiente"
-                                                        }
+                                                                  new Date(
+                                                                      payment.payment_date
+                                                                  ),
+                                                                  "dd/MM/yyyy",
+                                                                  { locale: es }
+                                                              )
+                                                            : "Pendiente"}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="font-medium">
-                                                        {payment.policy?.policy_number || "N/A"}
+                                                        {payment.policy
+                                                            ?.policy_number ||
+                                                            "N/A"}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
@@ -892,7 +922,8 @@ export default function CustomerPaymentsPage() {
                                                             "credit_card"
                                                         )}
                                                         <span className="text-sm">
-                                                            {payment.payment_method || "No especificado"}
+                                                            {payment.payment_method ||
+                                                                "No especificado"}
                                                         </span>
                                                     </div>
                                                 </TableCell>

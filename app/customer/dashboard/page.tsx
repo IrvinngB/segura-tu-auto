@@ -383,15 +383,17 @@ export default function CustomerDashboard() {
                                                     )}
                                                     {isExpiringSoon(
                                                         policy.end_date
-                                                    ) && policy.status !== "expired" && (
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="text-xs"
-                                                        >
-                                                            <AlertTriangle className="h-3 w-3 mr-1" />
-                                                            Vence pronto
-                                                        </Badge>
-                                                    )}
+                                                    ) &&
+                                                        policy.status !==
+                                                            "expired" && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-xs"
+                                                            >
+                                                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                                                Vence pronto
+                                                            </Badge>
+                                                        )}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">
                                                     {policy.vehicle?.year}{" "}
