@@ -146,18 +146,18 @@ export function PolicyList({
 
     const getStatusBadge = (status: string) => {
         const statusConfig = {
-            active: { label: "Activa", variant: "default" as const },
-            expired: { label: "Vencida", variant: "destructive" as const },
-            cancelled: { label: "Cancelada", variant: "secondary" as const },
-            suspended: { label: "Suspendida", variant: "outline" as const },
-            draft: { label: "Borrador", variant: "outline" as const },
+            active: { label: "Activa", classes: "status-badge status-active" },
+            expired: { label: "Vencida", classes: "status-badge status-expired" },
+            cancelled: { label: "Cancelada", classes: "status-badge status-cancelled" },
+            suspended: { label: "Suspendida", classes: "status-badge status-suspended" },
+            draft: { label: "Borrador", classes: "status-badge status-draft" },
         };
 
         const config = statusConfig[status as keyof typeof statusConfig] || {
             label: status,
-            variant: "outline" as const,
+            classes: "status-badge status-active",
         };
-        return <Badge variant={config.variant}>{config.label}</Badge>;
+        return <span className={config.classes}>{config.label}</span>;
     };
 
     const getPolicyTypeLabel = (type: string) => {
@@ -266,7 +266,7 @@ export function PolicyList({
                                 {!customerId && <TableHead>Cliente</TableHead>}
                                 <TableHead>Vehículo</TableHead>
                                 <TableHead>Tipo</TableHead>
-                                <TableHead>Estado</TableHead>
+                                <TableHead className="text-center">Estado</TableHead>
                                 <TableHead>Vigencia</TableHead>
                                 <TableHead>Prima</TableHead>
                                 <TableHead>Acciones</TableHead>
@@ -332,8 +332,8 @@ export function PolicyList({
                                                 policy.policy_type
                                             )}
                                         </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col gap-1">
+                                        <TableCell className="text-center">
+                                            <div className="flex flex-col gap-2 items-center justify-center">
                                                 {getStatusBadge(policy.status)}
                                                 {isExpiringSoon(
                                                     policy.end_date
@@ -342,7 +342,7 @@ export function PolicyList({
                                                         "expired" && (
                                                         <Badge
                                                             variant="outline"
-                                                            className="text-xs"
+                                                            className="text-xs flex items-center justify-center px-3 py-1 min-w-[90px]"
                                                         >
                                                             Vence pronto
                                                         </Badge>

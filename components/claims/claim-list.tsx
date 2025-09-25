@@ -163,26 +163,26 @@ export function ClaimList({
 
     const getStatusBadge = (status: string) => {
         const statusConfig = {
-            submitted: { label: "Enviada", variant: "outline" as const },
+            submitted: { label: "Enviada", classes: "status-badge status-submitted" },
             under_review: {
                 label: "En Revisión",
-                variant: "secondary" as const,
+                classes: "status-badge status-under-review",
             },
             investigating: {
                 label: "Investigando",
-                variant: "default" as const,
+                classes: "status-badge status-investigating",
             },
-            approved: { label: "Aprobada", variant: "default" as const },
-            denied: { label: "Denegada", variant: "destructive" as const },
-            closed: { label: "Cerrada", variant: "secondary" as const },
-            paid: { label: "Pagada", variant: "default" as const },
+            approved: { label: "Aprobada", classes: "status-badge status-approved" },
+            denied: { label: "Denegada", classes: "status-badge status-denied" },
+            closed: { label: "Cerrada", classes: "status-badge status-closed" },
+            paid: { label: "Pagada", classes: "status-badge status-paid" },
         };
 
         const config = statusConfig[status as keyof typeof statusConfig] || {
             label: status,
-            variant: "outline" as const,
+            classes: "status-badge status-submitted",
         };
-        return <Badge variant={config.variant}>{config.label}</Badge>;
+        return <span className={config.classes}>{config.label}</span>;
     };
 
     const getPriorityBadge = (priority: string) => {
@@ -335,7 +335,7 @@ export function ClaimList({
                                 {!customerId && <TableHead>Cliente</TableHead>}
                                 <TableHead>Póliza</TableHead>
                                 <TableHead>Tipo</TableHead>
-                                <TableHead>Estado</TableHead>
+                                <TableHead className="text-center">Estado</TableHead>
                                 <TableHead className="text-center">
                                     Prioridad
                                 </TableHead>
@@ -411,7 +411,7 @@ export function ClaimList({
                                                 claim.claim_type
                                             )}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             {getStatusBadge(claim.status)}
                                         </TableCell>
                                         <TableCell className="text-center">

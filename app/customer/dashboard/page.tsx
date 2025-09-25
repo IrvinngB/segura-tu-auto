@@ -123,73 +123,74 @@ export default function CustomerDashboard() {
     ) => {
         if (type === "policy") {
             const config = {
-                active: { label: "Activa", variant: "default" as const },
-                expired: { label: "Vencida", variant: "destructive" as const },
+                active: { label: "Activa", classes: "status-badge status-active" },
+                expired: { label: "Vencida", classes: "status-badge status-expired" },
                 cancelled: {
                     label: "Cancelada",
-                    variant: "secondary" as const,
+                    classes: "status-badge status-cancelled",
                 },
-                suspended: { label: "Suspendida", variant: "outline" as const },
+                suspended: { label: "Suspendida", classes: "status-badge status-suspended" },
             };
             const statusConfig = config[status as keyof typeof config] || {
                 label: status,
-                variant: "outline" as const,
+                classes: "status-badge status-active",
             };
             return (
-                <Badge variant={statusConfig.variant}>
+                <span className={statusConfig.classes}>
                     {statusConfig.label}
-                </Badge>
+                </span>
             );
         }
 
         if (type === "claim") {
             const config = {
-                submitted: { label: "Enviada", variant: "outline" as const },
+                submitted: { label: "Enviada", classes: "status-badge status-submitted" },
                 under_review: {
                     label: "En Revisión",
-                    variant: "secondary" as const,
+                    classes: "status-badge status-under-review",
                 },
                 investigating: {
                     label: "Investigando",
-                    variant: "default" as const,
+                    classes: "status-badge status-investigating",
                 },
-                approved: { label: "Aprobada", variant: "default" as const },
-                denied: { label: "Denegada", variant: "destructive" as const },
-                paid: { label: "Pagada", variant: "default" as const },
+                approved: { label: "Aprobada", classes: "status-badge status-approved" },
+                denied: { label: "Denegada", classes: "status-badge status-denied" },
+                paid: { label: "Pagada", classes: "status-badge status-paid" },
+                closed: { label: "Cerrada", classes: "status-badge status-closed" },
             };
             const statusConfig = config[status as keyof typeof config] || {
                 label: status,
-                variant: "outline" as const,
+                classes: "status-badge status-submitted",
             };
             return (
-                <Badge variant={statusConfig.variant}>
+                <span className={statusConfig.classes}>
                     {statusConfig.label}
-                </Badge>
+                </span>
             );
         }
 
         if (type === "payment") {
             const config = {
-                pending: { label: "Pendiente", variant: "outline" as const },
-                completed: { label: "Completado", variant: "default" as const },
-                failed: { label: "Fallido", variant: "destructive" as const },
+                pending: { label: "Pendiente", classes: "status-badge status-pending" },
+                completed: { label: "Completado", classes: "status-badge status-completed" },
+                failed: { label: "Fallido", classes: "status-badge status-failed" },
                 cancelled: {
                     label: "Cancelado",
-                    variant: "secondary" as const,
+                    classes: "status-badge status-cancelled",
                 },
             };
             const statusConfig = config[status as keyof typeof config] || {
                 label: status,
-                variant: "outline" as const,
+                classes: "status-badge status-pending",
             };
             return (
-                <Badge variant={statusConfig.variant}>
+                <span className={statusConfig.classes}>
                     {statusConfig.label}
-                </Badge>
+                </span>
             );
         }
 
-        return <Badge>{status}</Badge>;
+        return <span className="status-badge status-active">{status}</span>;
     };
 
     const isExpiringSoon = (endDate: string) => {
@@ -373,7 +374,7 @@ export default function CustomerDashboard() {
                                             className="flex items-center justify-between p-4 border rounded-lg hover:border-border/80 dark:hover:border-gray-500 transition-colors duration-200"
                                         >
                                             <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
+                                                <div className="flex items-center gap-3 mb-1">
                                                     <span className="font-medium">
                                                         {policy.policy_number}
                                                     </span>
@@ -388,7 +389,7 @@ export default function CustomerDashboard() {
                                                             "expired" && (
                                                             <Badge
                                                                 variant="outline"
-                                                                className="text-xs"
+                                                                className="text-xs flex items-center justify-center px-3 py-1 min-w-[90px]"
                                                             >
                                                                 <AlertTriangle className="h-3 w-3 mr-1" />
                                                                 Vence pronto
