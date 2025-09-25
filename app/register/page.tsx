@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SuccessModal } from "@/components/ui/success-modal";
 import {
     Select,
     SelectContent,
@@ -59,7 +60,7 @@ export default function RegisterPage() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
     const router = useRouter();
     const supabase = createClient();
 
@@ -71,7 +72,6 @@ export default function RegisterPage() {
         e.preventDefault();
         setLoading(true);
         setError("");
-        setSuccess("");
 
         // Validation
         if (formData.password !== formData.confirmPassword) {
@@ -171,9 +171,8 @@ export default function RegisterPage() {
                     console.log("Perfil de cliente creado:", customerData);
                 }
 
-                setSuccess(
-                    "Cuenta creada exitosamente. Ya puedes iniciar sesión."
-                );
+                // Mostrar modal de éxito
+                setShowSuccessModal(true);
             }
         } catch (err) {
             console.error("Error inesperado:", err);
@@ -185,6 +184,12 @@ export default function RegisterPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSuccessModalClose = () => {
+        setShowSuccessModal(false);
+        // Redirigir al login después del registro exitoso
+        router.push("/login");
     };
 
     return (
@@ -224,14 +229,6 @@ export default function RegisterPage() {
                             {error && (
                                 <Alert variant="destructive">
                                     <AlertDescription>{error}</AlertDescription>
-                                </Alert>
-                            )}
-
-                            {success && (
-                                <Alert>
-                                    <AlertDescription>
-                                        {success}
-                                    </AlertDescription>
                                 </Alert>
                             )}
 
@@ -650,6 +647,15 @@ export default function RegisterPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Success Modal */}
+            <SuccessModal
+                show={showSuccessModal}
+                title="¡Registro Exitoso!"
+                message="Tu cuenta ha sido creada correctamente."
+                duration={1000}
+                onClose={handleSuccessModalClose}
+            />
         </div>
     );
 }
