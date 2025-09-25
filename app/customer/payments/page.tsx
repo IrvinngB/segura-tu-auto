@@ -366,12 +366,9 @@ export default function CustomerPaymentsPage() {
                                 amount: monthlyAmount,
                                 due_date: endDate.toISOString().split("T")[0],
                                 payment_type: "Prima Mensual",
-                                status:
-                                    daysUntilExpiry <= 3
-                                        ? daysUntilExpiry < 0
-                                            ? "overdue"
-                                            : "grace_period"
-                                        : "upcoming",
+                                status: getUpcomingPaymentStatus(
+                                    endDate.toISOString().split("T")[0]
+                                ),
                             });
                         }
                     });
@@ -411,33 +408,46 @@ export default function CustomerPaymentsPage() {
         switch (status) {
             case "completed":
                 return (
-                    <Badge className="bg-green-100 text-green-800">
+                    <span className="payment-badge payment-completed">
                         Pagado
-                    </Badge>
+                    </span>
                 );
             case "pending":
                 return (
-                    <Badge
-                        variant="secondary"
-                        className="bg-yellow-100 text-yellow-800"
-                    >
+                    <span className="payment-badge payment-pending">
                         Pendiente
-                    </Badge>
+                    </span>
                 );
             case "failed":
-                return <Badge variant="destructive">Fallido</Badge>;
+                return (
+                    <span className="payment-badge payment-failed">
+                        Fallido
+                    </span>
+                );
             case "upcoming":
-                return <Badge variant="outline">Próximo</Badge>;
+                return (
+                    <span className="payment-badge payment-upcoming">
+                        Próximo
+                    </span>
+                );
             case "overdue":
-                return <Badge variant="destructive">Vencido</Badge>;
+                return (
+                    <span className="payment-badge payment-overdue">
+                        Vencido
+                    </span>
+                );
             case "grace_period":
                 return (
-                    <Badge className="bg-orange-100 text-orange-800">
+                    <span className="payment-badge payment-grace">
                         Periodo de Gracia
-                    </Badge>
+                    </span>
                 );
             default:
-                return <Badge variant="outline">{status}</Badge>;
+                return (
+                    <span className="payment-badge payment-upcoming">
+                        {status}
+                    </span>
+                );
         }
     };
 
@@ -462,9 +472,15 @@ export default function CustomerPaymentsPage() {
         const daysUntilDue = differenceInDays(due, today);
 
         if (daysUntilDue < 0) {
-            return "overdue";
-        } else if (daysUntilDue <= 3) {
-            return "grace_period";
+            // Si ya pasó la fecha de vencimiento
+            const daysPastDue = Math.abs(daysUntilDue);
+            if (daysPastDue <= 30) {
+                // Período de gracia: hasta 30 días después del vencimiento
+                return "grace_period";
+            } else {
+                // Después de 30 días, está vencido
+                return "overdue";
+            }
         }
         return "upcoming";
     };
