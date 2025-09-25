@@ -282,6 +282,21 @@
   justify-content: center !important;
 }
 
+.status-badge.status-expiring-soon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  min-width: 120px;
+  padding: 0.25rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: 1px solid #4b5563;
+  color: #e5e7eb;
+  background: transparent;
+}
+
 .status-badge.status-active {
   background-color: #0891B2 !important;
   color: white !important;
