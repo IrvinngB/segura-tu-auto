@@ -222,15 +222,17 @@ export default function CustomerCommunicationsPage() {
         }
 
         try {
-            const { data, error } = await supabase.from("communications").insert([
-                {
-                    communication_type: newCommunication.type,
-                    direction: newCommunication.direction,
-                    subject: newCommunication.subject,
-                    content: newCommunication.content,
-                    customer_id: customerData.id,
-                },
-            ]);
+            const { data, error } = await supabase
+                .from("communications")
+                .insert([
+                    {
+                        communication_type: newCommunication.type,
+                        direction: newCommunication.direction,
+                        subject: newCommunication.subject,
+                        content: newCommunication.content,
+                        customer_id: customerData.id,
+                    },
+                ]);
 
             if (error) {
                 console.error("Error creating communication:", error);
@@ -292,7 +294,8 @@ export default function CustomerCommunicationsPage() {
                             Comunicaciones
                         </h1>
                         <p className="text-muted-foreground">
-                            Gestiona tus mensajes y notificaciones de SeguraTuAuto.
+                            Gestiona tus mensajes y notificaciones de
+                            SeguraTuAuto.
                         </p>
                     </div>
                     <Button
@@ -367,7 +370,9 @@ export default function CustomerCommunicationsPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        {getDirectionBadge(communication.direction)}
+                                        {getDirectionBadge(
+                                            communication.direction
+                                        )}
                                         {getStatusBadge(communication.status)}
                                     </div>
                                 </div>
@@ -392,7 +397,10 @@ export default function CustomerCommunicationsPage() {
                                 className="border border-border rounded-md p-2 w-full"
                                 value={newCommunication.type}
                                 onChange={(e) =>
-                                    setNewCommunication({ ...newCommunication, type: e.target.value })
+                                    setNewCommunication({
+                                        ...newCommunication,
+                                        type: e.target.value,
+                                    })
                                 }
                             >
                                 <option value="email">Email</option>
@@ -403,7 +411,10 @@ export default function CustomerCommunicationsPage() {
                                 className="border border-border rounded-md p-2 w-full"
                                 value={newCommunication.direction}
                                 onChange={(e) =>
-                                    setNewCommunication({ ...newCommunication, direction: e.target.value })
+                                    setNewCommunication({
+                                        ...newCommunication,
+                                        direction: e.target.value,
+                                    })
                                 }
                             >
                                 <option value="inbound">Recibido</option>
@@ -413,22 +424,34 @@ export default function CustomerCommunicationsPage() {
                                 placeholder="Asunto"
                                 value={newCommunication.subject}
                                 onChange={(e) =>
-                                    setNewCommunication({ ...newCommunication, subject: e.target.value })
+                                    setNewCommunication({
+                                        ...newCommunication,
+                                        subject: e.target.value,
+                                    })
                                 }
                             />
                             <Textarea
                                 placeholder="Contenido"
                                 value={newCommunication.content}
                                 onChange={(e) =>
-                                    setNewCommunication({ ...newCommunication, content: e.target.value })
+                                    setNewCommunication({
+                                        ...newCommunication,
+                                        content: e.target.value,
+                                    })
                                 }
                             />
                         </div>
                         <DialogFooter>
-                            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setIsModalOpen(false)}
+                            >
                                 Cancelar
                             </Button>
-                            <Button variant="default" onClick={handleCreateCommunication}>
+                            <Button
+                                variant="default"
+                                onClick={handleCreateCommunication}
+                            >
                                 Crear
                             </Button>
                         </DialogFooter>
