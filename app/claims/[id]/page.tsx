@@ -159,19 +159,19 @@ export default function ClaimDetailPage() {
 
     const getPriorityBadge = (priority: string) => {
         const priorityConfig = {
-            low: { label: "Baja", variant: "outline" as const },
-            medium: { label: "Media", variant: "secondary" as const },
-            high: { label: "Alta", variant: "default" as const },
-            urgent: { label: "Urgente", variant: "destructive" as const },
+            low: { label: "Baja", classes: "priority-badge priority-low" },
+            medium: { label: "Media", classes: "priority-badge priority-medium" },
+            high: { label: "Alta", classes: "priority-badge priority-high" },
+            urgent: { label: "Urgente", classes: "priority-badge priority-urgent" },
         };
 
         const config = priorityConfig[
             priority as keyof typeof priorityConfig
         ] || {
             label: priority,
-            variant: "outline" as const,
+            classes: "priority-badge priority-low",
         };
-        return <Badge variant={config.variant}>{config.label}</Badge>;
+        return <span className={config.classes}>{config.label}</span>;
     };
 
     const getClaimTypeLabel = (type: string) => {
@@ -249,7 +249,7 @@ export default function ClaimDetailPage() {
                                 )}
                             </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 justify-center">
                             {getStatusBadge(claim.status)}
                             {getPriorityBadge(claim.priority)}
                             {claim.injury_involved && (

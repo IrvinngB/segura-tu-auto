@@ -187,19 +187,19 @@ export function ClaimList({
 
     const getPriorityBadge = (priority: string) => {
         const priorityConfig = {
-            low: { label: "Baja", variant: "outline" as const },
-            medium: { label: "Media", variant: "secondary" as const },
-            high: { label: "Alta", variant: "default" as const },
-            urgent: { label: "Urgente", variant: "destructive" as const },
+            low: { label: "Baja", classes: "priority-badge priority-low" },
+            medium: { label: "Media", classes: "priority-badge priority-medium" },
+            high: { label: "Alta", classes: "priority-badge priority-high" },
+            urgent: { label: "Urgente", classes: "priority-badge priority-urgent" },
         };
 
         const config = priorityConfig[
             priority as keyof typeof priorityConfig
         ] || {
             label: priority,
-            variant: "outline" as const,
+            classes: "priority-badge priority-low",
         };
-        return <Badge variant={config.variant}>{config.label}</Badge>;
+        return <span className={config.classes}>{config.label}</span>;
     };
 
     const getClaimTypeLabel = (type: string) => {
@@ -330,7 +330,7 @@ export function ClaimList({
                                 <TableHead>Póliza</TableHead>
                                 <TableHead>Tipo</TableHead>
                                 <TableHead>Estado</TableHead>
-                                <TableHead>Prioridad</TableHead>
+                                <TableHead className="text-center">Prioridad</TableHead>
                                 <TableHead>Fecha</TableHead>
                                 <TableHead>Monto</TableHead>
                                 <TableHead>Acciones</TableHead>
@@ -406,8 +406,8 @@ export function ClaimList({
                                         <TableCell>
                                             {getStatusBadge(claim.status)}
                                         </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col gap-1">
+                                        <TableCell className="text-center">
+                                            <div className="flex flex-col gap-1 items-center">
                                                 {getPriorityBadge(
                                                     claim.priority
                                                 )}

@@ -245,6 +245,23 @@ export default function HomePage() {
         return baseItems;
     }, [userProfile?.role]);
 
+    const getPriorityBadge = (priority: string) => {
+        const priorityConfig = {
+            low: { label: "Baja", classes: "priority-badge priority-low" },
+            medium: { label: "Media", classes: "priority-badge priority-medium" },
+            high: { label: "Alta", classes: "priority-badge priority-high" },
+            urgent: { label: "Urgente", classes: "priority-badge priority-urgent" },
+        };
+
+        const config = priorityConfig[
+            priority as keyof typeof priorityConfig
+        ] || {
+            label: priority,
+            classes: "priority-badge priority-low",
+        };
+        return config;
+    };
+
     const getPriorityBadgeVariant = useMemo(
         () => (priority: string) => {
             switch (priority) {
@@ -537,18 +554,9 @@ export default function HomePage() {
                                                     {claim.claim_type}
                                                 </p>
                                             </div>
-                                            <Badge
-                                                variant={getPriorityBadgeVariant(
-                                                    claim.priority
-                                                )}
-                                            >
-                                                {claim.priority === "high"
-                                                    ? "Alta"
-                                                    : claim.priority ===
-                                                      "medium"
-                                                    ? "Media"
-                                                    : "Baja"}
-                                            </Badge>
+                                            <span className={getPriorityBadge(claim.priority).classes}>
+                                                {getPriorityBadge(claim.priority).label}
+                                            </span>
                                         </div>
                                     ))
                                 ) : (
