@@ -42,7 +42,6 @@ import { format } from "date-fns";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { toast } from "@/components/ui/use-toast";
-import { PaymentModal } from "./payment-modal";
 
 interface PolicyFormProps {
     customerId?: string;
@@ -75,229 +74,7 @@ export function PolicyForm({
     const [countdown, setCountdown] = useState(0);
     const [contractData, setContractData] = useState<any>(null);
     const [isContractDataLoaded, setIsContractDataLoaded] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [pendingPolicyData, setPendingPolicyData] = useState<any>(null);
     const supabase = createClient();
-
-    // PDF Generation Function
-    const generatePolicyPDF = async (policy: any, customerData: any, vehicleData: any) => {
-        try {
-            const doc = new jsPDF();
-            const pageWidth = doc.internal.pageSize.width;
-            const margin = 20;
-            let yPosition = 30;
-
-            // Helper function to add text with automatic line wrapping
-            const addWrappedText = (text: string, x: number, y: number, maxWidth: number) => {
-                const lines = doc.splitTextToSize(text, maxWidth);
-                doc.text(lines, x, y);
-                return y + (lines.length * 7);
-            };
-
-            // Header
-            doc.setFontSize(20);
-            doc.setFont("helvetica", "bold");
-            doc.text("PÓLIZA DE SEGURO VEHICULAR", pageWidth / 2, yPosition, { align: "center" });
-            
-            yPosition += 20;
-
-            // Policy Number
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text(`Número de Póliza: ${policy.policy_number}`, margin, yPosition);
-            yPosition += 15;
-
-            // Company Information
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.text("ASEGURADORA PREMIUM", margin, yPosition);
-            yPosition += 7;
-            doc.text("Dirección: Calle Principal #123, Ciudad", margin, yPosition);
-            yPosition += 7;
-            doc.text("Teléfono: (507) 123-4567", margin, yPosition);
-            yPosition += 7;
-            doc.text("Email: contacto@aseguradorapremium.com", margin, yPosition);
-            yPosition += 15;
-
-            // Policy Information Section
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("INFORMACIÓN DE LA PÓLIZA", margin, yPosition);
-            yPosition += 10;
-
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "normal");
-            
-            // Policy details table-like format
-            const policyInfo = [
-                [`Fecha de Inicio:`, policy.start_date],
-                [`Fecha de Vencimiento:`, policy.end_date],
-                [`Tipo de Póliza:`, policy.policy_type.toUpperCase()],
-                [`Prima Mensual:`, `$${policy.premium_amount.toLocaleString()}`],
-                [`Frecuencia de Pago:`, policy.payment_frequency],
-                [`Renovación Automática:`, policy.auto_renewal ? 'Sí' : 'No']
-            ];
-
-            policyInfo.forEach(([label, value]) => {
-                doc.setFont("helvetica", "bold");
-                doc.text(label, margin, yPosition);
-                doc.setFont("helvetica", "normal");
-                doc.text(value, margin + 60, yPosition);
-                yPosition += 7;
-            });
-
-            yPosition += 10;
-
-            // Customer Information Section
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("INFORMACIÓN DEL ASEGURADO", margin, yPosition);
-            yPosition += 10;
-
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "normal");
-
-            const customerInfo = [
-                [`Nombre:`, `${customerData.user?.first_name || ''} ${customerData.user?.last_name || ''}`],
-                [`Email:`, customerData.user?.email || ''],
-                [`Teléfono:`, customerData.user?.phone || 'No especificado'],
-                [`Dirección:`, customerData.address || 'No especificada'],
-                [`Fecha de Nacimiento:`, customerData.date_of_birth ? format(new Date(customerData.date_of_birth), 'dd/MM/yyyy') : 'No especificada'],
-                [`Género:`, customerData.gender || 'No especificado']
-            ];
-
-            customerInfo.forEach(([label, value]) => {
-                doc.setFont("helvetica", "bold");
-                doc.text(label, margin, yPosition);
-                doc.setFont("helvetica", "normal");
-                doc.text(value, margin + 60, yPosition);
-                yPosition += 7;
-            });
-
-            yPosition += 10;
-
-            // Vehicle Information Section
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("INFORMACIÓN DEL VEHÍCULO", margin, yPosition);
-            yPosition += 10;
-
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "normal");
-
-            const vehicleInfo = [
-                [`Marca:`, vehicleData.make],
-                [`Modelo:`, vehicleData.model],
-                [`Año:`, vehicleData.year.toString()],
-                [`Placa:`, vehicleData.license_plate],
-                [`VIN:`, vehicleData.vin || 'No especificado'],
-                [`Color:`, vehicleData.color || 'No especificado'],
-                [`Valor del Vehículo:`, vehicleData.value ? `$${vehicleData.value.toLocaleString()}` : 'No especificado']
-            ];
-
-            vehicleInfo.forEach(([label, value]) => {
-                doc.setFont("helvetica", "bold");
-                doc.text(label, margin, yPosition);
-                doc.setFont("helvetica", "normal");
-                doc.text(value, margin + 60, yPosition);
-                yPosition += 7;
-            });
-
-            yPosition += 10;
-
-            // Coverage Information Section
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("COBERTURAS INCLUIDAS", margin, yPosition);
-            yPosition += 10;
-
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "normal");
-
-            const selectedPlan = POLICY_PLANS[policy.policy_type as keyof typeof POLICY_PLANS];
-            if (selectedPlan) {
-                selectedPlan.coverages
-                    .filter(coverage => coverage.included)
-                    .forEach(coverage => {
-                        doc.setFont("helvetica", "bold");
-                        doc.text(`• ${coverage.name}`, margin, yPosition);
-                        yPosition += 6;
-                        doc.setFont("helvetica", "normal");
-                        yPosition = addWrappedText(
-                            `  ${coverage.description}`,
-                            margin + 5,
-                            yPosition,
-                            pageWidth - margin * 2 - 5
-                        );
-                        if (coverage.maxAmount) {
-                            doc.text(`  Cobertura máxima: $${coverage.maxAmount.toLocaleString()}`, margin + 5, yPosition);
-                            yPosition += 6;
-                        }
-                        if (coverage.percentage) {
-                            doc.text(`  Cobertura: ${coverage.percentage}%`, margin + 5, yPosition);
-                            yPosition += 6;
-                        }
-                        yPosition += 3;
-                    });
-            }
-
-            // Check if we need a new page
-            if (yPosition > 250) {
-                doc.addPage();
-                yPosition = 30;
-            }
-
-            yPosition += 10;
-
-            // Terms and Conditions
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("TÉRMINOS Y CONDICIONES", margin, yPosition);
-            yPosition += 10;
-
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-
-            const terms = [
-                "1. Esta póliza está sujeta a los términos y condiciones generales de la aseguradora.",
-                "2. El asegurado debe notificar cualquier siniestro dentro de las 48 horas siguientes al evento.",
-                "3. Las primas deben pagarse puntualmente según la frecuencia establecida.",
-                "4. La cobertura se activará a partir de la fecha de inicio especificada en esta póliza.",
-                "5. Para hacer efectiva la cobertura, el vehículo debe estar en buen estado mecánico.",
-                "6. Se requiere inspección vehicular previa para ciertos tipos de cobertura.",
-                "7. Esta póliza se rige por las leyes de la República de Panamá."
-            ];
-
-            terms.forEach(term => {
-                yPosition = addWrappedText(term, margin, yPosition, pageWidth - margin * 2);
-                yPosition += 5;
-            });
-
-            // Footer
-            const footerY = doc.internal.pageSize.height - 30;
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "italic");
-            doc.text(`Documento generado el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, margin, footerY);
-            doc.text("Aseguradora Premium - Todos los derechos reservados", pageWidth / 2, footerY + 7, { align: "center" });
-
-            // Save the PDF
-            const fileName = `Poliza_${policy.policy_number}_${customerData.user?.last_name || 'Cliente'}.pdf`;
-            doc.save(fileName);
-
-            toast({
-                title: "PDF Generado",
-                description: `El documento ${fileName} ha sido descargado exitosamente.`,
-            });
-
-        } catch (error) {
-            console.error("Error generating PDF:", error);
-            toast({
-                title: "Error",
-                description: "No se pudo generar el PDF de la póliza.",
-                variant: "destructive",
-            });
-        }
-    };
 
     // Check for pre-filled data from quote contract
     useEffect(() => {
@@ -476,10 +253,9 @@ export function PolicyForm({
                     premium_amount: calculatePrice(),
                     payment_frequency: policyData.paymentFrequency,
                     policy_type: policyData.policyType,
-                    auto_renewal: policyData.autoRenewal,
                 };
 
-                await generatePolicyPDF(mockPolicy, customerData, vehicleData);
+                generatePolicyPDF(mockPolicy, customerData, vehicleData);
             }
         } catch (error) {
             console.error("Error generando vista previa PDF:", error);
@@ -515,7 +291,7 @@ export function PolicyForm({
                 return;
             }
 
-            console.log("Iniciando proceso de creación de póliza...");
+            console.log("Iniciando creación de póliza...");
             console.log("Datos de la póliza:", {
                 customer_id: selectedCustomer,
                 vehicle_id: selectedVehicle,
@@ -528,45 +304,6 @@ export function PolicyForm({
 
             const policyNumber = generatePolicyNumber();
             console.log("Número de póliza generado:", policyNumber);
-
-            // Preparar datos de la póliza para después del pago
-            const policyDataToCreate = {
-                policyNumber,
-                selectedCustomer,
-                selectedVehicle,
-                policyData,
-                monthlyPrice,
-            };
-
-            // Mostrar modal de pago
-            setPendingPolicyData(policyDataToCreate);
-            setShowPaymentModal(true);
-
-        } catch (error) {
-            console.error("Error preparing policy:", error);
-            setError(
-                error instanceof Error
-                    ? error.message
-                    : "Error inesperado al preparar la póliza"
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handlePaymentSuccess = async (paymentId: string) => {
-        setShowPaymentModal(false);
-
-        try {
-            setLoading(true);
-
-            if (!pendingPolicyData) {
-                throw new Error("No hay datos de póliza pendientes");
-            }
-
-            const { policyNumber, selectedCustomer, selectedVehicle, policyData, monthlyPrice } = pendingPolicyData;
-
-            console.log("Creando póliza después del pago exitoso...");
 
             // Create policy
             const { data: policy, error: policyError } = await supabase
@@ -662,7 +399,7 @@ export function PolicyForm({
             setSuccess(
                 `Póliza ${policyNumber} creada exitosamente con plan ${selectedPlan?.name}`
             );
-            setCountdown(2); // Iniciar countdown de 2 segundos para mostrar el éxito
+            setCountdown(1); // Iniciar countdown de 1 segundo
 
             // Generar PDF después de crear la póliza
             try {
@@ -692,25 +429,17 @@ export function PolicyForm({
                 console.error("Error preparando datos para PDF:", pdfError);
             }
 
-            // Limpiar datos pendientes
-            setPendingPolicyData(null);
-
+            // El modal se cerrará automáticamente después de 1 segundo
         } catch (error) {
-            console.error("Error creating policy after payment:", error);
+            console.error("Error creating policy:", error);
             setError(
                 error instanceof Error
                     ? error.message
-                    : "Error inesperado al crear la póliza después del pago"
+                    : "Error inesperado al crear la póliza"
             );
         } finally {
             setLoading(false);
         }
-    };
-
-    const handlePaymentError = (error: string) => {
-        setShowPaymentModal(false);
-        setPendingPolicyData(null);
-        setError(error);
     };
 
     return (
@@ -1033,17 +762,17 @@ export function PolicyForm({
                                                 "monthly" && "por mes"}
                                             {policyData.paymentFrequency ===
                                                 "quarterly" &&
-                                                `${(
+                                                `$${(
                                                     calculatePrice() * 3
                                                 ).toLocaleString()} trimestral`}
                                             {policyData.paymentFrequency ===
                                                 "biannual" &&
-                                                `${(
+                                                `$${(
                                                     calculatePrice() * 6
                                                 ).toLocaleString()} semestral`}
                                             {policyData.paymentFrequency ===
                                                 "annual" &&
-                                                `${(
+                                                `$${(
                                                     calculatePrice() * 12
                                                 ).toLocaleString()} anual`}
                                         </div>
@@ -1122,17 +851,6 @@ export function PolicyForm({
                     </div>
                 </div>
             )}
-
-            {/* Payment Modal */}
-            <PaymentModal
-                open={showPaymentModal}
-                onOpenChange={setShowPaymentModal}
-                amount={pendingPolicyData?.monthlyPrice || 0}
-                policyNumber={pendingPolicyData?.policyNumber || ""}
-                customerId={pendingPolicyData?.selectedCustomer || ""}
-                onPaymentSuccess={handlePaymentSuccess}
-                onPaymentError={handlePaymentError}
-            />
         </>
     );
 }

@@ -5,15 +5,9 @@ export function createClient() {
   return createBrowserClient(supabaseConfig.url, supabaseConfig.anonKey, {
     auth: {
       ...supabaseConfig.auth,
-      // Deshabilitar completamente el almacenamiento de la sesión
-      storage: {
-        getItem: () => null,
-        setItem: () => {},
-        removeItem: () => {}
-      },
-      // Asegurarse de que no se intente persistir la sesión
-      persistSession: false,
-      autoRefreshToken: false,
+      // Configuración estándar para persistencia de sesiones
+      persistSession: true,
+      autoRefreshToken: true,
       detectSessionInUrl: true,
       flowType: "pkce" as const
     },

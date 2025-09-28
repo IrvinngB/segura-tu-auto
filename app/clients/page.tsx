@@ -41,6 +41,19 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useRouter } from 'next/navigation';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/components/ui/use-toast";
+import { Trash2 } from "lucide-react";
 
 export default function ClientsPage() {
     const [customers, setCustomers] = useState<Customer[]>([]);
@@ -48,6 +61,9 @@ export default function ClientsPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [riskFilter, setRiskFilter] = useState("all");
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+    const router = useRouter();
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -85,6 +101,67 @@ export default function ClientsPage() {
             console.error("Error fetching customers:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Función para ver los detalles del cliente
+    const handleViewCustomer = (customerId: string) => {
+        router.push(`/clients/${customerId}`);
+    };
+
+    // Función para editar un cliente
+    const handleEditCustomer = (customerId: string) => {
+        router.push(`/clients/${customerId}/edit`);
+    };
+
+    // Función para confirmar la eliminación
+    const confirmDelete = (customer: Customer) => {
+        setCustomerToDelete(customer);
+        setDeleteDialogOpen(true);
+    };
+
+    // Función para eliminar un cliente
+    const handleDeleteCustomer = async () => {
+        if (!customerToDelete) return;
+
+        try {
+            // Primero eliminamos el usuario relacionado si existe
+            if (customerToDelete.user_id) {
+                const { error: userError } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', customerToDelete.user_id);
+
+                if (userError) throw userError;
+            }
+
+            // Luego eliminamos el cliente
+            const { error: customerError } = await supabase
+                .from('customers')
+                .delete()
+                .eq('id', customerToDelete.id);
+
+            if (customerError) throw customerError;
+
+            // Actualizamos el estado local
+            setCustomers(customers.filter(c => c.id !== customerToDelete.id));
+            
+            // Mostramos notificación de éxito
+            toast({
+                title: "Cliente eliminado",
+                description: `El cliente ${customerToDelete.user?.first_name} ${customerToDelete.user?.last_name} ha sido eliminado correctamente.`,
+                variant: "default",
+            });
+        } catch (error) {
+            console.error("Error al eliminar el cliente:", error);
+            toast({
+                title: "Error",
+                description: "No se pudo eliminar el cliente. Por favor, inténtalo de nuevo.",
+                variant: "destructive",
+            });
+        } finally {
+            setDeleteDialogOpen(false);
+            setCustomerToDelete(null);
         }
     };
 
@@ -493,18 +570,33 @@ export default function ClientsPage() {
                                                             </div>
                                                         </TableCell>
                                                         <TableCell>
-                                                            <div className="flex gap-2">
+                                                            <div className="flex gap-1">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
+                                                                    onClick={() => handleViewCustomer(customer.id)}
+                                                                    title="Ver detalles"
+                                                                    className="h-8 w-8 p-0 hover:bg-gray-100"
                                                                 >
                                                                     <Eye className="h-4 w-4" />
                                                                 </Button>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
+                                                                    onClick={() => handleEditCustomer(customer.id)}
+                                                                    title="Editar"
+                                                                    className="h-8 w-8 p-0 hover:bg-blue-50"
                                                                 >
-                                                                    <Edit className="h-4 w-4" />
+                                                                    <Edit className="h-4 w-4 text-blue-600" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => confirmDelete(customer)}
+                                                                    title="Eliminar"
+                                                                    className="h-8 w-8 p-0 hover:bg-red-50"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4 text-red-600" />
                                                                 </Button>
                                                             </div>
                                                         </TableCell>
@@ -517,6 +609,30 @@ export default function ClientsPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Diálogo de confirmación para eliminar cliente */}
+                    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción no se puede deshacer. Esto eliminará permanentemente al cliente 
+                                    <span className="font-semibold">
+                                        {' '}{customerToDelete?.user?.first_name} {customerToDelete?.user?.last_name}
+                                    </span> y toda su información relacionada.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                    onClick={handleDeleteCustomer}
+                                    className="bg-red-600 hover:bg-red-700"
+                                >
+                                    Eliminar
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             </div>
         </div>

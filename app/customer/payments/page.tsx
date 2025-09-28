@@ -73,6 +73,7 @@ import {
     differenceInDays,
 } from "date-fns";
 import { es } from "date-fns/locale";
+import { toast } from "@/components/ui/use-toast";
 
 interface Payment {
     id: string;
@@ -113,6 +114,25 @@ interface PaymentMethod {
     is_autopay: boolean;
 }
 
+interface Policy {
+    id: string;
+    policy_number: string;
+    policy_type: string;
+    premium_amount: number;
+    payment_frequency: string;
+    status: string;
+    start_date: string;
+    end_date: string;
+    auto_renewal: boolean;
+    vehicle: {
+        id: string;
+        make: string;
+        model: string;
+        year: number;
+        license_plate: string;
+    } | null;
+}
+
 interface UpcomingPayment {
     id: string;
     policy_number: string;
@@ -126,14 +146,14 @@ export default function CustomerPaymentsPage() {
     const { userProfile } = useAuth();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-    const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>(
-        []
-    );
+    const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>([]);
+    const [policies, setPolicies] = useState<Policy[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("overview");
     const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
     const [autopayEnabled, setAutopayEnabled] = useState(false);
+    const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
     const supabase = createClient();
 
@@ -492,7 +512,77 @@ export default function CustomerPaymentsPage() {
     };
 
     const getTotalUpcoming = () => {
-        return upcomingPayments.reduce((sum, p) => sum + p.amount, 0);
+        return upcomingPayments.reduce((sum, payment) => sum + payment.amount, 0);
+    };
+
+    const handlePayment = async (paymentId: string, paymentType: string, amount: number, policyId: string) => {
+        try {
+            setLoading(true);
+
+            // Simular procesamiento de pago
+            // En una implementación real, aquí se integraría con un procesador de pagos
+            // como Stripe, PayPal, o un gateway bancario
+
+            const { data: payment, error } = await supabase
+                .from("payments")
+                .insert({
+                    policy_id: policyId,
+                    customer_id: userProfile?.id,
+                    payment_type: paymentType === "Prima Mensual" ? "premium" : "fee",
+                    amount: amount,
+                    payment_status: "completed",
+                    payment_method: "Tarjeta de crédito",
+                    payment_date: new Date().toISOString(),
+                    reference_number: `PAY-${Date.now()}`,
+                    transaction_id: `TXN-${Date.now()}`,
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // Actualizar el estado local
+            const newPayment: Payment = {
+                id: payment.id,
+                amount: payment.amount,
+                payment_type: paymentType,
+                payment_method: payment.payment_method,
+                payment_status: payment.payment_status,
+                payment_date: payment.payment_date,
+                due_date: payment.due_date,
+                reference_number: payment.reference_number,
+                description: `Pago ${paymentType.toLowerCase()} procesado exitosamente`,
+                policy: {
+                    id: policyId,
+                    policy_number: "POL-XXXX", // En una implementación real, obtener de la póliza
+                    premium_amount: amount,
+                    payment_frequency: "monthly",
+                    next_payment_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    status: "active",
+                },
+            };
+
+            setPayments(prev => [newPayment, ...prev]);
+
+            toast({
+                title: "Pago Exitoso",
+                description: `El pago de $${amount.toLocaleString()} ha sido procesado correctamente.`,
+                variant: "default",
+            });
+
+            // Recargar datos
+            loadPaymentData();
+
+        } catch (error) {
+            console.error("Error procesando pago:", error);
+            toast({
+                title: "Error en el Pago",
+                description: "No se pudo procesar el pago. Por favor, inténtalo de nuevo.",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (loading) {
@@ -607,8 +697,9 @@ export default function CustomerPaymentsPage() {
                     onValueChange={setActiveTab}
                     className="space-y-6"
                 >
-                    <TabsList className="grid w-full grid-cols-5">
+                    <TabsList className="grid w-full grid-cols-6">
                         <TabsTrigger value="overview">Resumen</TabsTrigger>
+                        <TabsTrigger value="policies">Mis Pólizas</TabsTrigger>
                         <TabsTrigger value="upcoming">
                             Próximos Pagos
                         </TabsTrigger>
@@ -773,6 +864,8 @@ export default function CustomerPaymentsPage() {
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
+                                                            onClick={() => handlePayment(payment.id, payment.payment_type, payment.amount, payment.policy_number)}
+                                                            disabled={loading}
                                                         >
                                                             Pagar Ahora
                                                         </Button>
@@ -801,6 +894,185 @@ export default function CustomerPaymentsPage() {
                                             (Se implementaría con biblioteca de
                                             gráficos)
                                         </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="policies" className="space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Shield className="h-5 w-5" />
+                                    Mis Pólizas de Seguro
+                                </CardTitle>
+                                <CardDescription>
+                                    Gestiona y paga las primas de tus pólizas activas
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-6">
+                                    {/* Pólizas Activas */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-lg font-semibold">Pólizas Activas</h3>
+
+                                        {/* Ejemplo de póliza - en implementación real vendría de la base de datos */}
+                                        <div className="border rounded-lg p-6 space-y-4">
+                                            <div className="flex justify-between items-start">
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Shield className="h-5 w-5 text-green-600" />
+                                                        <h4 className="font-semibold">Póliza Todo Riesgo</h4>
+                                                        <Badge className="bg-green-100 text-green-800">Activa</Badge>
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Número: POL-2024-001 • Vehículo: Toyota Camry 2022
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                                        <div>
+                                                            <span className="font-medium">Prima Mensual:</span> $1,250.00
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-medium">Próximo Pago:</span> 15 Oct 2024
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-medium">Cobertura:</span> $50,000.00
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-medium">Deducible:</span> $500.00
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right space-y-2">
+                                                    <div className="text-2xl font-bold text-green-600">
+                                                        $1,250.00
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handlePayment("pol1", "Prima Mensual", 1250, "POL-2024-001")}
+                                                        disabled={loading}
+                                                        className="w-full"
+                                                    >
+                                                        Pagar Prima
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-4 border-t">
+                                                <h5 className="font-medium mb-2">Coberturas Incluidas:</h5>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                                                    <span className="flex items-center gap-1">
+                                                        <CheckCircle className="h-3 w-3 text-green-600" />
+                                                        Responsabilidad Civil
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <CheckCircle className="h-3 w-3 text-green-600" />
+                                                        Daños Propios
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <CheckCircle className="h-3 w-3 text-green-600" />
+                                                        Robo Total
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <CheckCircle className="h-3 w-3 text-green-600" />
+                                                        Asistencia Vial
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <CheckCircle className="h-3 w-3 text-green-600" />
+                                                        Cobertura de Cristales
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Segunda póliza de ejemplo */}
+                                        <div className="border rounded-lg p-6 space-y-4">
+                                            <div className="flex justify-between items-start">
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Shield className="h-5 w-5 text-blue-600" />
+                                                        <h4 className="font-semibold">Póliza Básica</h4>
+                                                        <Badge className="bg-blue-100 text-blue-800">Activa</Badge>
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Número: POL-2024-002 • Vehículo: Honda Civic 2021
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                                        <div>
+                                                            <span className="font-medium">Prima Mensual:</span> $850.00
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-medium">Próximo Pago:</span> 20 Oct 2024
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-medium">Cobertura:</span> $25,000.00
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-medium">Deducible:</span> $1,000.00
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right space-y-2">
+                                                    <div className="text-2xl font-bold text-blue-600">
+                                                        $850.00
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => handlePayment("pol2", "Prima Mensual", 850, "POL-2024-002")}
+                                                        disabled={loading}
+                                                        className="w-full"
+                                                    >
+                                                        Pagar Prima
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-4 border-t">
+                                                <h5 className="font-medium mb-2">Coberturas Incluidas:</h5>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                                                    <span className="flex items-center gap-1">
+                                                        <CheckCircle className="h-3 w-3 text-green-600" />
+                                                        Responsabilidad Civil
+                                                    </span>
+                                                    <span className="flex items-center gap-1">
+                                                        <CheckCircle className="h-3 w-3 text-green-600" />
+                                                        Daños a Terceros
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Resumen de Pólizas */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t">
+                                        <Card className="bg-green-50 border-green-200">
+                                            <CardContent className="pt-4">
+                                                <div className="text-center">
+                                                    <div className="text-2xl font-bold text-green-600">2</div>
+                                                    <p className="text-sm text-green-700">Pólizas Activas</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+
+                                        <Card className="bg-blue-50 border-blue-200">
+                                            <CardContent className="pt-4">
+                                                <div className="text-center">
+                                                    <div className="text-2xl font-bold text-blue-600">$2,100.00</div>
+                                                    <p className="text-sm text-blue-700">Prima Mensual Total</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+
+                                        <Card className="bg-purple-50 border-purple-200">
+                                            <CardContent className="pt-4">
+                                                <div className="text-center">
+                                                    <div className="text-2xl font-bold text-purple-600">$75,000.00</div>
+                                                    <p className="text-sm text-purple-700">Cobertura Total</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
                                     </div>
                                 </div>
                             </CardContent>
@@ -863,7 +1135,11 @@ export default function CustomerPaymentsPage() {
                                                     </p>
                                                     {getStatusBadge(status)}
                                                     <div className="mt-2 space-x-2">
-                                                        <Button size="sm">
+                                                        <Button 
+                                                            size="sm"
+                                                            onClick={() => handlePayment(payment.id, payment.payment_type, payment.amount, "policy_id_placeholder")}
+                                                            disabled={loading}
+                                                        >
                                                             Pagar Ahora
                                                         </Button>
                                                         <Button

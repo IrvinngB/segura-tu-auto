@@ -86,6 +86,14 @@ export default function RegisterPage() {
             return;
         }
 
+        // Validar roles permitidos
+        const allowedRoles = ["customer", "agent"];
+        if (!allowedRoles.includes(formData.role)) {
+            setError("Rol no permitido. Solo se permiten clientes y agentes.");
+            setLoading(false);
+            return;
+        }
+
         try {
             // Create auth user (sin confirmación por correo para desarrollo)
             const { data, error } = await supabase.auth.signUp({
@@ -169,6 +177,10 @@ export default function RegisterPage() {
                     }
 
                     console.log("Perfil de cliente creado:", customerData);
+                } else if (formData.role === "agent") {
+                    // For agents, we might want to create a different profile or just the user record
+                    // This can be extended later if needed
+                    console.log("Perfil de agente creado - solo registro de usuario");
                 }
 
                 // Mostrar modal de éxito
@@ -354,9 +366,6 @@ export default function RegisterPage() {
                                         </SelectItem>
                                         <SelectItem value="agent">
                                             Agente
-                                        </SelectItem>
-                                        <SelectItem value="adjuster">
-                                            Ajustador
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
