@@ -15,8 +15,8 @@ export const supabaseConfig = {
   
   // Configuración de auth
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
+    autoRefreshToken: false,
+    persistSession: false,
     detectSessionInUrl: true,
     flowType: 'pkce' as const,
   }
