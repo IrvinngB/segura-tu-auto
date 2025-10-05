@@ -66,6 +66,36 @@ export default function RegisterPage() {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
+    // Función para manejar errores de forma amigable
+    const handleError = (errorMessage: string) => {
+        const errorMap: { [key: string]: string } = {
+            "User already registered": "Este correo electrónico ya está registrado. Intenta iniciar sesión o usar otro correo.",
+            "Invalid email": "Por favor, ingresa un correo electrónico válido.",
+            "Password should be at least 6 characters": "La contraseña debe tener al menos 6 caracteres.",
+            "Signup is disabled": "El registro está temporalmente deshabilitado. Inténtalo más tarde.",
+            "Email rate limit exceeded": "Demasiados intentos de registro. Espera unos minutos antes de intentar nuevamente.",
+            "duplicate key value violates unique constraint": "Este correo electrónico ya está registrado. Intenta iniciar sesión."
+        };
+
+        // Buscar coincidencias exactas o parciales
+        let friendlyMessage = "Ocurrió un error durante el registro. Por favor, inténtalo de nuevo.";
+        
+        for (const [key, value] of Object.entries(errorMap)) {
+            if (errorMessage.toLowerCase().includes(key.toLowerCase())) {
+                friendlyMessage = value;
+                break;
+            }
+        }
+
+        setError(friendlyMessage);
+        
+        // Scroll automático hacia arriba para mostrar el error
+        window.scrollTo({ 
+            top: 0, 
+            behavior: 'smooth' 
+        });
+    };
+
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -73,13 +103,13 @@ export default function RegisterPage() {
 
         // Validation
         if (formData.password !== formData.confirmPassword) {
-            setError("Las contraseñas no coinciden");
+            handleError("Las contraseñas no coinciden");
             setLoading(false);
             return;
         }
 
-        if (formData.password.length < 6) {
-            setError("La contraseña debe tener al menos 6 caracteres");
+        if (!validatePassword(formData.password)) {
+            handleError("La contraseña debe tener al menos 8 caracteres, una mayúscula y un carácter especial");
             setLoading(false);
             return;
         }
@@ -87,7 +117,7 @@ export default function RegisterPage() {
         // Validar roles permitidos
         const allowedRoles = ["customer", "agent"];
         if (!allowedRoles.includes(formData.role)) {
-            setError("Rol no permitido. Solo se permiten clientes y agentes.");
+            handleError("Rol no permitido. Solo se permiten clientes y agentes.");
             setLoading(false);
             return;
         }
@@ -113,7 +143,7 @@ export default function RegisterPage() {
             });
 
             if (error) {
-                setError(`Error de autenticación: ${error.message}`);
+                handleError(error.message);
                 return;
             }
 
@@ -146,9 +176,7 @@ export default function RegisterPage() {
 
                 if (insertError) {
                     console.error("Error insertando usuario:", insertError);
-                    setError(
-                        `Error creando perfil de usuario: ${insertError.message}`
-                    );
+                    handleError(insertError.message);
                     return;
                 }
 
@@ -179,9 +207,7 @@ export default function RegisterPage() {
                             "Error creando perfil de cliente:",
                             customerError
                         );
-                        setError(
-                            `Error creando perfil de cliente: ${customerError.message}`
-                        );
+                        handleError(customerError.message);
                         return;
                     }
 
@@ -199,10 +225,8 @@ export default function RegisterPage() {
             }
         } catch (err) {
             console.error("Error inesperado:", err);
-            setError(
-                `Error inesperado: ${
-                    err instanceof Error ? err.message : "Error desconocido"
-                }`
+            handleError(
+                err instanceof Error ? err.message : "Error desconocido"
             );
         } finally {
             setLoading(false);
@@ -215,6 +239,19 @@ export default function RegisterPage() {
         router.push("/login");
     };
 
+    // Función para validar la contraseña
+    const validatePassword = (password: string) => {
+        if (password.length < 8) return false;
+        if (!/[A-Z]/.test(password)) return false; // Al menos una mayúscula
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) return false; // Al menos un carácter especial
+        return true;
+    };
+
+    // Funciones para validar cada requisito individualmente
+    const hasMinLength = (password: string) => password.length >= 8;
+    const hasUppercase = (password: string) => /[A-Z]/.test(password);
+    const hasSpecialChar = (password: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
     // Función para verificar si todos los campos requeridos están completos
     const isFormValid = () => {
         // Campos básicos requeridos para todos los roles
@@ -222,33 +259,23 @@ export default function RegisterPage() {
             formData.firstName.trim() !== "" &&
             formData.lastName.trim() !== "" &&
             formData.email.trim() !== "" &&
+            formData.phone.trim() !== "" &&
             formData.password.trim() !== "" &&
             formData.confirmPassword.trim() !== "" &&
             formData.password === formData.confirmPassword &&
-            formData.password.length >= 6;
-
-        // Debug: log para ver qué está pasando
-        console.log("Form validation:", {
-            role: formData.role,
-            firstName: formData.firstName.trim() !== "",
-            lastName: formData.lastName.trim() !== "",
-            email: formData.email.trim() !== "",
-            password: formData.password.trim() !== "",
-            confirmPassword: formData.confirmPassword.trim() !== "",
-            passwordsMatch: formData.password === formData.confirmPassword,
-            passwordLength: formData.password.length >= 6,
-            basicComplete: basicFieldsComplete,
-            country: formData.country.trim() !== "",
-        });
+            validatePassword(formData.password);
 
         // Si es customer, verificar campos adicionales requeridos
         if (formData.role === "customer") {
-            const customerFieldsComplete = formData.country.trim() !== "";
-            // birthDate y licenseYear son opcionales para customer
+            const customerFieldsComplete = 
+                formData.country.trim() !== "" &&
+                formData.birthDate.trim() !== "" &&
+                formData.licenseYear.trim() !== "";
+            
             return basicFieldsComplete && customerFieldsComplete;
         }
 
-        // Para agent, solo campos básicos (no requiere birthDate, country, etc.)
+        // Para agent, solo campos básicos
         return basicFieldsComplete;
     };
 
@@ -266,7 +293,7 @@ export default function RegisterPage() {
                 </Button>
             </Link>
 
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-lg">
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center mb-4">
                         <Shield className="h-12 w-12 text-primary" />
@@ -294,7 +321,7 @@ export default function RegisterPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="firstName">Nombre</Label>
+                                    <Label htmlFor="firstName">Nombre *</Label>
                                     <div className="relative">
                                         <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                         <Input
@@ -314,7 +341,7 @@ export default function RegisterPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="lastName">Apellido</Label>
+                                    <Label htmlFor="lastName">Apellido *</Label>
                                     <Input
                                         id="lastName"
                                         placeholder="Pérez"
@@ -332,7 +359,7 @@ export default function RegisterPage() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="email">
-                                    Correo Electrónico
+                                    Correo Electrónico *
                                 </Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -354,7 +381,7 @@ export default function RegisterPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="phone">Teléfono</Label>
+                                <Label htmlFor="phone">Teléfono *</Label>
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -369,6 +396,7 @@ export default function RegisterPage() {
                                             )
                                         }
                                         className="pl-10"
+                                        required
                                     />
                                 </div>
                             </div>
@@ -396,7 +424,21 @@ export default function RegisterPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="password">Contraseña</Label>
+                                <Label htmlFor="password">Contraseña *</Label>
+                                <div className="text-xs space-y-1">
+                                    <div className={`flex items-center gap-2 ${hasMinLength(formData.password) ? 'text-green-600' : 'text-red-600'}`}>
+                                        <span className={`w-2 h-2 rounded-full ${hasMinLength(formData.password) ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                                        Mínimo 8 caracteres
+                                    </div>
+                                    <div className={`flex items-center gap-2 ${hasUppercase(formData.password) ? 'text-green-600' : 'text-red-600'}`}>
+                                        <span className={`w-2 h-2 rounded-full ${hasUppercase(formData.password) ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                                        Al menos 1 mayúscula
+                                    </div>
+                                    <div className={`flex items-center gap-2 ${hasSpecialChar(formData.password) ? 'text-green-600' : 'text-red-600'}`}>
+                                        <span className={`w-2 h-2 rounded-full ${hasSpecialChar(formData.password) ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                                        Al menos 1 carácter especial
+                                    </div>
+                                </div>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -433,7 +475,7 @@ export default function RegisterPage() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="confirmPassword">
-                                    Confirmar Contraseña
+                                    Confirmar Contraseña *
                                 </Label>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -544,7 +586,7 @@ export default function RegisterPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="birthDate">
-                                                Fecha de Nacimiento
+                                                Fecha de Nacimiento *
                                             </Label>
                                             <div className="relative">
                                                 <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -564,13 +606,14 @@ export default function RegisterPage() {
                                                             .toISOString()
                                                             .split("T")[0]
                                                     }
+                                                    required
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="space-y-2">
                                             <Label htmlFor="licenseYear">
-                                                Año que Obtuvo la Licencia
+                                                Año que Obtuvo la Licencia *
                                             </Label>
                                             <Input
                                                 id="licenseYear"
@@ -585,6 +628,7 @@ export default function RegisterPage() {
                                                 }
                                                 min="1970"
                                                 max={new Date().getFullYear()}
+                                                required
                                             />
                                         </div>
                                     </div>
@@ -619,8 +663,8 @@ export default function RegisterPage() {
             <SuccessModal
                 show={showSuccessModal}
                 title="¡Registro Exitoso!"
-                message="Tu cuenta ha sido creada. Revisa tu email para confirmar tu cuenta antes de iniciar sesión."
-                duration={3000}
+                message="Tu cuenta ha sido creada exitosamente."
+                duration={1500}
                 onClose={handleSuccessModalClose}
             />
         </div>

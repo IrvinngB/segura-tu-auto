@@ -883,3 +883,12 @@ html.dark section::-webkit-scrollbar-thumb:hover {
   border-color: #2563eb !important;
   box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2) !important;
 }
+
+/* Fix for scrollbar width issue when select dropdowns open */
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  scrollbar-gutter: stable;
+}
