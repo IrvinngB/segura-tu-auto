@@ -892,3 +892,24 @@ html {
 body {
   scrollbar-gutter: stable;
 }
+
+/* Prevent body overflow changes when select is opened */
+body[data-scroll-locked] {
+  overflow: visible !important;
+  padding-right: 0 !important;
+}
+
+/* Force stable scrollbar for Select components */
+[data-radix-select-content] {
+  scrollbar-gutter: stable;
+}
+
+/* Prevent layout shift when Select portal opens */
+[data-radix-portal] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+[data-radix-portal]::-webkit-scrollbar {
+  display: none;
+}

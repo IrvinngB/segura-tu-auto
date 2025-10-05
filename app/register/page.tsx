@@ -424,7 +424,12 @@ export default function RegisterPage() {
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecciona tu rol" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent 
+                                        className="z-50"
+                                        position="popper"
+                                        side="bottom"
+                                        align="start"
+                                    >
                                         <SelectItem value="customer">
                                             Cliente
                                         </SelectItem>
@@ -594,7 +599,12 @@ export default function RegisterPage() {
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Selecciona tu país *" />
                                             </SelectTrigger>
-                                            <SelectContent>
+                                            <SelectContent 
+                                                className="z-50"
+                                                position="popper"
+                                                side="bottom"
+                                                align="start"
+                                            >
                                                 <SelectItem value="Costa Rica">
                                                     Costa Rica
                                                 </SelectItem>
