@@ -218,39 +218,108 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         setVehicleData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleContractPolicy = () => {
-        // Prepare the data to pass to the policy creation form
-        const policyData = {
-            vehicleId: selectedVehicleId,
-            vehicleData: vehicleData,
-            planType: selectedPlan,
-            driverData: driverData,
-            calculatedPremium: calculatedQuote,
-            planDetails:
-                POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS],
-        };
-
-        console.log("Sending contract data:", policyData);
-        console.log("Selected plan type:", selectedPlan);
-        console.log("Available POLICY_PLANS keys:", Object.keys(POLICY_PLANS));
-
-        // Verify the plan exists
-        if (!POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS]) {
-            console.error(
-                "Selected plan not found in POLICY_PLANS:",
-                selectedPlan
-            );
+    const handleContractPolicy = async () => {
+        if (!selectedVehicleId || !customerData) {
+            console.error("Missing required data for quote creation");
             return;
         }
 
-        // Store the data in sessionStorage so it can be accessed by the policy form
-        sessionStorage.setItem(
-            "policyContractData",
-            JSON.stringify(policyData)
-        );
+        try {
+            const selectedPlanDetails =
+                POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS];
 
-        // Navigate to the policy creation page using Next.js router
-        router.push("/customer/policies/new");
+            if (!selectedPlanDetails) {
+                console.error(
+                    "Selected plan not found in POLICY_PLANS:",
+                    selectedPlan
+                );
+                return;
+            }
+
+            // Prepare quote data
+            const currentDate = new Date();
+            const endDate = new Date(
+                currentDate.getFullYear() + 1,
+                currentDate.getMonth(),
+                currentDate.getDate()
+            );
+
+            const quoteData = {
+                customer_id: customerData.id,
+                vehicle_id: selectedVehicleId,
+                policy_type: selectedPlan,
+                start_date: currentDate.toISOString().split("T")[0],
+                end_date: endDate.toISOString().split("T")[0],
+                premium_amount: calculatedQuote,
+                payment_frequency: "monthly",
+                auto_renewal: true,
+                selected_coverages: selectedPlanDetails.coverages.map(
+                    (coverage) => ({
+                        name: coverage.name,
+                        description: coverage.description,
+                        included: coverage.included,
+                        maxAmount: coverage.maxAmount,
+                        percentage: coverage.percentage,
+                    })
+                ),
+                driver_data: driverData,
+                vehicle_data: vehicleData,
+                risk_assessment: {
+                    age: driverData.age,
+                    experience: driverData.drivingExperience,
+                    vehicleAge: new Date().getFullYear() - vehicleData.year,
+                    hasAccidents: driverData.hasAccidents,
+                    hasClaims: driverData.hasClaims,
+                    calculatedScore: 75, // Base score, can be enhanced later
+                },
+            };
+
+            console.log("Creating quote with data:", quoteData);
+
+            // Create quote via API
+            const response = await fetch("/api/quotes", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(quoteData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to create quote");
+            }
+
+            const { quote } = await response.json();
+            console.log("Quote created successfully:", quote);
+
+            // Show success message and navigate to quotes page
+            if (onSuccess) {
+                onSuccess({
+                    ...quote,
+                    calculatedPremium: calculatedQuote,
+                    vehicle: vehicleData,
+                    message:
+                        "Cotización creada exitosamente. Un agente la revisará pronto.",
+                });
+            } else {
+                // Navigate to customer quotes page to see the new quote
+                router.push("/customer/quotes");
+            }
+        } catch (error) {
+            console.error("Error creating quote:", error);
+            // Show detailed error information
+            let errorMessage = "Error al crear la cotización: ";
+            if (error instanceof Error) {
+                errorMessage += error.message;
+            } else if (typeof error === "string") {
+                errorMessage += error;
+            } else {
+                errorMessage += "Error desconocido";
+            }
+            console.log("Detailed error:", error);
+            alert(errorMessage + "\n\nRevisa la consola para más detalles.");
+        }
     };
 
     return (
@@ -639,11 +708,11 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                     type="button"
                                     variant="default"
                                     size="lg"
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3"
                                     onClick={handleContractPolicy}
                                 >
                                     <Shield className="h-5 w-5 mr-2" />
-                                    Contratar Esta Póliza - $
+                                    Solicitar Cotización - $
                                     {calculatedQuote.toLocaleString()}/año
                                 </Button>
                             )}
