@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
     console.log("🔄 PATCH /api/quotes/[id] - Starting quote action");
     console.log("📋 Quote ID:", params.id);
-    
+
     const cookieStore = cookies();
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +27,10 @@ export async function PATCH(
         error: authError,
     } = await supabase.auth.getUser();
 
-    console.log("🔐 Auth check:", { user: user?.id, authError: authError?.message });
+    console.log("🔐 Auth check:", {
+        user: user?.id,
+        authError: authError?.message,
+    });
 
     if (authError || !user) {
         console.log("❌ Authentication failed");
@@ -85,7 +88,7 @@ export async function PATCH(
 
         if (action === "approve") {
             console.log("✅ Approving quote and creating policy...");
-            
+
             // If approving, create a policy from the quote
             const policyNumber = `POL-${Date.now()}-${Math.random()
                 .toString(36)
