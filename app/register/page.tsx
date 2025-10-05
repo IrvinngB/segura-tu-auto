@@ -16,7 +16,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { SuccessModal } from "@/components/ui/success-modal";
 import {
     Select,
@@ -49,7 +49,7 @@ export default function RegisterPage() {
         phone: "",
         role: "customer",
         // Location information
-        country: "México",
+        country: "Costa Rica",
         // Driver information
         birthDate: "",
         licenseYear: "",
@@ -169,7 +169,7 @@ export default function RegisterPage() {
                                 user_id: data.user.id,
                                 date_of_birth: formData.birthDate || null,
                                 // Location field
-                                country: formData.country || "Panamá",
+                                country: formData.country || "Costa Rica",
                                 // Driver information
                                 driving_experience_years: drivingExperience,
                             })
@@ -503,71 +503,23 @@ export default function RegisterPage() {
                                                 <SelectValue placeholder="Selecciona tu país *" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="México">
-                                                    México
-                                                </SelectItem>
-                                                <SelectItem value="Estados Unidos">
-                                                    Estados Unidos
-                                                </SelectItem>
-                                                <SelectItem value="Canadá">
-                                                    Canadá
+                                                <SelectItem value="Costa Rica">
+                                                    Costa Rica
                                                 </SelectItem>
                                                 <SelectItem value="Guatemala">
                                                     Guatemala
                                                 </SelectItem>
-                                                <SelectItem value="Belice">
-                                                    Belice
+                                                <SelectItem value="Honduras">
+                                                    Honduras
                                                 </SelectItem>
                                                 <SelectItem value="El Salvador">
                                                     El Salvador
                                                 </SelectItem>
-                                                <SelectItem value="Honduras">
-                                                    Honduras
-                                                </SelectItem>
                                                 <SelectItem value="Nicaragua">
                                                     Nicaragua
                                                 </SelectItem>
-                                                <SelectItem value="Costa Rica">
-                                                    Costa Rica
-                                                </SelectItem>
                                                 <SelectItem value="Panamá">
                                                     Panamá
-                                                </SelectItem>
-                                                <SelectItem value="Colombia">
-                                                    Colombia
-                                                </SelectItem>
-                                                <SelectItem value="Venezuela">
-                                                    Venezuela
-                                                </SelectItem>
-                                                <SelectItem value="Ecuador">
-                                                    Ecuador
-                                                </SelectItem>
-                                                <SelectItem value="Perú">
-                                                    Perú
-                                                </SelectItem>
-                                                <SelectItem value="Brasil">
-                                                    Brasil
-                                                </SelectItem>
-                                                <SelectItem value="Argentina">
-                                                    Argentina
-                                                </SelectItem>
-                                                <SelectItem value="Chile">
-                                                    Chile
-                                                </SelectItem>
-                                                <SelectItem value="Uruguay">
-                                                    Uruguay
-                                                </SelectItem>
-                                                <SelectItem value="Paraguay">
-                                                    Paraguay
-                                                </SelectItem>
-                                                <SelectItem value="Bolivia">
-                                                    Bolivia
-                                                </SelectItem>
-                                                <SelectItem value="España">
-                                                    España
-                                                </SelectItem>
-                                                <SelectItem value="Otro">
-                                                    Otro
                                                 </SelectItem>
                                             </SelectContent>
                                         </Select>
@@ -637,47 +589,7 @@ export default function RegisterPage() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="hasAccidents"
-                                                checked={formData.hasAccidents}
-                                                onCheckedChange={(checked) =>
-                                                    handleInputChange(
-                                                        "hasAccidents",
-                                                        checked as boolean
-                                                    )
-                                                }
-                                            />
-                                            <Label
-                                                htmlFor="hasAccidents"
-                                                className="text-sm"
-                                            >
-                                                He tenido accidentes en los
-                                                últimos 3 años
-                                            </Label>
-                                        </div>
 
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="hasClaims"
-                                                checked={formData.hasClaims}
-                                                onCheckedChange={(checked) =>
-                                                    handleInputChange(
-                                                        "hasClaims",
-                                                        checked as boolean
-                                                    )
-                                                }
-                                            />
-                                            <Label
-                                                htmlFor="hasClaims"
-                                                className="text-sm"
-                                            >
-                                                He hecho reclamaciones en los
-                                                últimos 3 años
-                                            </Label>
-                                        </div>
-                                    </div>
                                 </>
                             )}
 
