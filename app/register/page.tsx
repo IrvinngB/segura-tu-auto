@@ -172,8 +172,6 @@ export default function RegisterPage() {
                                 country: formData.country || "Panamá",
                                 // Driver information
                                 driving_experience_years: drivingExperience,
-                                has_accidents: formData.hasAccidents,
-                                has_claims: formData.hasClaims,
                             })
                             .select();
                     if (customerError) {
