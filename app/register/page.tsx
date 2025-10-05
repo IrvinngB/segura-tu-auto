@@ -101,9 +101,10 @@ export default function RegisterPage() {
                 password: formData.password,
                 options: {
                     // Para desarrollo, no requerir confirmación por email
-                    emailRedirectTo: process.env.NODE_ENV === 'development' 
-                        ? undefined 
-                        : `${window.location.origin}/auth/callback`,
+                    emailRedirectTo:
+                        process.env.NODE_ENV === "development"
+                            ? undefined
+                            : `${window.location.origin}/auth/callback`,
                     data: {
                         first_name: formData.firstName,
                         last_name: formData.lastName,
@@ -120,8 +121,11 @@ export default function RegisterPage() {
 
             if (data.user) {
                 console.log("Usuario creado en auth:", data.user.id);
-                console.log("Email confirmado:", data.user.email_confirmed_at !== null);
-                
+                console.log(
+                    "Email confirmado:",
+                    data.user.email_confirmed_at !== null
+                );
+
                 // Si el email no está confirmado, mostrar mensaje de confirmación
                 if (!data.user.email_confirmed_at) {
                     setShowSuccessModal(true);
@@ -189,7 +193,9 @@ export default function RegisterPage() {
                 } else if (formData.role === "agent") {
                     // For agents, we might want to create a different profile or just the user record
                     // This can be extended later if needed
-                    console.log("Perfil de agente creado - solo registro de usuario");
+                    console.log(
+                        "Perfil de agente creado - solo registro de usuario"
+                    );
                 }
 
                 // Mostrar modal de éxito
