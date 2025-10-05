@@ -21,6 +21,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SuccessModal } from "@/components/ui/success-modal";
 import { createClient } from "@/lib/supabase/client";
 import type { Quote } from "@/lib/types/database";
 import {
@@ -46,6 +47,9 @@ export function AgentQuoteManagement() {
     const [notes, setNotes] = useState("");
     const [rejectedReason, setRejectedReason] = useState("");
     const [processing, setProcessing] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
+    const [successTitle, setSuccessTitle] = useState("");
     const supabase = createClient();
 
     useEffect(() => {
@@ -117,11 +121,16 @@ export function AgentQuoteManagement() {
             setNotes("");
             setRejectedReason("");
 
-            // Show success message
-            alert(result.message || "Cotización procesada exitosamente");
+            // Show success message with SuccessModal
+            setSuccessTitle(actionType === 'approve' ? '¡Cotización Aprobada!' : '¡Cotización Rechazada!');
+            setSuccessMessage(result.message || `La cotización ha sido ${actionType === 'approve' ? 'aprobada' : 'rechazada'} exitosamente`);
+            setShowSuccessModal(true);
         } catch (error) {
             console.error("Error processing quote:", error);
-            alert("Error al procesar la cotización");
+            // Show error message with SuccessModal (we can use it for errors too)
+            setSuccessTitle('Error al Procesar');
+            setSuccessMessage('No se pudo procesar la cotización. Por favor, intente nuevamente.');
+            setShowSuccessModal(true);
         } finally {
             setProcessing(false);
         }
@@ -678,6 +687,15 @@ export function AgentQuoteManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Success Modal */}
+            <SuccessModal
+                show={showSuccessModal}
+                title={successTitle}
+                message={successMessage}
+                duration={1500}
+                onClose={() => setShowSuccessModal(false)}
+            />
         </div>
     );
 }

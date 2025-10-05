@@ -34,7 +34,7 @@ export async function PATCH(
 
     if (authError || !user) {
         console.log("❌ Authentication failed");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
     try {
@@ -47,7 +47,7 @@ export async function PATCH(
 
         if (!userProfile || !["admin", "agent"].includes(userProfile.role)) {
             return NextResponse.json(
-                { error: "Insufficient permissions" },
+                { error: "Permisos insuficientes" },
                 { status: 403 }
             );
         }
@@ -60,7 +60,7 @@ export async function PATCH(
         if (!["approve", "reject"].includes(action)) {
             console.log("❌ Invalid action:", action);
             return NextResponse.json(
-                { error: "Invalid action" },
+                { error: "Acción inválida" },
                 { status: 400 }
             );
         }
@@ -74,14 +74,14 @@ export async function PATCH(
 
         if (fetchError || !existingQuote) {
             return NextResponse.json(
-                { error: "Quote not found" },
+                { error: "Cotización no encontrada" },
                 { status: 404 }
             );
         }
 
         if (existingQuote.status !== "pending") {
             return NextResponse.json(
-                { error: "Quote is not pending" },
+                { error: "La cotización no está pendiente" },
                 { status: 400 }
             );
         }
@@ -124,7 +124,7 @@ export async function PATCH(
             if (policyError) {
                 console.error("❌ Policy creation error:", policyError);
                 return NextResponse.json(
-                    { error: `Error creating policy: ${policyError.message}` },
+                    { error: `Error al crear la póliza: ${policyError.message}` },
                     { status: 500 }
                 );
             }
@@ -182,7 +182,7 @@ export async function PATCH(
             return NextResponse.json({
                 quote: updatedQuote,
                 policy,
-                message: "Quote approved and policy created successfully",
+                message: "Cotización aprobada y póliza creada exitosamente",
             });
         } else {
             // Reject the quote
@@ -208,13 +208,13 @@ export async function PATCH(
 
             return NextResponse.json({
                 quote: updatedQuote,
-                message: "Quote rejected successfully",
+                message: "Cotización rechazada exitosamente",
             });
         }
     } catch (error) {
         console.error("Error processing quote:", error);
         return NextResponse.json(
-            { error: "Internal server error" },
+            { error: "Error interno del servidor" },
             { status: 500 }
         );
     }
