@@ -5,6 +5,8 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 import { FileText, Users } from "lucide-react";
 
 export default function QuoteManagementPage() {
+    console.log("📄 QuoteManagementPage: Rendering page for agents");
+    
     return (
         <ProtectedRoute allowedRoles={["admin", "agent"]}>
             <div className="container mx-auto py-8 px-4">

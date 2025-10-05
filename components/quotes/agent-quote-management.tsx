@@ -54,19 +54,26 @@ export function AgentQuoteManagement() {
 
     const fetchQuotes = async () => {
         try {
-            const { data, error } = await fetch("/api/quotes").then((res) =>
-                res.json()
-            );
+            console.log("🔍 AgentQuoteManagement: Fetching quotes...");
+            
+            const response = await fetch("/api/quotes");
+            console.log("📡 Response status:", response.status);
+            
+            const result = await response.json();
+            console.log("📋 API Response:", result);
 
-            if (error) {
-                setError(error);
+            if (result.error) {
+                console.error("❌ API Error:", result.error);
+                setError(result.error);
                 return;
             }
 
-            setQuotes(data.quotes || []);
+            const quotesArray = result.quotes || [];
+            console.log("✅ Quotes loaded:", quotesArray.length);
+            setQuotes(quotesArray);
         } catch (error) {
-            console.error("Error fetching quotes:", error);
-            setError("Error al cargar las cotizaciones");
+            console.error("💥 Error fetching quotes:", error);
+            setError("Error al cargar las cotizaciones: " + (error instanceof Error ? error.message : 'Error desconocido'));
         } finally {
             setLoading(false);
         }

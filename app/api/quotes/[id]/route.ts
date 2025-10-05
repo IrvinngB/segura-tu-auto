@@ -6,6 +6,9 @@ export async function PATCH(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
+    console.log("🔄 PATCH /api/quotes/[id] - Starting quote action");
+    console.log("📋 Quote ID:", params.id);
+    
     const cookieStore = cookies();
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,7 +27,10 @@ export async function PATCH(
         error: authError,
     } = await supabase.auth.getUser();
 
+    console.log("🔐 Auth check:", { user: user?.id, authError: authError?.message });
+
     if (authError || !user) {
+        console.log("❌ Authentication failed");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -46,7 +52,10 @@ export async function PATCH(
         const body = await request.json();
         const { action, notes, rejected_reason } = body;
 
+        console.log("📝 Request body:", { action, notes, rejected_reason });
+
         if (!["approve", "reject"].includes(action)) {
+            console.log("❌ Invalid action:", action);
             return NextResponse.json(
                 { error: "Invalid action" },
                 { status: 400 }
@@ -75,39 +84,49 @@ export async function PATCH(
         }
 
         if (action === "approve") {
+            console.log("✅ Approving quote and creating policy...");
+            
             // If approving, create a policy from the quote
             const policyNumber = `POL-${Date.now()}-${Math.random()
                 .toString(36)
                 .substr(2, 9)
                 .toUpperCase()}`;
 
+            console.log("🎫 Generated policy number:", policyNumber);
+
             // Create policy
+            const policyData = {
+                policy_number: policyNumber,
+                customer_id: existingQuote.customer_id,
+                vehicle_id: existingQuote.vehicle_id,
+                agent_id: user.id,
+                policy_type: existingQuote.policy_type,
+                status: "active",
+                start_date: existingQuote.start_date,
+                end_date: existingQuote.end_date,
+                premium_amount: existingQuote.premium_amount,
+                payment_frequency: existingQuote.payment_frequency,
+                auto_renewal: existingQuote.auto_renewal,
+                risk_assessment: existingQuote.risk_assessment,
+            };
+
+            console.log("💾 Policy data to insert:", policyData);
+
             const { data: policy, error: policyError } = await supabase
                 .from("policies")
-                .insert({
-                    policy_number: policyNumber,
-                    customer_id: existingQuote.customer_id,
-                    vehicle_id: existingQuote.vehicle_id,
-                    agent_id: user.id,
-                    policy_type: existingQuote.policy_type,
-                    status: "active",
-                    start_date: existingQuote.start_date,
-                    end_date: existingQuote.end_date,
-                    premium_amount: existingQuote.premium_amount,
-                    payment_frequency: existingQuote.payment_frequency,
-                    auto_renewal: existingQuote.auto_renewal,
-                    risk_assessment: existingQuote.risk_assessment,
-                    discount_applied: 0,
-                })
+                .insert(policyData)
                 .select()
                 .single();
 
             if (policyError) {
+                console.error("❌ Policy creation error:", policyError);
                 return NextResponse.json(
-                    { error: policyError.message },
+                    { error: `Error creating policy: ${policyError.message}` },
                     { status: 500 }
                 );
             }
+
+            console.log("✅ Policy created successfully:", policy.id);
 
             // Create policy coverages if selected_coverages exist
             if (
