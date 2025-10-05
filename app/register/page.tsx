@@ -53,8 +53,6 @@ export default function RegisterPage() {
         // Driver information
         birthDate: "",
         licenseYear: "",
-        hasAccidents: false,
-        hasClaims: false,
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -427,9 +425,9 @@ export default function RegisterPage() {
                                         className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
                                     >
                                         {showPassword ? (
-                                            <EyeOff className="h-4 w-4" />
-                                        ) : (
                                             <Eye className="h-4 w-4" />
+                                        ) : (
+                                            <EyeOff className="h-4 w-4" />
                                         )}
                                     </button>
                                 </div>
@@ -469,9 +467,9 @@ export default function RegisterPage() {
                                         className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
                                     >
                                         {showConfirmPassword ? (
-                                            <EyeOff className="h-4 w-4" />
-                                        ) : (
                                             <Eye className="h-4 w-4" />
+                                        ) : (
+                                            <EyeOff className="h-4 w-4" />
                                         )}
                                     </button>
                                 </div>
