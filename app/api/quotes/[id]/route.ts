@@ -124,7 +124,9 @@ export async function PATCH(
             if (policyError) {
                 console.error("❌ Policy creation error:", policyError);
                 return NextResponse.json(
-                    { error: `Error al crear la póliza: ${policyError.message}` },
+                    {
+                        error: `Error al crear la póliza: ${policyError.message}`,
+                    },
                     { status: 500 }
                 );
             }

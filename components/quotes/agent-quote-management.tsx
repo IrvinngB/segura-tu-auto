@@ -122,14 +122,25 @@ export function AgentQuoteManagement() {
             setRejectedReason("");
 
             // Show success message with SuccessModal
-            setSuccessTitle(actionType === 'approve' ? '¡Cotización Aprobada!' : '¡Cotización Rechazada!');
-            setSuccessMessage(result.message || `La cotización ha sido ${actionType === 'approve' ? 'aprobada' : 'rechazada'} exitosamente`);
+            setSuccessTitle(
+                actionType === "approve"
+                    ? "¡Cotización Aprobada!"
+                    : "¡Cotización Rechazada!"
+            );
+            setSuccessMessage(
+                result.message ||
+                    `La cotización ha sido ${
+                        actionType === "approve" ? "aprobada" : "rechazada"
+                    } exitosamente`
+            );
             setShowSuccessModal(true);
         } catch (error) {
             console.error("Error processing quote:", error);
             // Show error message with SuccessModal (we can use it for errors too)
-            setSuccessTitle('Error al Procesar');
-            setSuccessMessage('No se pudo procesar la cotización. Por favor, intente nuevamente.');
+            setSuccessTitle("Error al Procesar");
+            setSuccessMessage(
+                "No se pudo procesar la cotización. Por favor, intente nuevamente."
+            );
             setShowSuccessModal(true);
         } finally {
             setProcessing(false);
