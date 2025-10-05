@@ -95,13 +95,15 @@ export default function RegisterPage() {
         }
 
         try {
-            // Create auth user (sin confirmación por correo para desarrollo)
+            // Create auth user
             const { data, error } = await supabase.auth.signUp({
                 email: formData.email,
                 password: formData.password,
                 options: {
-                    // Desactivar confirmación por correo para desarrollo
-                    emailRedirectTo: undefined,
+                    // Para desarrollo, no requerir confirmación por email
+                    emailRedirectTo: process.env.NODE_ENV === 'development' 
+                        ? undefined 
+                        : `${window.location.origin}/auth/callback`,
                     data: {
                         first_name: formData.firstName,
                         last_name: formData.lastName,
@@ -118,6 +120,13 @@ export default function RegisterPage() {
 
             if (data.user) {
                 console.log("Usuario creado en auth:", data.user.id);
+                console.log("Email confirmado:", data.user.email_confirmed_at !== null);
+                
+                // Si el email no está confirmado, mostrar mensaje de confirmación
+                if (!data.user.email_confirmed_at) {
+                    setShowSuccessModal(true);
+                    return; // No crear registros adicionales hasta confirmar email
+                }
 
                 // Insert user data into users table
                 const { data: userData, error: insertError } = await supabase
@@ -208,23 +217,36 @@ export default function RegisterPage() {
     const isFormValid = () => {
         // Campos básicos requeridos para todos los roles
         const basicFieldsComplete =
-            formData.firstName &&
-            formData.lastName &&
-            formData.email &&
-            formData.password &&
-            formData.confirmPassword &&
-            formData.phone &&
-            formData.birthDate;
+            formData.firstName.trim() !== "" &&
+            formData.lastName.trim() !== "" &&
+            formData.email.trim() !== "" &&
+            formData.password.trim() !== "" &&
+            formData.confirmPassword.trim() !== "" &&
+            formData.password === formData.confirmPassword &&
+            formData.password.length >= 6;
+
+        // Debug: log para ver qué está pasando
+        console.log("Form validation:", {
+            role: formData.role,
+            firstName: formData.firstName.trim() !== "",
+            lastName: formData.lastName.trim() !== "",
+            email: formData.email.trim() !== "",
+            password: formData.password.trim() !== "",
+            confirmPassword: formData.confirmPassword.trim() !== "",
+            passwordsMatch: formData.password === formData.confirmPassword,
+            passwordLength: formData.password.length >= 6,
+            basicComplete: basicFieldsComplete,
+            country: formData.country.trim() !== "",
+        });
 
         // Si es customer, verificar campos adicionales requeridos
         if (formData.role === "customer") {
-            const customerFieldsComplete =
-                formData.country && formData.licenseYear;
-
+            const customerFieldsComplete = formData.country.trim() !== "";
+            // birthDate y licenseYear son opcionales para customer
             return basicFieldsComplete && customerFieldsComplete;
         }
 
-        // Para agent, solo campos básicos
+        // Para agent, solo campos básicos (no requiere birthDate, country, etc.)
         return basicFieldsComplete;
     };
 
@@ -685,8 +707,8 @@ export default function RegisterPage() {
             <SuccessModal
                 show={showSuccessModal}
                 title="¡Registro Exitoso!"
-                message="Tu cuenta ha sido creada correctamente."
-                duration={1300}
+                message="Tu cuenta ha sido creada. Revisa tu email para confirmar tu cuenta antes de iniciar sesión."
+                duration={3000}
                 onClose={handleSuccessModalClose}
             />
         </div>
