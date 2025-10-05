@@ -69,17 +69,23 @@ export default function RegisterPage() {
     // Función para manejar errores de forma amigable
     const handleError = (errorMessage: string) => {
         const errorMap: { [key: string]: string } = {
-            "User already registered": "Este correo electrónico ya está registrado. Intenta iniciar sesión o usar otro correo.",
+            "User already registered":
+                "Este correo electrónico ya está registrado. Intenta iniciar sesión o usar otro correo.",
             "Invalid email": "Por favor, ingresa un correo electrónico válido.",
-            "Password should be at least 6 characters": "La contraseña debe tener al menos 6 caracteres.",
-            "Signup is disabled": "El registro está temporalmente deshabilitado. Inténtalo más tarde.",
-            "Email rate limit exceeded": "Demasiados intentos de registro. Espera unos minutos antes de intentar nuevamente.",
-            "duplicate key value violates unique constraint": "Este correo electrónico ya está registrado. Intenta iniciar sesión."
+            "Password should be at least 6 characters":
+                "La contraseña debe tener al menos 6 caracteres.",
+            "Signup is disabled":
+                "El registro está temporalmente deshabilitado. Inténtalo más tarde.",
+            "Email rate limit exceeded":
+                "Demasiados intentos de registro. Espera unos minutos antes de intentar nuevamente.",
+            "duplicate key value violates unique constraint":
+                "Este correo electrónico ya está registrado. Intenta iniciar sesión.",
         };
 
         // Buscar coincidencias exactas o parciales
-        let friendlyMessage = "Ocurrió un error durante el registro. Por favor, inténtalo de nuevo.";
-        
+        let friendlyMessage =
+            "Ocurrió un error durante el registro. Por favor, inténtalo de nuevo.";
+
         for (const [key, value] of Object.entries(errorMap)) {
             if (errorMessage.toLowerCase().includes(key.toLowerCase())) {
                 friendlyMessage = value;
@@ -88,11 +94,11 @@ export default function RegisterPage() {
         }
 
         setError(friendlyMessage);
-        
+
         // Scroll automático hacia arriba para mostrar el error
-        window.scrollTo({ 
-            top: 0, 
-            behavior: 'smooth' 
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
         });
     };
 
@@ -109,7 +115,9 @@ export default function RegisterPage() {
         }
 
         if (!validatePassword(formData.password)) {
-            handleError("La contraseña debe tener al menos 8 caracteres, una mayúscula y un carácter especial");
+            handleError(
+                "La contraseña debe tener al menos 8 caracteres, una mayúscula y un carácter especial"
+            );
             setLoading(false);
             return;
         }
@@ -117,7 +125,9 @@ export default function RegisterPage() {
         // Validar roles permitidos
         const allowedRoles = ["customer", "agent"];
         if (!allowedRoles.includes(formData.role)) {
-            handleError("Rol no permitido. Solo se permiten clientes y agentes.");
+            handleError(
+                "Rol no permitido. Solo se permiten clientes y agentes."
+            );
             setLoading(false);
             return;
         }
@@ -243,14 +253,16 @@ export default function RegisterPage() {
     const validatePassword = (password: string) => {
         if (password.length < 8) return false;
         if (!/[A-Z]/.test(password)) return false; // Al menos una mayúscula
-        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) return false; // Al menos un carácter especial
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password))
+            return false; // Al menos un carácter especial
         return true;
     };
 
     // Funciones para validar cada requisito individualmente
     const hasMinLength = (password: string) => password.length >= 8;
     const hasUppercase = (password: string) => /[A-Z]/.test(password);
-    const hasSpecialChar = (password: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    const hasSpecialChar = (password: string) =>
+        /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
 
     // Función para verificar si todos los campos requeridos están completos
     const isFormValid = () => {
@@ -267,11 +279,11 @@ export default function RegisterPage() {
 
         // Si es customer, verificar campos adicionales requeridos
         if (formData.role === "customer") {
-            const customerFieldsComplete = 
+            const customerFieldsComplete =
                 formData.country.trim() !== "" &&
                 formData.birthDate.trim() !== "" &&
                 formData.licenseYear.trim() !== "";
-            
+
             return basicFieldsComplete && customerFieldsComplete;
         }
 
@@ -426,16 +438,54 @@ export default function RegisterPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="password">Contraseña *</Label>
                                 <div className="text-xs space-y-1">
-                                    <div className={`flex items-center gap-2 ${hasMinLength(formData.password) ? 'text-green-600' : 'text-red-600'}`}>
-                                        <span className={`w-2 h-2 rounded-full ${hasMinLength(formData.password) ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                                    <div
+                                        className={`flex items-center gap-2 ${
+                                            hasMinLength(formData.password)
+                                                ? "text-green-600"
+                                                : "text-red-600"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`w-2 h-2 rounded-full ${
+                                                hasMinLength(formData.password)
+                                                    ? "bg-green-600"
+                                                    : "bg-red-600"
+                                            }`}
+                                        ></span>
                                         Mínimo 8 caracteres
                                     </div>
-                                    <div className={`flex items-center gap-2 ${hasUppercase(formData.password) ? 'text-green-600' : 'text-red-600'}`}>
-                                        <span className={`w-2 h-2 rounded-full ${hasUppercase(formData.password) ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                                    <div
+                                        className={`flex items-center gap-2 ${
+                                            hasUppercase(formData.password)
+                                                ? "text-green-600"
+                                                : "text-red-600"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`w-2 h-2 rounded-full ${
+                                                hasUppercase(formData.password)
+                                                    ? "bg-green-600"
+                                                    : "bg-red-600"
+                                            }`}
+                                        ></span>
                                         Al menos 1 mayúscula
                                     </div>
-                                    <div className={`flex items-center gap-2 ${hasSpecialChar(formData.password) ? 'text-green-600' : 'text-red-600'}`}>
-                                        <span className={`w-2 h-2 rounded-full ${hasSpecialChar(formData.password) ? 'bg-green-600' : 'bg-red-600'}`}></span>
+                                    <div
+                                        className={`flex items-center gap-2 ${
+                                            hasSpecialChar(formData.password)
+                                                ? "text-green-600"
+                                                : "text-red-600"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`w-2 h-2 rounded-full ${
+                                                hasSpecialChar(
+                                                    formData.password
+                                                )
+                                                    ? "bg-green-600"
+                                                    : "bg-red-600"
+                                            }`}
+                                        ></span>
                                         Al menos 1 carácter especial
                                     </div>
                                 </div>
