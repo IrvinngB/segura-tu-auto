@@ -616,7 +616,10 @@ export function AgentQuoteManagement() {
                             {action !== "view" && (
                                 <div className="space-y-4">
                                     <div>
-                                        <Label htmlFor="notes" className="mb-2 block">
+                                        <Label
+                                            htmlFor="notes"
+                                            className="mb-2 block"
+                                        >
                                             Notas del Agente
                                         </Label>
                                         <Textarea
@@ -632,7 +635,10 @@ export function AgentQuoteManagement() {
 
                                     {action === "reject" && (
                                         <div>
-                                            <Label htmlFor="rejected_reason" className="mb-2 block">
+                                            <Label
+                                                htmlFor="rejected_reason"
+                                                className="mb-2 block"
+                                            >
                                                 Motivo del Rechazo *
                                             </Label>
                                             <Textarea
