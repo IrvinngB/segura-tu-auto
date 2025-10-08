@@ -94,7 +94,9 @@ export function NotificationModal({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
-                <div className={`rounded-lg p-6 ${colors.bg} ${colors.border} border-2`}>
+                <div
+                    className={`rounded-lg p-6 ${colors.bg} ${colors.border} border-2`}
+                >
                     <DialogHeader className="space-y-4">
                         <div className="mx-auto flex items-center justify-center">
                             {getIcon()}
@@ -106,7 +108,7 @@ export function NotificationModal({
                             {message}
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="flex gap-3 mt-6">
                         {showCancel && (
                             <Button
@@ -119,7 +121,9 @@ export function NotificationModal({
                         )}
                         <Button
                             onClick={handleConfirm}
-                            className={`${showCancel ? 'flex-1' : 'w-full'} text-white ${colors.button}`}
+                            className={`${
+                                showCancel ? "flex-1" : "w-full"
+                            } text-white ${colors.button}`}
                         >
                             {confirmText}
                         </Button>

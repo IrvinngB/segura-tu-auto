@@ -60,16 +60,18 @@ interface PaymentMethodsProps {
     allowEdit?: boolean;
 }
 
-export function PaymentMethods({ 
-    onMethodAdded, 
-    showAddButton = true, 
-    allowEdit = true 
+export function PaymentMethods({
+    onMethodAdded,
+    showAddButton = true,
+    allowEdit = true,
 }: PaymentMethodsProps) {
     const { customerData } = useCustomerDataSimple();
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
+    const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(
+        null
+    );
     const [submitting, setSubmitting] = useState(false);
     const supabase = createClient();
 
@@ -207,46 +209,62 @@ export function PaymentMethods({
         setSubmitting(true);
         try {
             // Validate form
-            if (formData.type === "credit_card" || formData.type === "debit_card") {
-                if (!formData.card_number || !formData.expiry_date || !formData.cvv) {
-                    throw new Error("Todos los campos de tarjeta son requeridos");
+            if (
+                formData.type === "credit_card" ||
+                formData.type === "debit_card"
+            ) {
+                if (
+                    !formData.card_number ||
+                    !formData.expiry_date ||
+                    !formData.cvv
+                ) {
+                    throw new Error(
+                        "Todos los campos de tarjeta son requeridos"
+                    );
                 }
             }
 
             // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise((resolve) => setTimeout(resolve, 1500));
 
             const newMethod: PaymentMethod = {
                 id: editingMethod?.id || `new-${Date.now()}`,
                 type: formData.type,
-                name: formData.cardholder_name || formData.bank_name || "Método de Pago",
-                last_four: formData.card_number.slice(-4) || formData.account_number.slice(-4) || "****",
+                name:
+                    formData.cardholder_name ||
+                    formData.bank_name ||
+                    "Método de Pago",
+                last_four:
+                    formData.card_number.slice(-4) ||
+                    formData.account_number.slice(-4) ||
+                    "****",
                 expiry_date: formData.expiry_date,
                 is_primary: formData.is_primary,
                 brand: formData.type === "credit_card" ? "Visa" : undefined,
                 bank_name: formData.bank_name,
-                created_at: editingMethod?.created_at || new Date().toISOString(),
+                created_at:
+                    editingMethod?.created_at || new Date().toISOString(),
             };
 
             if (editingMethod) {
                 // Update existing method
-                setPaymentMethods(methods => 
-                    methods.map(method => 
+                setPaymentMethods((methods) =>
+                    methods.map((method) =>
                         method.id === editingMethod.id ? newMethod : method
                     )
                 );
             } else {
                 // Add new method
-                setPaymentMethods(methods => [...methods, newMethod]);
+                setPaymentMethods((methods) => [...methods, newMethod]);
                 onMethodAdded?.(newMethod);
             }
 
             // If set as primary, update other methods
             if (formData.is_primary) {
-                setPaymentMethods(methods => 
-                    methods.map(method => ({
+                setPaymentMethods((methods) =>
+                    methods.map((method) => ({
                         ...method,
-                        is_primary: method.id === newMethod.id
+                        is_primary: method.id === newMethod.id,
                     }))
                 );
             }
@@ -254,24 +272,33 @@ export function PaymentMethods({
             setShowAddModal(false);
         } catch (error) {
             console.error("Error saving payment method:", error);
-            alert("Error al guardar el método de pago: " + (error as Error).message);
+            alert(
+                "Error al guardar el método de pago: " +
+                    (error as Error).message
+            );
         } finally {
             setSubmitting(false);
         }
     };
 
     const handleSetPrimary = async (methodId: string) => {
-        setPaymentMethods(methods => 
-            methods.map(method => ({
+        setPaymentMethods((methods) =>
+            methods.map((method) => ({
                 ...method,
-                is_primary: method.id === methodId
+                is_primary: method.id === methodId,
             }))
         );
     };
 
     const handleDeleteMethod = async (methodId: string) => {
-        if (confirm("¿Estás seguro de que quieres eliminar este método de pago?")) {
-            setPaymentMethods(methods => methods.filter(method => method.id !== methodId));
+        if (
+            confirm(
+                "¿Estás seguro de que quieres eliminar este método de pago?"
+            )
+        ) {
+            setPaymentMethods((methods) =>
+                methods.filter((method) => method.id !== methodId)
+            );
         }
     };
 
@@ -297,7 +324,8 @@ export function PaymentMethods({
                                 Métodos de Pago
                             </CardTitle>
                             <CardDescription>
-                                Gestiona tus métodos de pago para las primas de tus pólizas
+                                Gestiona tus métodos de pago para las primas de
+                                tus pólizas
                             </CardDescription>
                         </div>
                         {showAddButton && (
@@ -316,7 +344,8 @@ export function PaymentMethods({
                                 No tienes métodos de pago
                             </h3>
                             <p className="text-muted-foreground mb-4">
-                                Agrega un método de pago para poder contratar pólizas
+                                Agrega un método de pago para poder contratar
+                                pólizas
                             </p>
                             {showAddButton && (
                                 <Button onClick={handleAddMethod}>
@@ -339,19 +368,30 @@ export function PaymentMethods({
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <span className="font-medium">
-                                                    {method.name} **** {method.last_four}
+                                                    {method.name} ****{" "}
+                                                    {method.last_four}
                                                 </span>
                                                 {method.is_primary && (
-                                                    <Badge variant="default" className="text-xs">
+                                                    <Badge
+                                                        variant="default"
+                                                        className="text-xs"
+                                                    >
                                                         <Star className="h-3 w-3 mr-1" />
                                                         Principal
                                                     </Badge>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                                <span>{getMethodTypeName(method.type)}</span>
+                                                <span>
+                                                    {getMethodTypeName(
+                                                        method.type
+                                                    )}
+                                                </span>
                                                 {method.expiry_date && (
-                                                    <span>Vence: {method.expiry_date}</span>
+                                                    <span>
+                                                        Vence:{" "}
+                                                        {method.expiry_date}
+                                                    </span>
                                                 )}
                                                 {method.brand && (
                                                     <span>{method.brand}</span>
@@ -359,14 +399,18 @@ export function PaymentMethods({
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     {allowEdit && (
                                         <div className="flex items-center gap-2">
                                             {!method.is_primary && (
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={() => handleSetPrimary(method.id)}
+                                                    onClick={() =>
+                                                        handleSetPrimary(
+                                                            method.id
+                                                        )
+                                                    }
                                                     title="Establecer como principal"
                                                 >
                                                     <Star className="h-4 w-4" />
@@ -375,7 +419,9 @@ export function PaymentMethods({
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => handleEditMethod(method)}
+                                                onClick={() =>
+                                                    handleEditMethod(method)
+                                                }
                                                 title="Editar"
                                             >
                                                 <Edit className="h-4 w-4" />
@@ -383,7 +429,11 @@ export function PaymentMethods({
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => handleDeleteMethod(method.id)}
+                                                onClick={() =>
+                                                    handleDeleteMethod(
+                                                        method.id
+                                                    )
+                                                }
                                                 className="text-red-600 hover:text-red-700"
                                                 title="Eliminar"
                                             >
@@ -403,13 +453,13 @@ export function PaymentMethods({
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingMethod ? "Editar" : "Agregar"} Método de Pago
+                            {editingMethod ? "Editar" : "Agregar"} Método de
+                            Pago
                         </DialogTitle>
                         <DialogDescription>
-                            {editingMethod 
-                                ? "Actualiza la información de tu método de pago" 
-                                : "Agrega un nuevo método de pago para tus pólizas"
-                            }
+                            {editingMethod
+                                ? "Actualiza la información de tu método de pago"
+                                : "Agrega un nuevo método de pago para tus pólizas"}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -419,44 +469,68 @@ export function PaymentMethods({
                             <Label htmlFor="type">Tipo de Método</Label>
                             <Select
                                 value={formData.type}
-                                onValueChange={(value: any) => 
-                                    setFormData(prev => ({ ...prev, type: value }))
+                                onValueChange={(value: any) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        type: value,
+                                    }))
                                 }
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecciona el tipo" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="credit_card">Tarjeta de Crédito</SelectItem>
-                                    <SelectItem value="debit_card">Tarjeta de Débito</SelectItem>
-                                    <SelectItem value="bank_account">Cuenta Bancaria</SelectItem>
-                                    <SelectItem value="digital_wallet">Billetera Digital</SelectItem>
+                                    <SelectItem value="credit_card">
+                                        Tarjeta de Crédito
+                                    </SelectItem>
+                                    <SelectItem value="debit_card">
+                                        Tarjeta de Débito
+                                    </SelectItem>
+                                    <SelectItem value="bank_account">
+                                        Cuenta Bancaria
+                                    </SelectItem>
+                                    <SelectItem value="digital_wallet">
+                                        Billetera Digital
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         {/* Card Fields */}
-                        {(formData.type === "credit_card" || formData.type === "debit_card") && (
+                        {(formData.type === "credit_card" ||
+                            formData.type === "debit_card") && (
                             <>
                                 <div className="space-y-2">
-                                    <Label htmlFor="cardholder_name">Nombre del Titular</Label>
+                                    <Label htmlFor="cardholder_name">
+                                        Nombre del Titular
+                                    </Label>
                                     <Input
                                         id="cardholder_name"
                                         value={formData.cardholder_name}
-                                        onChange={(e) => 
-                                            setFormData(prev => ({ ...prev, cardholder_name: e.target.value }))
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                cardholder_name: e.target.value,
+                                            }))
                                         }
                                         placeholder="Juan Pérez"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="card_number">Número de Tarjeta</Label>
+                                    <Label htmlFor="card_number">
+                                        Número de Tarjeta
+                                    </Label>
                                     <Input
                                         id="card_number"
                                         value={formData.card_number}
                                         onChange={(e) => {
-                                            const value = e.target.value.replace(/\D/g, '').slice(0, 16);
-                                            setFormData(prev => ({ ...prev, card_number: value }));
+                                            const value = e.target.value
+                                                .replace(/\D/g, "")
+                                                .slice(0, 16);
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                card_number: value,
+                                            }));
                                         }}
                                         placeholder="1234 5678 9012 3456"
                                         maxLength={16}
@@ -464,16 +538,28 @@ export function PaymentMethods({
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="expiry_date">Fecha de Vencimiento</Label>
+                                        <Label htmlFor="expiry_date">
+                                            Fecha de Vencimiento
+                                        </Label>
                                         <Input
                                             id="expiry_date"
                                             value={formData.expiry_date}
                                             onChange={(e) => {
-                                                let value = e.target.value.replace(/\D/g, '');
+                                                let value =
+                                                    e.target.value.replace(
+                                                        /\D/g,
+                                                        ""
+                                                    );
                                                 if (value.length >= 2) {
-                                                    value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                                                    value =
+                                                        value.slice(0, 2) +
+                                                        "/" +
+                                                        value.slice(2, 4);
                                                 }
-                                                setFormData(prev => ({ ...prev, expiry_date: value }));
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    expiry_date: value,
+                                                }));
                                             }}
                                             placeholder="MM/AA"
                                             maxLength={5}
@@ -486,8 +572,13 @@ export function PaymentMethods({
                                             type="password"
                                             value={formData.cvv}
                                             onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '').slice(0, 3);
-                                                setFormData(prev => ({ ...prev, cvv: value }));
+                                                const value = e.target.value
+                                                    .replace(/\D/g, "")
+                                                    .slice(0, 3);
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    cvv: value,
+                                                }));
                                             }}
                                             placeholder="123"
                                             maxLength={3}
@@ -501,23 +592,33 @@ export function PaymentMethods({
                         {formData.type === "bank_account" && (
                             <>
                                 <div className="space-y-2">
-                                    <Label htmlFor="bank_name">Nombre del Banco</Label>
+                                    <Label htmlFor="bank_name">
+                                        Nombre del Banco
+                                    </Label>
                                     <Input
                                         id="bank_name"
                                         value={formData.bank_name}
-                                        onChange={(e) => 
-                                            setFormData(prev => ({ ...prev, bank_name: e.target.value }))
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                bank_name: e.target.value,
+                                            }))
                                         }
                                         placeholder="Banco Nacional"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="account_number">Número de Cuenta</Label>
+                                    <Label htmlFor="account_number">
+                                        Número de Cuenta
+                                    </Label>
                                     <Input
                                         id="account_number"
                                         value={formData.account_number}
-                                        onChange={(e) => 
-                                            setFormData(prev => ({ ...prev, account_number: e.target.value }))
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                account_number: e.target.value,
+                                            }))
                                         }
                                         placeholder="1234567890"
                                     />
@@ -531,8 +632,11 @@ export function PaymentMethods({
                                 id="is_primary"
                                 type="checkbox"
                                 checked={formData.is_primary}
-                                onChange={(e) => 
-                                    setFormData(prev => ({ ...prev, is_primary: e.target.checked }))
+                                onChange={(e) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        is_primary: e.target.checked,
+                                    }))
                                 }
                                 className="rounded border-gray-300"
                             />
@@ -545,8 +649,9 @@ export function PaymentMethods({
                         <Alert>
                             <Shield className="h-4 w-4" />
                             <AlertDescription>
-                                Tu información está protegida con encriptación SSL de grado bancario.
-                                No almacenamos números completos de tarjetas.
+                                Tu información está protegida con encriptación
+                                SSL de grado bancario. No almacenamos números
+                                completos de tarjetas.
                             </AlertDescription>
                         </Alert>
                     </div>
