@@ -174,13 +174,15 @@ export async function POST(request: NextRequest) {
         if (!customer_id || !vehicle_id || !policy_type || !premium_amount) {
             console.log("❌ Missing required fields");
             return NextResponse.json(
-                { error: "Missing required fields: customer_id, vehicle_id, policy_type, and premium_amount are required" },
+                {
+                    error: "Missing required fields: customer_id, vehicle_id, policy_type, and premium_amount are required",
+                },
                 { status: 400 }
             );
         }
 
         // Validate data types and ranges
-        if (typeof premium_amount !== 'number' || premium_amount <= 0) {
+        if (typeof premium_amount !== "number" || premium_amount <= 0) {
             console.log("❌ Invalid premium amount");
             return NextResponse.json(
                 { error: "Premium amount must be a positive number" },
@@ -216,9 +218,12 @@ export async function POST(request: NextRequest) {
 
         if (checkError) {
             console.error("Error checking existing policies:", checkError);
-            return NextResponse.json({ 
-                error: "Error validating vehicle policies" 
-            }, { status: 500 });
+            return NextResponse.json(
+                {
+                    error: "Error validating vehicle policies",
+                },
+                { status: 500 }
+            );
         }
 
         // Check if there's an active policy for this vehicle
@@ -232,9 +237,12 @@ export async function POST(request: NextRequest) {
 
         if (hasActivePolicy) {
             console.log("❌ Vehicle already has active policy");
-            return NextResponse.json({ 
-                error: "This vehicle already has an active policy. Cannot create quotes for vehicles with existing coverage." 
-            }, { status: 409 });
+            return NextResponse.json(
+                {
+                    error: "This vehicle already has an active policy. Cannot create quotes for vehicles with existing coverage.",
+                },
+                { status: 409 }
+            );
         }
 
         // Generate quote number

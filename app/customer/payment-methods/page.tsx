@@ -25,7 +25,8 @@ export default function CustomerPaymentMethodsPage() {
                     <div>
                         <h1 className="text-3xl font-bold">Métodos de Pago</h1>
                         <p className="text-muted-foreground">
-                            Gestiona tus métodos de pago para las primas de seguros
+                            Gestiona tus métodos de pago para las primas de
+                            seguros
                         </p>
                     </div>
                 </div>

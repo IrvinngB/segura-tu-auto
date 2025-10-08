@@ -54,7 +54,8 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
     const [selectedPlan, setSelectedPlan] = useState<string>("basica"); // Plan por defecto básico
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
-    const [hasActivePolicyForVehicle, setHasActivePolicyForVehicle] = useState(false);
+    const [hasActivePolicyForVehicle, setHasActivePolicyForVehicle] =
+        useState(false);
     const [checkingPolicies, setCheckingPolicies] = useState(false);
     const [notificationModal, setNotificationModal] = useState<{
         open: boolean;
@@ -290,16 +291,26 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         if (!vehicleData.make?.trim()) {
             errors.push("La marca del vehículo es requerida");
         }
-        
+
         if (!vehicleData.model?.trim()) {
             errors.push("El modelo del vehículo es requerido");
         }
 
-        if (!vehicleData.year || vehicleData.year < 1990 || vehicleData.year > new Date().getFullYear() + 1) {
-            errors.push("El año del vehículo debe estar entre 1990 y " + (new Date().getFullYear() + 1));
+        if (
+            !vehicleData.year ||
+            vehicleData.year < 1990 ||
+            vehicleData.year > new Date().getFullYear() + 1
+        ) {
+            errors.push(
+                "El año del vehículo debe estar entre 1990 y " +
+                    (new Date().getFullYear() + 1)
+            );
         }
 
-        if (!vehicleData.estimatedValue || parseFloat(vehicleData.estimatedValue) <= 0) {
+        if (
+            !vehicleData.estimatedValue ||
+            parseFloat(vehicleData.estimatedValue) <= 0
+        ) {
             errors.push("El valor estimado debe ser mayor a 0");
         }
 
@@ -311,7 +322,9 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
         const experience = parseInt(driverData.drivingExperience);
         if (experience < 0 || experience > age - 16) {
-            errors.push("La experiencia de manejo no puede ser negativa o mayor a la edad menos 16 años");
+            errors.push(
+                "La experiencia de manejo no puede ser negativa o mayor a la edad menos 16 años"
+            );
         }
 
         // Validar que se haya seleccionado un plan
@@ -321,7 +334,9 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
         // Validar que no haya pólizas activas para este vehículo
         if (hasActivePolicyForVehicle) {
-            errors.push("Este vehículo ya tiene una póliza activa. No se pueden crear múltiples pólizas para el mismo vehículo.");
+            errors.push(
+                "Este vehículo ya tiene una póliza activa. No se pueden crear múltiples pólizas para el mismo vehículo."
+            );
         }
 
         return errors;
@@ -510,14 +525,15 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     const handleShowConfirmModal = () => {
         // Validar datos antes de mostrar el modal
         const errors = validateQuoteData();
-        
+
         if (errors.length > 0) {
             setValidationErrors(errors);
-            
+
             // Mostrar errores en modal personalizado
-            const errorMessage = "Por favor corrija los siguientes errores:\n\n" + 
-                errors.map(error => "• " + error).join("\n");
-            
+            const errorMessage =
+                "Por favor corrija los siguientes errores:\n\n" +
+                errors.map((error) => "• " + error).join("\n");
+
             setNotificationModal({
                 open: true,
                 type: "error",
@@ -558,7 +574,8 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                 open: true,
                 type: "error",
                 title: "Datos insuficientes",
-                message: "No se pueden crear la cotización con los datos actuales",
+                message:
+                    "No se pueden crear la cotización con los datos actuales",
             });
             setIsProcessing(false);
             return;
@@ -628,21 +645,27 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                
+
                 // Determinar el tipo de error
                 let userMessage = "";
                 if (response.status === 400) {
-                    userMessage = "Datos de cotización incompletos o inválidos. Por favor verifica la información.";
+                    userMessage =
+                        "Datos de cotización incompletos o inválidos. Por favor verifica la información.";
                 } else if (response.status === 401) {
-                    userMessage = "Sesión expirada. Por favor inicia sesión nuevamente.";
+                    userMessage =
+                        "Sesión expirada. Por favor inicia sesión nuevamente.";
                 } else if (response.status === 409) {
-                    userMessage = "Ya existe una póliza activa para este vehículo.";
+                    userMessage =
+                        "Ya existe una póliza activa para este vehículo.";
                 } else if (response.status >= 500) {
-                    userMessage = "Error del servidor. Por favor intenta nuevamente en unos momentos.";
+                    userMessage =
+                        "Error del servidor. Por favor intenta nuevamente en unos momentos.";
                 } else {
-                    userMessage = errorData.error || "Error desconocido al crear la cotización.";
+                    userMessage =
+                        errorData.error ||
+                        "Error desconocido al crear la cotización.";
                 }
-                
+
                 throw new Error(userMessage);
             }
 
@@ -653,10 +676,16 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             generateQuotePDF(quote);
 
             // Show success modal/message
-            const successMessage = "¡Cotización creada exitosamente! 🎉\n\n" +
-                `• Número de cotización: ${quote.quote_number || 'COT-' + Date.now()}\n` +
+            const successMessage =
+                "¡Cotización creada exitosamente! 🎉\n\n" +
+                `• Número de cotización: ${
+                    quote.quote_number || "COT-" + Date.now()
+                }\n` +
                 `• Prima anual: $${calculatedQuote.toLocaleString()}\n` +
-                `• Plan: ${POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS]?.name}\n\n` +
+                `• Plan: ${
+                    POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS]
+                        ?.name
+                }\n\n` +
                 "✅ Se ha descargado el PDF de constancia\n" +
                 "⏳ Un agente revisará tu solicitud pronto\n" +
                 "📧 Recibirás una notificación por correo";
@@ -677,12 +706,12 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                     message: successMessage,
                     onConfirm: () => {
                         router.push("/customer/quotes?success=true");
-                    }
+                    },
                 });
             }
         } catch (error) {
             console.error("Error creating quote:", error);
-            
+
             // Show user-friendly error message
             let errorMessage = "";
             if (error instanceof Error) {
@@ -694,12 +723,14 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             }
 
             // Show error modal
-            const fullErrorMessage = errorMessage + "\n\n" +
+            const fullErrorMessage =
+                errorMessage +
+                "\n\n" +
                 "💡 Sugerencias:\n" +
                 "• Verifica que todos los campos estén completos\n" +
                 "• Asegúrate de tener conexión a internet\n" +
                 "• Si el problema persiste, contacta soporte";
-            
+
             setNotificationModal({
                 open: true,
                 type: "error",
@@ -1048,11 +1079,16 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                             Errores de validación
                                         </h3>
                                         <ul className="space-y-1">
-                                            {validationErrors.map((error, index) => (
-                                                <li key={index} className="text-sm text-red-700 dark:text-red-300">
-                                                    • {error}
-                                                </li>
-                                            ))}
+                                            {validationErrors.map(
+                                                (error, index) => (
+                                                    <li
+                                                        key={index}
+                                                        className="text-sm text-red-700 dark:text-red-300"
+                                                    >
+                                                        • {error}
+                                                    </li>
+                                                )
+                                            )}
                                         </ul>
                                     </div>
                                 </div>
@@ -1071,9 +1107,12 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                             Vehículo ya asegurado
                                         </h3>
                                         <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                                            Este vehículo ya tiene una póliza activa. No puedes crear una nueva cotización 
-                                            para un vehículo que ya está asegurado. Si deseas cambiar tu cobertura, 
-                                            contacta a nuestro equipo de soporte.
+                                            Este vehículo ya tiene una póliza
+                                            activa. No puedes crear una nueva
+                                            cotización para un vehículo que ya
+                                            está asegurado. Si deseas cambiar tu
+                                            cobertura, contacta a nuestro equipo
+                                            de soporte.
                                         </p>
                                     </div>
                                 </div>
@@ -1082,55 +1121,57 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                     )}
 
                     {/* Quote Result */}
-                    {calculatedQuote > 0 && !hasActivePolicyForVehicle && validationErrors.length === 0 && (
-                        <Card className="bg-primary/5 border-primary/20">
-                            <CardContent className="pt-6">
-                                <div className="text-center">
-                                    <div className="text-3xl font-bold text-primary mb-2">
-                                        ${calculatedQuote.toLocaleString()}
-                                    </div>
-                                    <div className="text-lg font-medium mb-4">
-                                        Prima Anual Estimada
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                        <div>
-                                            <div className="font-medium">
-                                                Mensual
+                    {calculatedQuote > 0 &&
+                        !hasActivePolicyForVehicle &&
+                        validationErrors.length === 0 && (
+                            <Card className="bg-primary/5 border-primary/20">
+                                <CardContent className="pt-6">
+                                    <div className="text-center">
+                                        <div className="text-3xl font-bold text-primary mb-2">
+                                            ${calculatedQuote.toLocaleString()}
+                                        </div>
+                                        <div className="text-lg font-medium mb-4">
+                                            Prima Anual Estimada
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                            <div>
+                                                <div className="font-medium">
+                                                    Mensual
+                                                </div>
+                                                <div className="text-muted-foreground">
+                                                    $
+                                                    {(
+                                                        calculatedQuote / 12
+                                                    ).toFixed(2)}
+                                                </div>
                                             </div>
-                                            <div className="text-muted-foreground">
-                                                $
-                                                {(calculatedQuote / 12).toFixed(
-                                                    2
-                                                )}
+                                            <div>
+                                                <div className="font-medium">
+                                                    Trimestral
+                                                </div>
+                                                <div className="text-muted-foreground">
+                                                    $
+                                                    {(
+                                                        calculatedQuote / 4
+                                                    ).toFixed(2)}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="font-medium">
+                                                    Semestral
+                                                </div>
+                                                <div className="text-muted-foreground">
+                                                    $
+                                                    {(
+                                                        calculatedQuote / 2
+                                                    ).toFixed(2)}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <div className="font-medium">
-                                                Trimestral
-                                            </div>
-                                            <div className="text-muted-foreground">
-                                                $
-                                                {(calculatedQuote / 4).toFixed(
-                                                    2
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="font-medium">
-                                                Semestral
-                                            </div>
-                                            <div className="text-muted-foreground">
-                                                $
-                                                {(calculatedQuote / 2).toFixed(
-                                                    2
-                                                )}
-                                            </div>
-                                        </div>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
+                                </CardContent>
+                            </Card>
+                        )}
 
                     {/* Actions */}
                     {vehicles.length > 0 ? (
@@ -1142,12 +1183,19 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                     variant="default"
                                     size="lg"
                                     className={`w-full font-semibold py-3 ${
-                                        hasActivePolicyForVehicle || validationErrors.length > 0 || checkingPolicies
+                                        hasActivePolicyForVehicle ||
+                                        validationErrors.length > 0 ||
+                                        checkingPolicies
                                             ? "bg-gray-400 cursor-not-allowed"
                                             : "bg-blue-600 hover:bg-blue-700"
                                     } text-white`}
                                     onClick={handleShowConfirmModal}
-                                    disabled={isProcessing || hasActivePolicyForVehicle || validationErrors.length > 0 || checkingPolicies}
+                                    disabled={
+                                        isProcessing ||
+                                        hasActivePolicyForVehicle ||
+                                        validationErrors.length > 0 ||
+                                        checkingPolicies
+                                    }
                                 >
                                     {checkingPolicies ? (
                                         <>
@@ -1225,7 +1273,9 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             {/* Notification Modal */}
             <NotificationModal
                 open={notificationModal.open}
-                onOpenChange={(open) => setNotificationModal(prev => ({ ...prev, open }))}
+                onOpenChange={(open) =>
+                    setNotificationModal((prev) => ({ ...prev, open }))
+                }
                 type={notificationModal.type}
                 title={notificationModal.title}
                 message={notificationModal.message}

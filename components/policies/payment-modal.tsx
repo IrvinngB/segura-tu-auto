@@ -22,7 +22,15 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Building2, Smartphone, Shield, Plus, AlertCircle, Star } from "lucide-react";
+import {
+    CreditCard,
+    Building2,
+    Smartphone,
+    Shield,
+    Plus,
+    AlertCircle,
+    Star,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { PaymentMethods } from "@/components/customer/payment-methods";
 import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
@@ -71,7 +79,7 @@ export function PaymentModal({
 
     const fetchPaymentMethods = async () => {
         if (!customerData) return;
-        
+
         setLoading(true);
         try {
             // Simular métodos de pago disponibles del cliente
@@ -95,10 +103,14 @@ export function PaymentModal({
             ];
 
             setPaymentMethods(simulatedPaymentMethods);
-            
+
             // Auto-seleccionar el método principal si existe
-            const primaryMethod = simulatedPaymentMethods.find(method => method.is_primary);
-            setSelectedPaymentMethod(primaryMethod?.id || simulatedPaymentMethods[0]?.id || "");
+            const primaryMethod = simulatedPaymentMethods.find(
+                (method) => method.is_primary
+            );
+            setSelectedPaymentMethod(
+                primaryMethod?.id || simulatedPaymentMethods[0]?.id || ""
+            );
         } catch (error) {
             console.error("Error fetching payment methods:", error);
             setPaymentMethods([]);
@@ -108,7 +120,7 @@ export function PaymentModal({
     };
 
     const handleMethodAdded = (newMethod: PaymentMethod) => {
-        setPaymentMethods(prev => [...prev, newMethod]);
+        setPaymentMethods((prev) => [...prev, newMethod]);
         setSelectedPaymentMethod(newMethod.id);
         setShowAddPaymentMethod(false);
     };
@@ -152,7 +164,7 @@ export function PaymentModal({
 
         try {
             // Simular procesamiento de pago
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise((resolve) => setTimeout(resolve, 2000));
 
             // Crear registro de pago en la base de datos
             const { data: payment, error } = await supabase
@@ -174,12 +186,16 @@ export function PaymentModal({
                 throw error;
             }
 
-            alert(`Pago Exitoso: El pago de $${amount.toLocaleString()} ha sido procesado correctamente.`);
+            alert(
+                `Pago Exitoso: El pago de $${amount.toLocaleString()} ha sido procesado correctamente.`
+            );
 
             onPaymentSuccess(payment.id);
         } catch (error) {
             console.error("Error procesando pago:", error);
-            alert("Error en el Pago: No se pudo procesar el pago. Por favor, inténtalo de nuevo.");
+            alert(
+                "Error en el Pago: No se pudo procesar el pago. Por favor, inténtalo de nuevo."
+            );
             onPaymentError("Error al procesar el pago");
         } finally {
             setProcessingPayment(false);
@@ -196,7 +212,8 @@ export function PaymentModal({
                             Procesar Pago de Prima
                         </DialogTitle>
                         <DialogDescription>
-                            Complete el pago para activar la póliza {policyNumber}
+                            Complete el pago para activar la póliza{" "}
+                            {policyNumber}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -212,7 +229,9 @@ export function PaymentModal({
                                 <CardContent className="pt-6">
                                     <div className="flex justify-between items-center">
                                         <div>
-                                            <p className="font-medium">Monto a Pagar</p>
+                                            <p className="font-medium">
+                                                Monto a Pagar
+                                            </p>
                                             <p className="text-sm text-muted-foreground">
                                                 Póliza {policyNumber}
                                             </p>
@@ -236,12 +255,20 @@ export function PaymentModal({
                                     <AlertDescription>
                                         <div className="space-y-3">
                                             <p>
-                                                <strong>No tienes métodos de pago registrados.</strong> 
-                                                Para procesar el pago, primero debes agregar un método de pago.
+                                                <strong>
+                                                    No tienes métodos de pago
+                                                    registrados.
+                                                </strong>
+                                                Para procesar el pago, primero
+                                                debes agregar un método de pago.
                                             </p>
-                                            <Button 
-                                                size="sm" 
-                                                onClick={() => setShowAddPaymentMethod(true)}
+                                            <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                    setShowAddPaymentMethod(
+                                                        true
+                                                    )
+                                                }
                                             >
                                                 <Plus className="h-4 w-4 mr-2" />
                                                 Agregar Método de Pago
@@ -256,10 +283,12 @@ export function PaymentModal({
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <Label>Selecciona Método de Pago</Label>
-                                        <Button 
-                                            variant="outline" 
+                                        <Button
+                                            variant="outline"
                                             size="sm"
-                                            onClick={() => setShowAddPaymentMethod(true)}
+                                            onClick={() =>
+                                                setShowAddPaymentMethod(true)
+                                            }
                                         >
                                             <Plus className="h-4 w-4 mr-2" />
                                             Nuevo
@@ -270,36 +299,57 @@ export function PaymentModal({
                                             <div
                                                 key={method.id}
                                                 className={`flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                                    selectedPaymentMethod === method.id
+                                                    selectedPaymentMethod ===
+                                                    method.id
                                                         ? "border-primary bg-primary/5 shadow-sm"
                                                         : "border-border hover:bg-muted/50 hover:border-primary/30"
                                                 }`}
-                                                onClick={() => setSelectedPaymentMethod(method.id)}
+                                                onClick={() =>
+                                                    setSelectedPaymentMethod(
+                                                        method.id
+                                                    )
+                                                }
                                             >
                                                 <div className="flex-shrink-0 text-primary">
-                                                    {getPaymentMethodIcon(method.type)}
+                                                    {getPaymentMethodIcon(
+                                                        method.type
+                                                    )}
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-medium">
-                                                            {method.name} **** {method.last_four}
+                                                            {method.name} ****{" "}
+                                                            {method.last_four}
                                                         </span>
                                                         {method.is_primary && (
-                                                            <Badge variant="default" className="text-xs">
+                                                            <Badge
+                                                                variant="default"
+                                                                className="text-xs"
+                                                            >
                                                                 <Star className="h-3 w-3 mr-1" />
                                                                 Principal
                                                             </Badge>
                                                         )}
                                                     </div>
                                                     <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                                                        <span>{getMethodTypeName(method.type)}</span>
+                                                        <span>
+                                                            {getMethodTypeName(
+                                                                method.type
+                                                            )}
+                                                        </span>
                                                         {method.expiry_date && (
-                                                            <span>Vence: {method.expiry_date}</span>
+                                                            <span>
+                                                                Vence:{" "}
+                                                                {
+                                                                    method.expiry_date
+                                                                }
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </div>
                                                 <div className="flex-shrink-0">
-                                                    {selectedPaymentMethod === method.id && (
+                                                    {selectedPaymentMethod ===
+                                                        method.id && (
                                                         <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                                                             <div className="w-2 h-2 rounded-full bg-white"></div>
                                                         </div>
@@ -320,8 +370,10 @@ export function PaymentModal({
                                             Pago Seguro Garantizado
                                         </p>
                                         <p className="text-muted-foreground">
-                                            Tu información está protegida con encriptación SSL de grado bancario.
-                                            Cumplimos con estándares PCI DSS Level 1.
+                                            Tu información está protegida con
+                                            encriptación SSL de grado bancario.
+                                            Cumplimos con estándares PCI DSS
+                                            Level 1.
                                         </p>
                                     </div>
                                 </div>
@@ -339,7 +391,11 @@ export function PaymentModal({
                         </Button>
                         <Button
                             onClick={handlePayment}
-                            disabled={!selectedPaymentMethod || processingPayment || paymentMethods.length === 0}
+                            disabled={
+                                !selectedPaymentMethod ||
+                                processingPayment ||
+                                paymentMethods.length === 0
+                            }
                             className="min-w-[140px]"
                         >
                             {processingPayment ? (
@@ -359,15 +415,19 @@ export function PaymentModal({
             </Dialog>
 
             {/* Add Payment Method Modal */}
-            <Dialog open={showAddPaymentMethod} onOpenChange={setShowAddPaymentMethod}>
+            <Dialog
+                open={showAddPaymentMethod}
+                onOpenChange={setShowAddPaymentMethod}
+            >
                 <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Agregar Método de Pago</DialogTitle>
                         <DialogDescription>
-                            Agrega un método de pago para procesar el pago de tu póliza
+                            Agrega un método de pago para procesar el pago de tu
+                            póliza
                         </DialogDescription>
                     </DialogHeader>
-                    <PaymentMethods 
+                    <PaymentMethods
                         onMethodAdded={handleMethodAdded}
                         showAddButton={false}
                         allowEdit={false}
