@@ -29,9 +29,26 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { simpleUpdateExpiredPolicies } from "@/lib/simple-update-policies";
 import type { Policy } from "@/lib/types/database";
-import { Search, Eye, Edit, FileText, Calendar } from "lucide-react";
+import {
+    Search,
+    Eye,
+    Edit,
+    FileText,
+    Calendar,
+    Download,
+    Car,
+} from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import jsPDF from "jspdf";
+import { POLICY_PLANS } from "@/lib/policy-plans";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PolicyListProps {
     customerId?: string;
@@ -50,6 +67,8 @@ export function PolicyList({
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [typeFilter, setTypeFilter] = useState("all");
+    const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
     const supabase = createClient();
 
     useEffect(() => {
@@ -142,6 +161,223 @@ export function PolicyList({
         }
 
         setFilteredPolicies(filtered);
+    };
+
+    const generatePolicyPDF = (policy: Policy) => {
+        const doc = new jsPDF();
+        const currentDate = new Date().toLocaleDateString("es-ES");
+        const selectedPlanDetails =
+            POLICY_PLANS[policy.policy_type as keyof typeof POLICY_PLANS];
+
+        // Header
+        doc.setFontSize(20);
+        doc.setFont("helvetica", "bold");
+        doc.text("CONSTANCIA DE PÓLIZA DE SEGURO", 105, 25, {
+            align: "center",
+        });
+
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "normal");
+        doc.text("SeguraTuAuto", 105, 35, { align: "center" });
+
+        // Policy number and date
+        doc.setFontSize(10);
+        doc.text(`Póliza No: ${policy.policy_number}`, 20, 50);
+        doc.text(
+            `Fecha: ${format(new Date(policy.created_at), "dd/MM/yyyy")}`,
+            150,
+            50
+        );
+        doc.text(
+            `Estado: ${
+                policy.status === "active"
+                    ? "ACTIVA"
+                    : policy.status === "expired"
+                    ? "VENCIDA"
+                    : policy.status === "cancelled"
+                    ? "CANCELADA"
+                    : "SUSPENDIDA"
+            }`,
+            20,
+            60
+        );
+
+        // Customer Information
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("INFORMACIÓN DEL ASEGURADO", 20, 75);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(
+            `Nombre: ${policy.customer?.user?.first_name || ""} ${
+                policy.customer?.user?.last_name || ""
+            }`,
+            20,
+            85
+        );
+        doc.text(
+            `Email: ${policy.customer?.user?.email || "No disponible"}`,
+            20,
+            95
+        );
+        doc.text(
+            `Teléfono: ${policy.customer?.user?.phone || "No especificado"}`,
+            20,
+            105
+        );
+
+        // Vehicle Information
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("VEHÍCULO ASEGURADO", 20, 120);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        if (policy.vehicle) {
+            doc.text(
+                `Vehículo: ${policy.vehicle.year} ${policy.vehicle.make} ${policy.vehicle.model}`,
+                20,
+                130
+            );
+            doc.text(
+                `Placa: ${policy.vehicle.license_plate || "No especificada"}`,
+                20,
+                140
+            );
+            if (policy.vehicle.estimated_value) {
+                doc.text(
+                    `Valor Asegurado: $${policy.vehicle.estimated_value.toLocaleString()}`,
+                    20,
+                    150
+                );
+            }
+            if (policy.vehicle.vin) {
+                doc.text(`VIN: ${policy.vehicle.vin}`, 20, 160);
+            }
+        }
+
+        // Policy Information
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("DETALLES DE LA PÓLIZA", 20, 175);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(
+            `Tipo de Póliza: ${getPolicyTypeLabel(policy.policy_type)}`,
+            20,
+            185
+        );
+        doc.text(
+            `Prima ${
+                policy.payment_frequency === "annual"
+                    ? "Anual"
+                    : policy.payment_frequency === "monthly"
+                    ? "Mensual"
+                    : "Trimestral"
+            }: $${policy.premium_amount.toLocaleString()}`,
+            20,
+            195
+        );
+
+        // Coverage period
+        doc.text(
+            `Vigencia: ${format(
+                new Date(policy.start_date),
+                "dd/MM/yyyy"
+            )} - ${format(new Date(policy.end_date), "dd/MM/yyyy")}`,
+            20,
+            205
+        );
+        doc.text(
+            `Renovación Automática: ${policy.auto_renewal ? "SÍ" : "NO"}`,
+            20,
+            215
+        );
+
+        // Coverage Details (if available)
+        let yPos = 230;
+        if (selectedPlanDetails?.coverages) {
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.text("COBERTURAS INCLUIDAS:", 20, yPos);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            yPos += 10;
+            selectedPlanDetails.coverages
+                .filter((c) => c.included)
+                .forEach((coverage) => {
+                    if (yPos > 270) return; // Avoid overflow
+                    doc.text(`• ${coverage.name}`, 25, yPos);
+                    if (coverage.maxAmount) {
+                        doc.text(
+                            `  Cobertura hasta: $${coverage.maxAmount.toLocaleString()}`,
+                            35,
+                            yPos + 8
+                        );
+                        yPos += 16;
+                    } else {
+                        yPos += 8;
+                    }
+                });
+        }
+
+        // Total coverage limit
+        if (policy.total_coverage_limit) {
+            yPos += 5;
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.text(
+                `Límite Total de Cobertura: $${policy.total_coverage_limit.toLocaleString()}`,
+                20,
+                yPos
+            );
+        }
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "italic");
+        doc.text(
+            "Esta constancia certifica que el vehículo descrito cuenta con cobertura de seguro vigente.",
+            20,
+            280
+        );
+        doc.text(
+            "Para cualquier reclamo o consulta, comuníquese con SeguraTuAuto.",
+            20,
+            288
+        );
+        doc.text(`Documento generado el ${currentDate}`, 105, 295, {
+            align: "center",
+        });
+
+        // Save the PDF
+        const fileName = `Poliza_${policy.policy_number}_${format(
+            new Date(),
+            "dd-MM-yyyy"
+        )}.pdf`;
+        doc.save(fileName);
+    };
+
+    const handleViewDetails = (policy: Policy) => {
+        setSelectedPolicy(policy);
+        setShowDetailsModal(true);
+    };
+
+    const closeDetailsModal = () => {
+        setShowDetailsModal(false);
+        setSelectedPolicy(null);
+    };
+
+    const handleEditPolicy = (policy: Policy) => {
+        if (onEditPolicy) {
+            onEditPolicy(policy);
+        } else {
+            // Default edit behavior - could redirect to edit page
+            console.log("Editing policy:", policy.id);
+        }
     };
 
     const getStatusBadge = (status: string) => {
@@ -394,13 +630,16 @@ export function PolicyList({
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-1">
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() =>
-                                                        onViewPolicy?.(policy)
+                                                        handleViewDetails(
+                                                            policy
+                                                        )
                                                     }
+                                                    title="Ver detalles"
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
@@ -408,8 +647,21 @@ export function PolicyList({
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() =>
-                                                        onEditPolicy?.(policy)
+                                                        generatePolicyPDF(
+                                                            policy
+                                                        )
                                                     }
+                                                    title="Descargar PDF"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        handleEditPolicy(policy)
+                                                    }
+                                                    title="Editar"
                                                 >
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
@@ -484,6 +736,299 @@ export function PolicyList({
                     </Card>
                 </div>
             </CardContent>
+
+            {/* Details Modal */}
+            <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5" />
+                            Detalles de Póliza {selectedPolicy?.policy_number}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Información completa de la póliza de seguro
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedPolicy && (
+                        <div className="space-y-6">
+                            {/* Status */}
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium">Estado:</span>
+                                {getStatusBadge(selectedPolicy.status)}
+                            </div>
+
+                            {/* Policy Info */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <span className="font-medium">
+                                        Número de Póliza:
+                                    </span>
+                                    <p className="text-muted-foreground">
+                                        {selectedPolicy.policy_number}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="font-medium">
+                                        Fecha de Creación:
+                                    </span>
+                                    <p className="text-muted-foreground">
+                                        {format(
+                                            new Date(selectedPolicy.created_at),
+                                            "dd/MM/yyyy HH:mm"
+                                        )}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="font-medium">Prima:</span>
+                                    <p className="text-lg font-bold text-primary">
+                                        $
+                                        {selectedPolicy.premium_amount.toLocaleString()}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground capitalize">
+                                        {selectedPolicy.payment_frequency}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="font-medium">
+                                        Tipo de Póliza:
+                                    </span>
+                                    <p className="text-muted-foreground">
+                                        {getPolicyTypeLabel(
+                                            selectedPolicy.policy_type
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Customer Info */}
+                            {selectedPolicy.customer && (
+                                <div className="border rounded-lg p-4">
+                                    <h4 className="font-medium mb-3">
+                                        Información del Asegurado
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <span>Nombre:</span>
+                                        <span>
+                                            {
+                                                selectedPolicy.customer.user
+                                                    ?.first_name
+                                            }{" "}
+                                            {
+                                                selectedPolicy.customer.user
+                                                    ?.last_name
+                                            }
+                                        </span>
+                                        <span>Email:</span>
+                                        <span>
+                                            {
+                                                selectedPolicy.customer.user
+                                                    ?.email
+                                            }
+                                        </span>
+                                        {selectedPolicy.customer.user
+                                            ?.phone && (
+                                            <>
+                                                <span>Teléfono:</span>
+                                                <span>
+                                                    {
+                                                        selectedPolicy.customer
+                                                            .user.phone
+                                                    }
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Vehicle Info */}
+                            {selectedPolicy.vehicle && (
+                                <div className="border rounded-lg p-4">
+                                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                                        <Car className="h-4 w-4" />
+                                        Vehículo Asegurado
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <span>Vehículo:</span>
+                                        <span>
+                                            {selectedPolicy.vehicle.year}{" "}
+                                            {selectedPolicy.vehicle.make}{" "}
+                                            {selectedPolicy.vehicle.model}
+                                        </span>
+                                        {selectedPolicy.vehicle
+                                            .license_plate && (
+                                            <>
+                                                <span>Placa:</span>
+                                                <span>
+                                                    {
+                                                        selectedPolicy.vehicle
+                                                            .license_plate
+                                                    }
+                                                </span>
+                                            </>
+                                        )}
+                                        {selectedPolicy.vehicle.vin && (
+                                            <>
+                                                <span>VIN:</span>
+                                                <span>
+                                                    {selectedPolicy.vehicle.vin}
+                                                </span>
+                                            </>
+                                        )}
+                                        {selectedPolicy.vehicle
+                                            .estimated_value && (
+                                            <>
+                                                <span>Valor Asegurado:</span>
+                                                <span>
+                                                    $
+                                                    {selectedPolicy.vehicle.estimated_value.toLocaleString()}
+                                                </span>
+                                            </>
+                                        )}
+                                        {selectedPolicy.vehicle.usage_type && (
+                                            <>
+                                                <span>Tipo de Uso:</span>
+                                                <span className="capitalize">
+                                                    {
+                                                        selectedPolicy.vehicle
+                                                            .usage_type
+                                                    }
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Coverage Period */}
+                            <div className="border rounded-lg p-4">
+                                <h4 className="font-medium mb-3 flex items-center gap-2">
+                                    <Calendar className="h-4 w-4" />
+                                    Período de Cobertura
+                                </h4>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <span>Fecha de Inicio:</span>
+                                    <span>
+                                        {format(
+                                            new Date(selectedPolicy.start_date),
+                                            "dd/MM/yyyy"
+                                        )}
+                                    </span>
+                                    <span>Fecha de Vencimiento:</span>
+                                    <span>
+                                        {format(
+                                            new Date(selectedPolicy.end_date),
+                                            "dd/MM/yyyy"
+                                        )}
+                                    </span>
+                                    <span>Renovación Automática:</span>
+                                    <span>
+                                        {selectedPolicy.auto_renewal
+                                            ? "Sí"
+                                            : "No"}
+                                    </span>
+                                    {selectedPolicy.total_coverage_limit && (
+                                        <>
+                                            <span>
+                                                Límite Total de Cobertura:
+                                            </span>
+                                            <span>
+                                                $
+                                                {selectedPolicy.total_coverage_limit.toLocaleString()}
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Expiring Soon Alert */}
+                            {isExpiringSoon(selectedPolicy.end_date) &&
+                                selectedPolicy.status !== "expired" && (
+                                    <div className="border rounded-lg p-4 bg-yellow-50 border-yellow-200">
+                                        <h4 className="font-medium mb-2 text-yellow-800">
+                                            ⚠️ Póliza por vencer
+                                        </h4>
+                                        <p className="text-sm text-yellow-700">
+                                            Esta póliza vence el{" "}
+                                            {format(
+                                                new Date(
+                                                    selectedPolicy.end_date
+                                                ),
+                                                "dd/MM/yyyy"
+                                            )}
+                                            .
+                                            {selectedPolicy.auto_renewal
+                                                ? " Se renovará automáticamente."
+                                                : " Contacta a tu agente para renovar."}
+                                        </p>
+                                    </div>
+                                )}
+
+                            {/* Coverages */}
+                            {POLICY_PLANS[
+                                selectedPolicy.policy_type as keyof typeof POLICY_PLANS
+                            ] && (
+                                <div className="border rounded-lg p-4">
+                                    <h4 className="font-medium mb-3">
+                                        Coberturas Incluidas
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {POLICY_PLANS[
+                                            selectedPolicy.policy_type as keyof typeof POLICY_PLANS
+                                        ].coverages
+                                            .filter((c) => c.included)
+                                            .map((coverage, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="flex justify-between text-sm"
+                                                >
+                                                    <span>
+                                                        • {coverage.name}
+                                                    </span>
+                                                    {coverage.maxAmount && (
+                                                        <span className="text-muted-foreground">
+                                                            Hasta $
+                                                            {coverage.maxAmount.toLocaleString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Actions in Modal */}
+                            <div className="flex gap-2 pt-4 border-t">
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        generatePolicyPDF(selectedPolicy)
+                                    }
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Descargar PDF
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        handleEditPolicy(selectedPolicy)
+                                    }
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Editar Póliza
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={closeDetailsModal}
+                                >
+                                    Cerrar
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }

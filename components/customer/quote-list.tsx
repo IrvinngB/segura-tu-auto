@@ -18,6 +18,13 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "@/lib/supabase/client";
 import type { Quote } from "@/lib/types/database";
@@ -28,8 +35,15 @@ import {
     FileText,
     Calendar,
     DollarSign,
+    Download,
+    Eye,
+    Edit,
+    Plus,
+    Car,
 } from "lucide-react";
 import { format } from "date-fns";
+import jsPDF from "jspdf";
+import { POLICY_PLANS } from "@/lib/policy-plans";
 
 interface QuoteListProps {
     customerId?: string;
@@ -39,6 +53,8 @@ export function QuoteList({ customerId }: QuoteListProps) {
     const [quotes, setQuotes] = useState<Quote[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
     const supabase = createClient();
 
     useEffect(() => {
@@ -82,6 +98,192 @@ export function QuoteList({ customerId }: QuoteListProps) {
         } finally {
             setLoading(false);
         }
+    };
+
+    const generateQuotePDF = (quote: Quote) => {
+        const doc = new jsPDF();
+        const currentDate = new Date().toLocaleDateString("es-ES");
+        const selectedPlanDetails =
+            POLICY_PLANS[quote.policy_type as keyof typeof POLICY_PLANS];
+
+        // Header
+        doc.setFontSize(20);
+        doc.setFont("helvetica", "bold");
+        doc.text("CONSTANCIA DE COTIZACIÓN", 105, 25, { align: "center" });
+
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "normal");
+        doc.text("SeguraTuAuto", 105, 35, { align: "center" });
+
+        // Quote number and date
+        doc.setFontSize(10);
+        doc.text(`Cotización No: ${quote.quote_number}`, 20, 50);
+        doc.text(
+            `Fecha: ${format(new Date(quote.created_at), "dd/MM/yyyy")}`,
+            150,
+            50
+        );
+        doc.text(
+            `Estado: ${
+                quote.status === "approved"
+                    ? "APROBADA"
+                    : quote.status === "rejected"
+                    ? "RECHAZADA"
+                    : "PENDIENTE"
+            }`,
+            20,
+            60
+        );
+
+        // Customer Information (if available from quote)
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("INFORMACIÓN DEL CLIENTE", 20, 75);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(
+            `Cliente: ${quote.customer?.user?.first_name || ""} ${
+                quote.customer?.user?.last_name || ""
+            }`,
+            20,
+            85
+        );
+        doc.text(
+            `Email: ${quote.customer?.user?.email || "No disponible"}`,
+            20,
+            95
+        );
+
+        // Vehicle Information
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("INFORMACIÓN DEL VEHÍCULO", 20, 110);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        if (quote.vehicle) {
+            doc.text(
+                `Vehículo: ${quote.vehicle.year} ${quote.vehicle.make} ${quote.vehicle.model}`,
+                20,
+                120
+            );
+            doc.text(
+                `Placa: ${quote.vehicle.license_plate || "No especificada"}`,
+                20,
+                130
+            );
+            if (quote.vehicle.estimated_value) {
+                doc.text(
+                    `Valor Estimado: $${quote.vehicle.estimated_value.toLocaleString()}`,
+                    20,
+                    140
+                );
+            }
+        }
+
+        // Plan Information
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("PLAN SELECCIONADO", 20, 155);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(
+            `Plan: ${selectedPlanDetails?.name || quote.policy_type}`,
+            20,
+            165
+        );
+        doc.text(
+            `Prima Anual: $${quote.premium_amount.toLocaleString()}`,
+            20,
+            175
+        );
+        doc.text(
+            `Prima Mensual: $${(quote.premium_amount / 12).toFixed(2)}`,
+            20,
+            185
+        );
+
+        // Coverage Details (if available)
+        if (selectedPlanDetails?.coverages) {
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.text("COBERTURAS INCLUIDAS:", 20, 200);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            let yPos = 210;
+            selectedPlanDetails.coverages
+                .filter((c) => c.included)
+                .forEach((coverage) => {
+                    if (yPos > 270) return; // Avoid overflow
+                    doc.text(`• ${coverage.name}`, 25, yPos);
+                    yPos += 8;
+                });
+        }
+
+        // Validity period
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+            `Vigencia: ${format(
+                new Date(quote.start_date),
+                "dd/MM/yyyy"
+            )} - ${format(new Date(quote.end_date), "dd/MM/yyyy")}`,
+            20,
+            250
+        );
+
+        // Agent Notes (if any)
+        if (quote.agent_notes || quote.rejected_reason) {
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.text(
+                quote.status === "rejected" ? "MOTIVO DE RECHAZO:" : "NOTAS:",
+                20,
+                265
+            );
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            const noteText = quote.rejected_reason || quote.agent_notes || "";
+            const lines = doc.splitTextToSize(noteText, 170);
+            doc.text(lines, 20, 275);
+        }
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "italic");
+        doc.text(
+            "Esta cotización tiene una validez de 30 días a partir de la fecha de emisión.",
+            20,
+            285
+        );
+        doc.text(`Generado el ${currentDate} - SeguraTuAuto`, 105, 292, {
+            align: "center",
+        });
+
+        // Save the PDF
+        const fileName = `Cotizacion_${quote.quote_number}_${format(
+            new Date(quote.created_at),
+            "dd-MM-yyyy"
+        )}.pdf`;
+        doc.save(fileName);
+    };
+
+    const handleViewDetails = (quote: Quote) => {
+        setSelectedQuote(quote);
+        setShowDetailsModal(true);
+    };
+
+    const closeDetailsModal = () => {
+        setShowDetailsModal(false);
+        setSelectedQuote(null);
+    };
+
+    const handleEditQuote = (quote: Quote) => {
+        // Redirect to quote form with pre-filled data
+        window.location.href = `/customer/quote?edit=${quote.id}`;
     };
 
     const getStatusBadge = (status: string) => {
@@ -314,20 +516,62 @@ export function QuoteList({ customerId }: QuoteListProps) {
                         )}
 
                         {/* Actions */}
-                        <div className="border-t pt-4 flex gap-2">
-                            {quote.status === "approved" && (
-                                <Button>Ver Detalles de la Póliza</Button>
+                        <div className="border-t pt-4 flex flex-wrap gap-2">
+                            {/* Always show these buttons */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewDetails(quote)}
+                            >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Ver Detalles
+                            </Button>
+
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => generateQuotePDF(quote)}
+                            >
+                                <Download className="h-4 w-4 mr-2" />
+                                Descargar PDF
+                            </Button>
+
+                            {/* Status-specific buttons */}
+                            {quote.status === "pending" && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditQuote(quote)}
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Editar Cotización
+                                </Button>
                             )}
+
+                            {quote.status === "approved" && (
+                                <Button size="sm" asChild>
+                                    <a
+                                        href={`/customer/policies/new?quote=${quote.id}`}
+                                    >
+                                        <FileText className="h-4 w-4 mr-2" />
+                                        Contratar Póliza
+                                    </a>
+                                </Button>
+                            )}
+
                             {quote.status === "rejected" && (
-                                <Button variant="outline" asChild>
+                                <Button variant="outline" size="sm" asChild>
                                     <a href="/customer/quote">
+                                        <Plus className="h-4 w-4 mr-2" />
                                         Nueva Cotización
                                     </a>
                                 </Button>
                             )}
+
                             {quote.status === "converted" && (
-                                <Button asChild>
+                                <Button size="sm" asChild>
                                     <a href="/customer/policies">
+                                        <FileText className="h-4 w-4 mr-2" />
                                         Ver Mi Póliza
                                     </a>
                                 </Button>
@@ -336,6 +580,222 @@ export function QuoteList({ customerId }: QuoteListProps) {
                     </CardContent>
                 </Card>
             ))}
+
+            {/* Details Modal */}
+            <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5" />
+                            Detalles de Cotización {selectedQuote?.quote_number}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Información completa de la cotización
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedQuote && (
+                        <div className="space-y-6">
+                            {/* Status */}
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium">Estado:</span>
+                                {getStatusBadge(selectedQuote.status)}
+                            </div>
+
+                            {/* Quote Info */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <span className="font-medium">
+                                        Número de Cotización:
+                                    </span>
+                                    <p className="text-muted-foreground">
+                                        {selectedQuote.quote_number}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="font-medium">
+                                        Fecha de Creación:
+                                    </span>
+                                    <p className="text-muted-foreground">
+                                        {format(
+                                            new Date(selectedQuote.created_at),
+                                            "dd/MM/yyyy HH:mm"
+                                        )}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="font-medium">
+                                        Prima Anual:
+                                    </span>
+                                    <p className="text-lg font-bold text-primary">
+                                        $
+                                        {selectedQuote.premium_amount.toLocaleString()}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="font-medium">Plan:</span>
+                                    <p className="text-muted-foreground capitalize">
+                                        {selectedQuote.policy_type}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Pricing Breakdown */}
+                            <div className="border rounded-lg p-4 bg-muted/50">
+                                <h4 className="font-medium mb-3">
+                                    Desglose de Precios
+                                </h4>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <span>Prima Mensual:</span>
+                                    <span>
+                                        $
+                                        {(
+                                            selectedQuote.premium_amount / 12
+                                        ).toFixed(2)}
+                                    </span>
+                                    <span>Prima Trimestral:</span>
+                                    <span>
+                                        $
+                                        {(
+                                            selectedQuote.premium_amount / 4
+                                        ).toFixed(2)}
+                                    </span>
+                                    <span>Prima Semestral:</span>
+                                    <span>
+                                        $
+                                        {(
+                                            selectedQuote.premium_amount / 2
+                                        ).toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Vehicle Info */}
+                            {selectedQuote.vehicle && (
+                                <div className="border rounded-lg p-4">
+                                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                                        <Car className="h-4 w-4" />
+                                        Información del Vehículo
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <span>Vehículo:</span>
+                                        <span>
+                                            {selectedQuote.vehicle.year}{" "}
+                                            {selectedQuote.vehicle.make}{" "}
+                                            {selectedQuote.vehicle.model}
+                                        </span>
+                                        {selectedQuote.vehicle
+                                            .license_plate && (
+                                            <>
+                                                <span>Placa:</span>
+                                                <span>
+                                                    {
+                                                        selectedQuote.vehicle
+                                                            .license_plate
+                                                    }
+                                                </span>
+                                            </>
+                                        )}
+                                        {selectedQuote.vehicle
+                                            .estimated_value && (
+                                            <>
+                                                <span>Valor Estimado:</span>
+                                                <span>
+                                                    $
+                                                    {selectedQuote.vehicle.estimated_value.toLocaleString()}
+                                                </span>
+                                            </>
+                                        )}
+                                        {selectedQuote.vehicle.usage_type && (
+                                            <>
+                                                <span>Tipo de Uso:</span>
+                                                <span className="capitalize">
+                                                    {
+                                                        selectedQuote.vehicle
+                                                            .usage_type
+                                                    }
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Coverage Period */}
+                            <div className="border rounded-lg p-4">
+                                <h4 className="font-medium mb-3 flex items-center gap-2">
+                                    <Calendar className="h-4 w-4" />
+                                    Período de Cobertura
+                                </h4>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <span>Fecha de Inicio:</span>
+                                    <span>
+                                        {format(
+                                            new Date(selectedQuote.start_date),
+                                            "dd/MM/yyyy"
+                                        )}
+                                    </span>
+                                    <span>Fecha de Fin:</span>
+                                    <span>
+                                        {format(
+                                            new Date(selectedQuote.end_date),
+                                            "dd/MM/yyyy"
+                                        )}
+                                    </span>
+                                    <span>Duración:</span>
+                                    <span>1 año</span>
+                                </div>
+                            </div>
+
+                            {/* Agent Notes */}
+                            {(selectedQuote.agent_notes ||
+                                selectedQuote.rejected_reason) && (
+                                <div className="border rounded-lg p-4">
+                                    <h4 className="font-medium mb-3">
+                                        {selectedQuote.status === "rejected"
+                                            ? "Motivo del Rechazo"
+                                            : "Notas del Agente"}
+                                    </h4>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedQuote.rejected_reason ||
+                                            selectedQuote.agent_notes}
+                                    </p>
+                                    {selectedQuote.reviewed_at && (
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            Revisado el{" "}
+                                            {format(
+                                                new Date(
+                                                    selectedQuote.reviewed_at
+                                                ),
+                                                "dd/MM/yyyy HH:mm"
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Actions in Modal */}
+                            <div className="flex gap-2 pt-4 border-t">
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        generateQuotePDF(selectedQuote)
+                                    }
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Descargar PDF
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={closeDetailsModal}
+                                >
+                                    Cerrar
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

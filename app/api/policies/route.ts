@@ -81,6 +81,40 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { customer_id, vehicle_id, policy_type, start_date, end_date, premium_amount, coverages } = body
 
+    // Validate required fields
+    if (!customer_id || !vehicle_id || !policy_type || !premium_amount) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Check if vehicle already has an active policy
+    const { data: existingPolicies, error: checkError } = await supabase
+      .from("policies")
+      .select("id, status, end_date")
+      .eq("vehicle_id", vehicle_id)
+      .eq("customer_id", customer_id)
+      .in("status", ["active", "pending"])
+
+    if (checkError) {
+      console.error("Error checking existing policies:", checkError)
+      return NextResponse.json({ error: "Error validating vehicle policies" }, { status: 500 })
+    }
+
+    // Check if there's an active policy for this vehicle
+    const hasActivePolicy = existingPolicies?.some((policy) => {
+      if (policy.status === "active") {
+        // Check if policy hasn't expired
+        const endDate = new Date(policy.end_date)
+        return endDate > new Date()
+      }
+      return policy.status === "pending"
+    })
+
+    if (hasActivePolicy) {
+      return NextResponse.json({ 
+        error: "This vehicle already has an active policy. Cannot create multiple policies for the same vehicle." 
+      }, { status: 409 })
+    }
+
     // Generate policy number
     const policy_number = `POL-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
 
@@ -101,6 +135,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      console.error("Database error creating policy:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 

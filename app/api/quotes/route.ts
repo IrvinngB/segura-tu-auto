@@ -174,9 +174,67 @@ export async function POST(request: NextRequest) {
         if (!customer_id || !vehicle_id || !policy_type || !premium_amount) {
             console.log("❌ Missing required fields");
             return NextResponse.json(
-                { error: "Missing required fields" },
+                { error: "Missing required fields: customer_id, vehicle_id, policy_type, and premium_amount are required" },
                 { status: 400 }
             );
+        }
+
+        // Validate data types and ranges
+        if (typeof premium_amount !== 'number' || premium_amount <= 0) {
+            console.log("❌ Invalid premium amount");
+            return NextResponse.json(
+                { error: "Premium amount must be a positive number" },
+                { status: 400 }
+            );
+        }
+
+        // Check if vehicle exists and belongs to customer
+        console.log("🚗 Validating vehicle ownership...");
+        const { data: vehicle, error: vehicleError } = await supabase
+            .from("vehicles")
+            .select("id, customer_id")
+            .eq("id", vehicle_id)
+            .eq("customer_id", customer_id)
+            .single();
+
+        if (vehicleError || !vehicle) {
+            console.log("❌ Vehicle validation failed:", vehicleError);
+            return NextResponse.json(
+                { error: "Vehicle not found or does not belong to customer" },
+                { status: 400 }
+            );
+        }
+
+        // Check if vehicle already has an active policy
+        console.log("🔍 Checking for existing policies...");
+        const { data: existingPolicies, error: checkError } = await supabase
+            .from("policies")
+            .select("id, status, end_date")
+            .eq("vehicle_id", vehicle_id)
+            .eq("customer_id", customer_id)
+            .in("status", ["active", "pending"]);
+
+        if (checkError) {
+            console.error("Error checking existing policies:", checkError);
+            return NextResponse.json({ 
+                error: "Error validating vehicle policies" 
+            }, { status: 500 });
+        }
+
+        // Check if there's an active policy for this vehicle
+        const hasActivePolicy = existingPolicies?.some((policy) => {
+            if (policy.status === "active") {
+                const endDate = new Date(policy.end_date);
+                return endDate > new Date();
+            }
+            return policy.status === "pending";
+        });
+
+        if (hasActivePolicy) {
+            console.log("❌ Vehicle already has active policy");
+            return NextResponse.json({ 
+                error: "This vehicle already has an active policy. Cannot create quotes for vehicles with existing coverage." 
+            }, { status: 409 });
         }
 
         // Generate quote number
