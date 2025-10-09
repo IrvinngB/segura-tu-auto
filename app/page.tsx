@@ -210,6 +210,11 @@ export default function HomePage() {
                     icon: TrendingUp,
                     label: "Solicitar Cotización",
                 },
+                {
+                    path: "/customer/profile",
+                    icon: Users,
+                    label: "Mi Perfil",
+                },
             ];
         }
 
@@ -492,6 +497,16 @@ export default function HomePage() {
                                     >
                                         <FileText className="mr-2 h-4 w-4" />
                                         Ver Mis Pólizas
+                                    </Button>
+                                    <Button
+                                        className="w-full justify-start bg-transparent"
+                                        variant="outline"
+                                        onClick={() =>
+                                            router.push("/customer/profile")
+                                        }
+                                    >
+                                        <Users className="mr-2 h-4 w-4" />
+                                        Actualizar Mis Datos
                                     </Button>
                                 </>
                             ) : (

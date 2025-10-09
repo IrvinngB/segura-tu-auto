@@ -60,6 +60,19 @@ interface PaymentMethodsProps {
     allowEdit?: boolean;
 }
 
+type PaymentFormData = {
+    type: "credit_card" | "debit_card" | "bank_account" | "digital_wallet";
+    card_number: string;
+    expiry_date: string;
+    cvv: string;
+    cardholder_name: string;
+    bank_name: string;
+    account_number: string;
+    routing_number: string;
+    wallet_email: string;
+    is_primary: boolean;
+};
+
 export function PaymentMethods({
     onMethodAdded,
     showAddButton = true,
@@ -73,21 +86,11 @@ export function PaymentMethods({
         null
     );
     const [submitting, setSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string>("");
     const supabase = createClient();
 
     // Form data for new/edit payment method
-    const [formData, setFormData] = useState<{
-        type: "credit_card" | "debit_card" | "bank_account" | "digital_wallet";
-        card_number: string;
-        expiry_date: string;
-        cvv: string;
-        cardholder_name: string;
-        bank_name: string;
-        account_number: string;
-        routing_number: string;
-        wallet_email: string;
-        is_primary: boolean;
-    }>({
+    const [formData, setFormData] = useState<PaymentFormData>({
         type: "credit_card",
         card_number: "",
         expiry_date: "",
@@ -108,31 +111,22 @@ export function PaymentMethods({
         if (!customerData) return;
 
         try {
-            // Por ahora usamos datos simulados, pero se podría conectar a Supabase
-            const simulatedMethods: PaymentMethod[] = [
-                {
-                    id: "1",
-                    type: "credit_card",
-                    name: "Visa",
-                    last_four: "4532",
-                    expiry_date: "12/27",
-                    is_primary: true,
-                    brand: "Visa",
-                    created_at: "2024-01-15T00:00:00Z",
-                },
-                {
-                    id: "2",
-                    type: "debit_card",
-                    name: "Mastercard",
-                    last_four: "8945",
-                    expiry_date: "08/26",
-                    is_primary: false,
-                    brand: "Mastercard",
-                    created_at: "2024-02-20T00:00:00Z",
-                },
-            ];
+            // Obtener métodos de pago reales de Supabase
+            const { data, error } = await supabase
+                .from('payment_methods')
+                .select('*')
+                .eq('customer_id', customerData.id)
+                .eq('is_active', true)
+                .order('created_at', { ascending: false });
 
-            setPaymentMethods(simulatedMethods);
+            if (error) {
+                console.error("Error fetching payment methods:", error);
+                // Si hay error, mostrar array vacío en lugar de datos simulados
+                setPaymentMethods([]);
+                return;
+            }
+
+            setPaymentMethods(data || []);
         } catch (error) {
             console.error("Error fetching payment methods:", error);
         } finally {
@@ -207,75 +201,112 @@ export function PaymentMethods({
         if (!customerData) return;
 
         setSubmitting(true);
+        setFormError("");
+        
         try {
-            // Validate form
-            if (
-                formData.type === "credit_card" ||
-                formData.type === "debit_card"
-            ) {
-                if (
-                    !formData.card_number ||
-                    !formData.expiry_date ||
-                    !formData.cvv
-                ) {
-                    throw new Error(
-                        "Todos los campos de tarjeta son requeridos"
-                    );
+            // Validate form based on payment method type
+            if (formData.type === "credit_card" || formData.type === "debit_card") {
+                if (!formData.card_number) {
+                    throw new Error("El número de tarjeta es requerido");
+                }
+                if (!validateCardNumber(formData.card_number)) {
+                    throw new Error("El número de tarjeta no es válido (debe tener 13-19 dígitos)");
+                }
+                if (!formData.expiry_date) {
+                    throw new Error("La fecha de expiración es requerida");
+                }
+                if (!validateExpiryDate(formData.expiry_date)) {
+                    throw new Error("La fecha de expiración no es válida o ya expiró (formato: MM/YY)");
+                }
+                if (!formData.cvv) {
+                    throw new Error("El CVV es requerido");
+                }
+                if (!validateCVV(formData.cvv)) {
+                    throw new Error("El CVV no es válido (debe tener 3-4 dígitos)");
+                }
+                if (!formData.cardholder_name.trim()) {
+                    throw new Error("El nombre del titular es requerido");
+                }
+            } else if (formData.type === "bank_account") {
+                if (!formData.account_number) {
+                    throw new Error("El número de cuenta es requerido");
+                }
+                if (!validateAccountNumber(formData.account_number)) {
+                    throw new Error("El número de cuenta no es válido (debe tener 8-17 dígitos)");
+                }
+                if (!formData.routing_number) {
+                    throw new Error("El número de ruta es requerido");
+                }
+                if (!validateRoutingNumber(formData.routing_number)) {
+                    throw new Error("El número de ruta no es válido (debe tener 9 dígitos)");
+                }
+                if (!formData.bank_name.trim()) {
+                    throw new Error("El nombre del banco es requerido");
+                }
+            } else if (formData.type === "digital_wallet") {
+                if (!formData.wallet_email) {
+                    throw new Error("El email de la billetera digital es requerido");
+                }
+                if (!validateEmail(formData.wallet_email)) {
+                    throw new Error("El email no tiene un formato válido");
                 }
             }
 
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-
-            const newMethod: PaymentMethod = {
-                id: editingMethod?.id || `new-${Date.now()}`,
+            // Preparar datos para Supabase
+            const paymentMethodData = {
+                customer_id: customerData.id,
                 type: formData.type,
-                name:
-                    formData.cardholder_name ||
-                    formData.bank_name ||
-                    "Método de Pago",
-                last_four:
-                    formData.card_number.slice(-4) ||
-                    formData.account_number.slice(-4) ||
-                    "****",
-                expiry_date: formData.expiry_date,
+                name: formData.cardholder_name || formData.bank_name || "Método de Pago",
+                last_four: formData.card_number.slice(-4) || formData.account_number.slice(-4) || "****",
+                expiry_date: formData.expiry_date || null,
+                brand: formData.type === "credit_card" || formData.type === "debit_card" ? "Visa" : null,
+                bank_name: formData.bank_name || null,
                 is_primary: formData.is_primary,
-                brand: formData.type === "credit_card" ? "Visa" : undefined,
-                bank_name: formData.bank_name,
-                created_at:
-                    editingMethod?.created_at || new Date().toISOString(),
+                is_active: true
             };
 
+            let newMethod: PaymentMethod;
+
             if (editingMethod) {
-                // Update existing method
+                // Actualizar método existente
+                const { data, error } = await supabase
+                    .from('payment_methods')
+                    .update(paymentMethodData)
+                    .eq('id', editingMethod.id)
+                    .select()
+                    .single();
+
+                if (error) throw new Error("Error al actualizar el método de pago: " + error.message);
+                
+                newMethod = data;
+                
+                // Actualizar en el estado local
                 setPaymentMethods((methods) =>
                     methods.map((method) =>
                         method.id === editingMethod.id ? newMethod : method
                     )
                 );
             } else {
-                // Add new method
+                // Crear nuevo método
+                const { data, error } = await supabase
+                    .from('payment_methods')
+                    .insert(paymentMethodData)
+                    .select()
+                    .single();
+
+                if (error) throw new Error("Error al guardar el método de pago: " + error.message);
+                
+                newMethod = data;
+                
+                // Agregar al estado local
                 setPaymentMethods((methods) => [...methods, newMethod]);
                 onMethodAdded?.(newMethod);
-            }
-
-            // If set as primary, update other methods
-            if (formData.is_primary) {
-                setPaymentMethods((methods) =>
-                    methods.map((method) => ({
-                        ...method,
-                        is_primary: method.id === newMethod.id,
-                    }))
-                );
             }
 
             setShowAddModal(false);
         } catch (error) {
             console.error("Error saving payment method:", error);
-            alert(
-                "Error al guardar el método de pago: " +
-                    (error as Error).message
-            );
+            setFormError((error as Error).message);
         } finally {
             setSubmitting(false);
         }
@@ -299,6 +330,55 @@ export function PaymentMethods({
             setPaymentMethods((methods) =>
                 methods.filter((method) => method.id !== methodId)
             );
+        }
+    };
+
+    // Validation functions
+    const validateExpiryDate = (expiry: string): boolean => {
+        const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
+        if (!regex.test(expiry)) return false;
+        
+        const [month, year] = expiry.split('/');
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear() % 100;
+        const currentMonth = currentDate.getMonth() + 1;
+        
+        const expiryYear = parseInt(year);
+        const expiryMonth = parseInt(month);
+        
+        if (expiryYear < currentYear) return false;
+        if (expiryYear === currentYear && expiryMonth < currentMonth) return false;
+        
+        return true;
+    };
+
+    const validateCardNumber = (cardNumber: string): boolean => {
+        const cleaned = cardNumber.replace(/\s+/g, '');
+        return /^\d{13,19}$/.test(cleaned);
+    };
+
+    const validateCVV = (cvv: string): boolean => {
+        return /^\d{3,4}$/.test(cvv);
+    };
+
+    const validateAccountNumber = (accountNumber: string): boolean => {
+        return /^\d{8,17}$/.test(accountNumber);
+    };
+
+    const validateRoutingNumber = (routingNumber: string): boolean => {
+        return /^\d{9}$/.test(routingNumber);
+    };
+
+    const validateEmail = (email: string): boolean => {
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
+    };
+
+    // Helper function to update form data and clear errors
+    const updateFormData = (updates: Partial<PaymentFormData>) => {
+        setFormData((prev) => ({ ...prev, ...updates }));
+        if (formError) {
+            setFormError("");
         }
     };
 
@@ -463,6 +543,12 @@ export function PaymentMethods({
                         </DialogDescription>
                     </DialogHeader>
 
+                    {formError && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+                            <p className="text-sm">{formError}</p>
+                        </div>
+                    )}
+
                     <div className="space-y-4">
                         {/* Type Selection */}
                         <div className="space-y-2">
@@ -470,10 +556,7 @@ export function PaymentMethods({
                             <Select
                                 value={formData.type}
                                 onValueChange={(value: any) =>
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        type: value,
-                                    }))
+                                    updateFormData({ type: value })
                                 }
                             >
                                 <SelectTrigger>
@@ -508,10 +591,7 @@ export function PaymentMethods({
                                         id="cardholder_name"
                                         value={formData.cardholder_name}
                                         onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                cardholder_name: e.target.value,
-                                            }))
+                                            updateFormData({ cardholder_name: e.target.value })
                                         }
                                         placeholder="Juan Pérez"
                                     />
@@ -527,10 +607,7 @@ export function PaymentMethods({
                                             const value = e.target.value
                                                 .replace(/\D/g, "")
                                                 .slice(0, 16);
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                card_number: value,
-                                            }));
+                                            updateFormData({ card_number: value });
                                         }}
                                         placeholder="1234 5678 9012 3456"
                                         maxLength={16}

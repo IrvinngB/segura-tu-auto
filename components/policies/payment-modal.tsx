@@ -42,6 +42,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
 import { toast } from "@/components/ui/use-toast";
+import { PaymentMethods } from "@/components/customer/payment-methods";
 
 interface PaymentModalProps {
     open: boolean;
@@ -102,6 +103,7 @@ export function PaymentModal({
     });
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [saveMethod, setSaveMethod] = useState(false);
+    
     const supabase = createClient();
 
     useEffect(() => {
@@ -115,34 +117,39 @@ export function PaymentModal({
 
         setLoading(true);
         try {
-            // Simular métodos de pago disponibles del cliente
-            const simulatedPaymentMethods: PaymentMethod[] = [
-                {
-                    id: "1",
-                    type: "credit_card",
-                    name: "Visa",
-                    last_four: "4532",
-                    expiry_date: "12/27",
-                    is_primary: true,
-                },
-                {
-                    id: "2",
-                    type: "debit_card",
-                    name: "Mastercard",
-                    last_four: "8945",
-                    expiry_date: "08/26",
-                    is_primary: false,
-                },
-            ];
+            // Obtener métodos de pago reales de la base de datos
+            const { data: methods, error } = await supabase
+                .from("payment_methods")
+                .select("*")
+                .eq("customer_id", customerData.id)
+                .eq("is_active", true)
+                .order("is_primary", { ascending: false })
+                .order("created_at", { ascending: false });
 
-            setPaymentMethods(simulatedPaymentMethods);
+            if (error) {
+                console.error("Error fetching payment methods:", error);
+                setPaymentMethods([]);
+                return;
+            }
+
+            // Mapear los datos de la base de datos al formato esperado
+            const formattedMethods: PaymentMethod[] = (methods || []).map(method => ({
+                id: method.id,
+                type: method.type,
+                name: method.name,
+                last_four: method.last_four,
+                expiry_date: method.expiry_date,
+                is_primary: method.is_primary,
+            }));
+
+            setPaymentMethods(formattedMethods);
 
             // Auto-seleccionar el método principal si existe
-            const primaryMethod = simulatedPaymentMethods.find(
+            const primaryMethod = formattedMethods.find(
                 (method) => method.is_primary
             );
             setSelectedPaymentMethod(
-                primaryMethod?.id || simulatedPaymentMethods[0]?.id || ""
+                primaryMethod?.id || formattedMethods[0]?.id || ""
             );
         } catch (error) {
             console.error("Error fetching payment methods:", error);

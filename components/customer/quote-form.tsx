@@ -340,11 +340,12 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         }
 
         const experience = parseInt(driverData.drivingExperience);
-        if (experience < 0 || experience > age - 16) {
-            errors.push(
-                "La experiencia de manejo no puede ser negativa o mayor a la edad menos 16 años"
-            );
-        }
+        // Validación temporalmente deshabilitada - se implementará en el registro
+        // if (experience < 0 || experience > age - 16) {
+        //     errors.push(
+        //         "La experiencia de manejo no puede ser negativa o mayor a la edad menos 16 años"
+        //     );
+        // }
 
         // Validar que se haya seleccionado un plan
         if (!selectedPlan) {
@@ -659,6 +660,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                credentials: "include", // Incluir cookies de autenticación
                 body: JSON.stringify(quoteData),
             });
 

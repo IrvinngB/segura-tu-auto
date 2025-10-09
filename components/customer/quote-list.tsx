@@ -64,7 +64,9 @@ export function QuoteList({ customerId }: QuoteListProps) {
     const fetchQuotes = async () => {
         try {
             console.log("Fetching quotes...");
-            const response = await fetch("/api/quotes");
+            const response = await fetch("/api/quotes", {
+                credentials: "include"
+            });
 
             if (!response.ok) {
                 console.error(

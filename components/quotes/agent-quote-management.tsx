@@ -60,7 +60,9 @@ export function AgentQuoteManagement() {
         try {
             console.log("🔍 AgentQuoteManagement: Fetching quotes...");
 
-            const response = await fetch("/api/quotes");
+            const response = await fetch("/api/quotes", {
+                credentials: "include"
+            });
             console.log("📡 Response status:", response.status);
 
             const result = await response.json();
@@ -99,6 +101,7 @@ export function AgentQuoteManagement() {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                credentials: "include",
                 body: JSON.stringify({
                     action: actionType,
                     notes: notes,

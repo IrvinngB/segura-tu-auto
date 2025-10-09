@@ -75,6 +75,7 @@ import {
 import { es } from "date-fns/locale";
 import { toast } from "@/components/ui/use-toast";
 import { CustomerPaymentModal } from "@/components/customer/customer-payment-modal";
+import { PaymentMethods } from "@/components/customer/payment-methods";
 
 interface Payment {
     id: string;
@@ -125,6 +126,7 @@ interface Policy {
     start_date: string;
     end_date: string;
     auto_renewal: boolean;
+    total_coverage_limit?: number;
     vehicle: {
         id: string;
         make: string;
@@ -152,7 +154,6 @@ export default function CustomerPaymentsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("overview");
-    const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
     const [autopayEnabled, setAutopayEnabled] = useState(false);
     const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
@@ -166,115 +167,37 @@ export default function CustomerPaymentsPage() {
     const [customerId, setCustomerId] = useState<string>("");
     const supabase = createClient();
 
-    // Datos simulados para demostración completa
-    const simulatedPayments: Payment[] = [
-        {
-            id: "1",
-            amount: 1250.0,
-            payment_type: "Prima Mensual",
-            payment_method: "Tarjeta Terminada en 4532",
-            payment_status: "completed",
-            payment_date: "2024-09-15",
-            due_date: "2024-09-15",
-            reference_number: "PAY-20240915-001",
-            description: "Pago mensual póliza vehicular",
-            policy: {
-                id: "1",
-                policy_number: "POL-2024-001",
-                premium_amount: 15000,
-                payment_frequency: "monthly",
-                next_payment_date: "2024-10-15",
-                status: "active",
-            },
-        },
-        {
-            id: "2",
-            amount: 1250.0,
-            payment_type: "Prima Mensual",
-            payment_method: "Transferencia Bancaria",
-            payment_status: "completed",
-            payment_date: "2024-08-15",
-            due_date: "2024-08-15",
-            reference_number: "PAY-20240815-002",
-            description: "Pago mensual póliza vehicular",
-            policy: {
-                id: "1",
-                policy_number: "POL-2024-001",
-                premium_amount: 15000,
-                payment_frequency: "monthly",
-                next_payment_date: "2024-10-15",
-                status: "active",
-            },
-        },
-        {
-            id: "3",
-            amount: 2100.0,
-            payment_type: "Prima Mensual",
-            payment_method: "Tarjeta Terminada en 8945",
-            payment_status: "completed",
-            payment_date: "2024-09-10",
-            due_date: "2024-09-10",
-            reference_number: "PAY-20240910-003",
-            description: "Pago mensual póliza todo riesgo",
-            fees: 50.0,
-            policy: {
-                id: "2",
-                policy_number: "POL-2024-002",
-                premium_amount: 25200,
-                payment_frequency: "monthly",
-                next_payment_date: "2024-10-10",
-                status: "active",
-            },
-        },
-    ];
+    // Función auxiliar para obtener la frecuencia de pago de una póliza
+    const getPaymentFrequencyFromPolicy = (policy: any) => {
+        return policy.payment_frequency || (policy.auto_renewal ? "monthly" : "annual");
+    };
 
-    const simulatedUpcomingPayments: UpcomingPayment[] = [
-        {
-            id: "1",
-            policy_number: "POL-2024-001",
-            amount: 1250.0,
-            due_date: "2024-10-15",
-            payment_type: "Prima Mensual",
-            status: "upcoming",
-        },
-        {
-            id: "2",
-            policy_number: "POL-2024-002",
-            amount: 2100.0,
-            due_date: "2024-10-10",
-            payment_type: "Prima Mensual",
-            status: "upcoming",
-        },
-    ];
-
-    const simulatedPaymentMethods: PaymentMethod[] = [
-        {
-            id: "1",
-            type: "credit_card",
-            name: "Visa **** 4532",
-            last_four: "4532",
-            expiry_date: "12/27",
-            is_primary: true,
-            is_autopay: true,
-        },
-        {
-            id: "2",
-            type: "debit_card",
-            name: "Mastercard **** 8945",
-            last_four: "8945",
-            expiry_date: "08/26",
-            is_primary: false,
-            is_autopay: false,
-        },
-        {
-            id: "3",
-            type: "bank_account",
-            name: "Cuenta Bancolombia **** 1234",
-            last_four: "1234",
-            is_primary: false,
-            is_autopay: false,
-        },
-    ];
+    // Función auxiliar para calcular la próxima fecha de pago
+    const calculateNextPaymentDate = (policy: any) => {
+        if (!policy.end_date) return "";
+        
+        const endDate = new Date(policy.end_date);
+        const today = new Date();
+        
+        // Si la póliza se renueva automáticamente
+        if (policy.auto_renewal) {
+            // Calcular la próxima fecha basada en la frecuencia
+            const frequency = getPaymentFrequencyFromPolicy(policy);
+            switch (frequency) {
+                case "monthly":
+                    return addMonths(today, 1).toISOString().split("T")[0];
+                case "quarterly":
+                    return addMonths(today, 3).toISOString().split("T")[0];
+                case "biannual":
+                    return addMonths(today, 6).toISOString().split("T")[0];
+                case "annual":
+                default:
+                    return addMonths(today, 12).toISOString().split("T")[0];
+            }
+        }
+        
+        return policy.end_date;
+    };
 
     useEffect(() => {
         if (userProfile) {
@@ -333,28 +256,42 @@ export default function CustomerPaymentsPage() {
                 .order("created_at", { ascending: false });
 
             // Procesar pagos reales
-            if (paymentsData) {
+            if (paymentsData && paymentsData.length > 0) {
+                // Obtener métodos de pago para mostrar nombres legibles
+                const { data: paymentMethodsForNames } = await supabase
+                    .from("payment_methods")
+                    .select("id, name, last_four")
+                    .eq("customer_id", customer.id);
+
+                const paymentMethodsMap = new Map(
+                    (paymentMethodsForNames || []).map(pm => [pm.id, pm.name])
+                );
+
                 const processedPayments = paymentsData.map((payment) => ({
                     ...payment,
                     payment_date: payment.payment_date || payment.created_at,
+                    payment_method: payment.payment_method || 
+                        (paymentMethodsMap.get(payment.transaction_id || '') || 'Método no especificado'),
                     description: `Pago ${
                         payment.payment_type === "premium"
                             ? "de prima"
+                            : payment.payment_type === "claim"
+                            ? "de reclamación"
                             : payment.payment_type
-                    } - ${
+                    }${
                         payment.policy?.vehicle
-                            ? `${payment.policy.vehicle.make} ${payment.policy.vehicle.model}`
-                            : "Póliza"
+                            ? ` - ${payment.policy.vehicle.make} ${payment.policy.vehicle.model}`
+                            : payment.policy
+                            ? ` - Póliza ${payment.policy.policy_number}`
+                            : ""
                     }`,
                     policy: payment.policy
                         ? {
                               id: payment.policy_id || "",
                               policy_number: payment.policy.policy_number,
                               premium_amount: payment.policy.premium_amount,
-                              payment_frequency: payment.policy.auto_renewal
-                                  ? "monthly"
-                                  : "manual",
-                              next_payment_date: payment.policy.end_date,
+                              payment_frequency: getPaymentFrequencyFromPolicy(payment.policy),
+                              next_payment_date: calculateNextPaymentDate(payment.policy),
                               status: payment.policy.status,
                           }
                         : null,
@@ -409,11 +346,34 @@ export default function CustomerPaymentsPage() {
                 setUpcomingPayments([]);
             }
 
-            // Por ahora usar métodos de pago simulados hasta implementar la tabla real
-            setPaymentMethods(simulatedPaymentMethods);
-            setAutopayEnabled(
-                simulatedPaymentMethods.some((pm) => pm.is_autopay)
-            );
+            // Cargar métodos de pago reales de la base de datos
+            const { data: paymentMethodsData } = await supabase
+                .from("payment_methods")
+                .select("*")
+                .eq("customer_id", customer.id)
+                .eq("is_active", true)
+                .order("is_primary", { ascending: false })
+                .order("created_at", { ascending: false });
+
+            if (paymentMethodsData) {
+                const formattedPaymentMethods: PaymentMethod[] = paymentMethodsData.map(method => ({
+                    id: method.id,
+                    type: method.type,
+                    name: method.name,
+                    last_four: method.last_four,
+                    expiry_date: method.expiry_date,
+                    is_primary: method.is_primary,
+                    is_autopay: method.is_primary, // Por ahora usamos is_primary como autopay
+                }));
+
+                setPaymentMethods(formattedPaymentMethods);
+                setAutopayEnabled(
+                    formattedPaymentMethods.some((pm) => pm.is_autopay)
+                );
+            } else {
+                setPaymentMethods([]);
+                setAutopayEnabled(false);
+            }
         } catch (error) {
             console.error("Error cargando datos de pago:", error);
             setError("Error al cargar los datos de pago");
@@ -587,70 +547,7 @@ export default function CustomerPaymentsPage() {
                             <Download className="h-4 w-4 mr-2" />
                             Exportar
                         </Button>
-                        <Dialog
-                            open={showAddPaymentMethod}
-                            onOpenChange={setShowAddPaymentMethod}
-                        >
-                            <DialogTrigger asChild>
-                                <Button size="sm">
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Agregar Método
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>
-                                        Agregar Método de Pago
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        Agrega una nueva tarjeta o cuenta
-                                        bancaria para tus pagos
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label>Tipo de Método</Label>
-                                        <Select>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Selecciona un tipo" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="credit_card">
-                                                    Tarjeta de Crédito
-                                                </SelectItem>
-                                                <SelectItem value="debit_card">
-                                                    Tarjeta de Débito
-                                                </SelectItem>
-                                                <SelectItem value="bank_account">
-                                                    Cuenta Bancaria
-                                                </SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <Label>Número de Tarjeta</Label>
-                                        <Input placeholder="**** **** **** 1234" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label>Vencimiento</Label>
-                                            <Input placeholder="MM/YY" />
-                                        </div>
-                                        <div>
-                                            <Label>CVV</Label>
-                                            <Input placeholder="123" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <Label>Nombre del Titular</Label>
-                                        <Input placeholder="Como aparece en la tarjeta" />
-                                    </div>
-                                    <Button className="w-full">
-                                        Agregar Método de Pago
-                                    </Button>
-                                </div>
-                            </DialogContent>
-                        </Dialog>
+
                     </div>
                 </div>
 
@@ -885,132 +782,84 @@ export default function CustomerPaymentsPage() {
                                     <div className="space-y-4">
                                         <h3 className="text-lg font-semibold">Pólizas Activas</h3>
 
-                                        {/* Ejemplo de póliza - en implementación real vendría de la base de datos */}
-                                        <div className="border rounded-lg p-6 space-y-4">
-                                            <div className="flex justify-between items-start">
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Shield className="h-5 w-5 text-green-600" />
-                                                        <h4 className="font-semibold">Póliza Todo Riesgo</h4>
-                                                        <Badge className="bg-green-100 text-green-800">Activa</Badge>
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Número: POL-2024-001 • Vehículo: Toyota Camry 2022
-                                                    </p>
-                                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                                        <div>
-                                                            <span className="font-medium">Prima Mensual:</span> $1,250.00
+                                        {/* Pólizas reales del cliente */}
+                                        {policies.length > 0 ? (
+                                            policies
+                                                .filter(policy => policy.status === 'active')
+                                                .map((policy) => {
+                                                    const monthlyAmount = Math.round(policy.premium_amount / 12);
+                                                    const nextPaymentDate = calculateNextPaymentDate(policy);
+                                                    
+                                                    return (
+                                                        <div key={policy.id} className="border rounded-lg p-6 space-y-4">
+                                                            <div className="flex justify-between items-start">
+                                                                <div className="space-y-2">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Shield className="h-5 w-5 text-green-600" />
+                                                                        <h4 className="font-semibold">
+                                                                            Póliza {policy.policy_type === 'basica' ? 'Básica' : 
+                                                                                   policy.policy_type === 'limitada' ? 'Limitada' : 
+                                                                                   'Todo Riesgo'}
+                                                                        </h4>
+                                                                        <Badge className={
+                                                                            policy.status === 'active' 
+                                                                                ? "bg-green-100 text-green-800" 
+                                                                                : "bg-gray-100 text-gray-800"
+                                                                        }>
+                                                                            {policy.status === 'active' ? 'Activa' : 'Inactiva'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <p className="text-sm text-muted-foreground">
+                                                                        Número: {policy.policy_number}
+                                                                        {policy.vehicle && ` • Vehículo: ${policy.vehicle.make} ${policy.vehicle.model} ${policy.vehicle.year}`}
+                                                                    </p>
+                                                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                                                        <div>
+                                                                            <span className="font-medium">Prima Mensual:</span> ${monthlyAmount.toLocaleString()}
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="font-medium">Próximo Pago:</span> {
+                                                                                nextPaymentDate ? format(new Date(nextPaymentDate), "d MMM yyyy", { locale: es }) : 'N/A'
+                                                                            }
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="font-medium">Prima Anual:</span> ${policy.premium_amount.toLocaleString()}
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="font-medium">Cobertura Total:</span> ${policy.total_coverage_limit?.toLocaleString() || 'N/A'}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right space-y-2">
+                                                                    <div className="text-2xl font-bold text-green-600">
+                                                                        ${monthlyAmount.toLocaleString()}
+                                                                    </div>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        onClick={() => handlePayment(
+                                                                            policy.id, 
+                                                                            "Prima Mensual", 
+                                                                            monthlyAmount, 
+                                                                            policy.policy_number
+                                                                        )}
+                                                                        disabled={loading}
+                                                                        className="w-full"
+                                                                    >
+                                                                        Pagar Prima
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <span className="font-medium">Próximo Pago:</span> 15 Oct 2024
-                                                        </div>
-                                                        <div>
-                                                            <span className="font-medium">Cobertura:</span> $50,000.00
-                                                        </div>
-                                                        <div>
-                                                            <span className="font-medium">Deducible:</span> $500.00
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right space-y-2">
-                                                    <div className="text-2xl font-bold text-green-600">
-                                                        $1,250.00
-                                                    </div>
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handlePayment("pol1", "Prima Mensual", 1250, "POL-2024-001")}
-                                                        disabled={loading}
-                                                        className="w-full"
-                                                    >
-                                                        Pagar Prima
-                                                    </Button>
-                                                </div>
+                                                    );
+                                                })
+                                        ) : (
+                                            <div className="text-center py-8 text-muted-foreground">
+                                                <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                                <p className="text-lg font-medium mb-2">No tienes pólizas activas</p>
+                                                <p className="text-sm">Contacta a tu agente para crear una nueva póliza</p>
                                             </div>
-
-                                            <div className="pt-4 border-t">
-                                                <h5 className="font-medium mb-2">Coberturas Incluidas:</h5>
-                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                                                    <span className="flex items-center gap-1">
-                                                        <CheckCircle className="h-3 w-3 text-green-600" />
-                                                        Responsabilidad Civil
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <CheckCircle className="h-3 w-3 text-green-600" />
-                                                        Daños Propios
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <CheckCircle className="h-3 w-3 text-green-600" />
-                                                        Robo Total
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <CheckCircle className="h-3 w-3 text-green-600" />
-                                                        Asistencia Vial
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <CheckCircle className="h-3 w-3 text-green-600" />
-                                                        Cobertura de Cristales
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Segunda póliza de ejemplo */}
-                                        <div className="border rounded-lg p-6 space-y-4">
-                                            <div className="flex justify-between items-start">
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Shield className="h-5 w-5 text-blue-600" />
-                                                        <h4 className="font-semibold">Póliza Básica</h4>
-                                                        <Badge className="bg-blue-100 text-blue-800">Activa</Badge>
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Número: POL-2024-002 • Vehículo: Honda Civic 2021
-                                                    </p>
-                                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                                        <div>
-                                                            <span className="font-medium">Prima Mensual:</span> $850.00
-                                                        </div>
-                                                        <div>
-                                                            <span className="font-medium">Próximo Pago:</span> 20 Oct 2024
-                                                        </div>
-                                                        <div>
-                                                            <span className="font-medium">Cobertura:</span> $25,000.00
-                                                        </div>
-                                                        <div>
-                                                            <span className="font-medium">Deducible:</span> $1,000.00
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right space-y-2">
-                                                    <div className="text-2xl font-bold text-blue-600">
-                                                        $850.00
-                                                    </div>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handlePayment("pol2", "Prima Mensual", 850, "POL-2024-002")}
-                                                        disabled={loading}
-                                                        className="w-full"
-                                                    >
-                                                        Pagar Prima
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            <div className="pt-4 border-t">
-                                                <h5 className="font-medium mb-2">Coberturas Incluidas:</h5>
-                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                                                    <span className="flex items-center gap-1">
-                                                        <CheckCircle className="h-3 w-3 text-green-600" />
-                                                        Responsabilidad Civil
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <CheckCircle className="h-3 w-3 text-green-600" />
-                                                        Daños a Terceros
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        )}
+                                        {/* Fin de sección de pólizas reales */}
                                     </div>
 
                                     {/* Resumen de Pólizas */}
@@ -1234,72 +1083,7 @@ export default function CustomerPaymentsPage() {
                     </TabsContent>
 
                     <TabsContent value="methods" className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Métodos de Pago</CardTitle>
-                                <CardDescription>
-                                    Gestiona tus tarjetas y cuentas bancarias
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {paymentMethods.map((method) => (
-                                        <div
-                                            key={method.id}
-                                            className="border rounded-lg p-4 space-y-4"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-3">
-                                                    {getPaymentMethodIcon(
-                                                        method.type
-                                                    )}
-                                                    <div>
-                                                        <p className="font-medium">
-                                                            {method.name}
-                                                        </p>
-                                                        {method.expiry_date && (
-                                                            <p className="text-sm text-muted-foreground">
-                                                                Vence:{" "}
-                                                                {
-                                                                    method.expiry_date
-                                                                }
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    {method.is_primary && (
-                                                        <Badge variant="default">
-                                                            Principal
-                                                        </Badge>
-                                                    )}
-                                                    {method.is_autopay && (
-                                                        <Badge variant="secondary">
-                                                            Autopago
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                >
-                                                    Editar
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="text-destructive"
-                                                >
-                                                    Eliminar
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <PaymentMethods />
                     </TabsContent>
 
                     <TabsContent value="settings" className="space-y-6">
