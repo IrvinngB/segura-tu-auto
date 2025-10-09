@@ -56,6 +56,34 @@ export interface Vehicle {
     updated_at: string;
 }
 
+export interface Quote {
+    id: string;
+    quote_number: string;
+    customer_id: string;
+    vehicle_id: string;
+    agent_id?: string;
+    policy_type: "basica" | "limitada" | "amplia";
+    status: "pending" | "approved" | "rejected" | "converted";
+    start_date: string;
+    end_date: string;
+    premium_amount: number;
+    payment_frequency: "monthly" | "quarterly" | "biannual" | "annual";
+    auto_renewal: boolean;
+    selected_coverages?: any;
+    driver_data?: any;
+    vehicle_data?: any;
+    risk_assessment?: any;
+    agent_notes?: string;
+    reviewed_at?: string;
+    rejected_reason?: string;
+    created_at: string;
+    updated_at: string;
+    expires_at: string;
+    customer?: Customer;
+    vehicle?: Vehicle;
+    agent?: User;
+}
+
 export interface Policy {
     id: string;
     policy_number: string;

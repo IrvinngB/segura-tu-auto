@@ -796,7 +796,12 @@ export function EditVehicleForm({
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecciona combustible" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent 
+                                        className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                        position="popper"
+                                        side="bottom"
+                                        align="start"
+                                    >
                                         <SelectItem value="Gasolina">
                                             Gasolina
                                         </SelectItem>
@@ -840,7 +845,12 @@ export function EditVehicleForm({
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecciona transmisión" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent 
+                                        className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                        position="popper"
+                                        side="bottom"
+                                        align="start"
+                                    >
                                         <SelectItem value="Manual">
                                             Manual
                                         </SelectItem>
@@ -874,7 +884,12 @@ export function EditVehicleForm({
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecciona tipo de vehículo" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent 
+                                        className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                        position="popper"
+                                        side="bottom"
+                                        align="start"
+                                    >
                                         <SelectItem value="Sedán">
                                             Sedán
                                         </SelectItem>
@@ -918,7 +933,12 @@ export function EditVehicleForm({
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecciona uso del vehículo" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent 
+                                        className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                        position="popper"
+                                        side="bottom"
+                                        align="start"
+                                    >
                                         <SelectItem value="personal">
                                             Personal
                                         </SelectItem>
@@ -1037,7 +1057,12 @@ export function EditVehicleForm({
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecciona tipo de estacionamiento" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent 
+                                    className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                    position="popper"
+                                    side="bottom"
+                                    align="start"
+                                >
                                     <SelectItem value="enclosed">
                                         Garage cerrado
                                     </SelectItem>

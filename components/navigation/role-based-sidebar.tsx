@@ -54,6 +54,13 @@ const navigationItems: NavigationItem[] = [
         description: "Gestión de pólizas",
     },
     {
+        name: "Cotizaciones",
+        href: "/quotes",
+        icon: Calculator,
+        roles: ["admin", "agent"],
+        description: "Gestión de cotizaciones",
+    },
+    {
         name: "Clientes",
         href: "/clients",
         icon: Users,
@@ -98,6 +105,13 @@ const navigationItems: NavigationItem[] = [
         description: "Mis pólizas de seguro",
     },
     {
+        name: "Mis Cotizaciones",
+        href: "/customer/quotes",
+        icon: Calculator,
+        roles: ["customer"],
+        description: "Mis cotizaciones de seguro",
+    },
+    {
         name: "Mis Reclamaciones",
         href: "/customer/claims",
         icon: AlertTriangle,
@@ -112,7 +126,7 @@ const navigationItems: NavigationItem[] = [
         description: "Mis vehículos",
     },
     {
-        name: "Cotización",
+        name: "Nueva Cotización",
         href: "/customer/quote",
         icon: Calculator,
         roles: ["customer"],
@@ -180,6 +194,8 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
                     "Dashboard",
                     "Mis Pólizas",
                     "Pólizas",
+                    "Mis Cotizaciones",
+                    "Cotizaciones",
                     "Mis Reclamaciones",
                     "Reclamaciones",
                 ].includes(item.name)
@@ -195,7 +211,7 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
             ),
             tools: filteredNavigation.filter((item) =>
                 [
-                    "Cotización",
+                    "Nueva Cotización",
                     "Documentos",
                     "Pagos",
                     "Comunicaciones",

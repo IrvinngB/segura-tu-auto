@@ -60,21 +60,22 @@ export function useCustomerDataSimple() {
                     return;
                 }
 
-                // Obtener datos adicionales del usuario
-                const { data: userData, error: userError } = await supabase
-                    .from("users")
-                    .select(
-                        "birth_date, license_year, has_accidents, has_claims"
-                    )
-                    .eq("id", userProfile.id)
-                    .single();
+                // Obtener datos adicionales del customer
+                const { data: customerDetails, error: customerDetailsError } =
+                    await supabase
+                        .from("customers")
+                        .select(
+                            "date_of_birth, driving_experience_years, has_accidents, has_claims"
+                        )
+                        .eq("id", customer.id)
+                        .single();
 
-                console.log("🔍 SIMPLE: User data result:", {
-                    userData,
-                    userError,
+                console.log("🔍 SIMPLE: Customer details result:", {
+                    customerDetails,
+                    customerDetailsError,
                 });
 
-                // Usar datos del userProfile y userData
+                // Usar datos del userProfile y customerDetails
                 const customerInfo: CustomerData = {
                     id: customer.id,
                     user_id: customer.user_id,
@@ -82,10 +83,11 @@ export function useCustomerDataSimple() {
                     last_name: userProfile.last_name || "",
                     email: userProfile.email || "",
                     role: userProfile.role || "",
-                    birth_date: userData?.birth_date,
-                    license_year: userData?.license_year,
-                    has_accidents: userData?.has_accidents,
-                    has_claims: userData?.has_claims,
+                    birth_date: customerDetails?.date_of_birth,
+                    license_year:
+                        customerDetails?.driving_experience_years || 2024, // Año de licencia aproximado
+                    has_accidents: customerDetails?.has_accidents || false,
+                    has_claims: customerDetails?.has_claims || false,
                 };
 
                 console.log("✅ SIMPLE: Customer data set:", customerInfo);

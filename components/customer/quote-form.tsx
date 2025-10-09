@@ -22,10 +22,13 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { NotificationModal } from "@/components/ui/notification-modal";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
 import { POLICY_PLANS } from "@/lib/policy-plans";
 import type { Vehicle } from "@/lib/types/database";
+import jsPDF from "jspdf";
 import {
     Calculator,
     Car,
@@ -36,6 +39,7 @@ import {
     X,
     Star,
     Crown,
+    Download,
 } from "lucide-react";
 
 interface QuoteFormProps {
@@ -49,6 +53,22 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
     const [selectedPlan, setSelectedPlan] = useState<string>("basica"); // Plan por defecto básico
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const [hasActivePolicyForVehicle, setHasActivePolicyForVehicle] =
+        useState(false);
+    const [checkingPolicies, setCheckingPolicies] = useState(false);
+    const [notificationModal, setNotificationModal] = useState<{
+        open: boolean;
+        type: "success" | "error" | "warning" | "info";
+        title: string;
+        message: string;
+        onConfirm?: () => void;
+    }>({
+        open: false,
+        type: "info",
+        title: "",
+        message: "",
+    });
     const [vehicleData, setVehicleData] = useState({
         make: "",
         model: "",
@@ -64,6 +84,8 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         hasClaims: false,
     });
     const [calculatedQuote, setCalculatedQuote] = useState(0);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const supabase = createClient();
 
     useEffect(() => {
@@ -135,6 +157,8 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                     annualMileage:
                         selectedVehicle.annual_mileage?.toString() || "15000",
                 });
+                // Check for active policies when vehicle is selected
+                checkActivePolicyForVehicle(selectedVehicleId);
             }
         }
     }, [selectedVehicleId, vehicles]);
@@ -218,39 +242,504 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         setVehicleData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleContractPolicy = () => {
-        // Prepare the data to pass to the policy creation form
-        const policyData = {
-            vehicleId: selectedVehicleId,
-            vehicleData: vehicleData,
-            planType: selectedPlan,
-            driverData: driverData,
-            calculatedPremium: calculatedQuote,
-            planDetails:
-                POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS],
-        };
+    // Función para verificar si hay pólizas activas para el vehículo seleccionado
+    const checkActivePolicyForVehicle = async (vehicleId: string) => {
+        if (!vehicleId || !customerData) return;
 
-        console.log("Sending contract data:", policyData);
-        console.log("Selected plan type:", selectedPlan);
-        console.log("Available POLICY_PLANS keys:", Object.keys(POLICY_PLANS));
+        setCheckingPolicies(true);
+        try {
+            const { data, error } = await supabase
+                .from("policies")
+                .select("id, status, end_date")
+                .eq("vehicle_id", vehicleId)
+                .eq("customer_id", customerData.id)
+                .in("status", ["active", "pending"]);
 
-        // Verify the plan exists
-        if (!POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS]) {
-            console.error(
-                "Selected plan not found in POLICY_PLANS:",
-                selectedPlan
+            if (error) {
+                console.error("Error checking active policies:", error);
+                return;
+            }
+
+            // Verificar si hay pólizas activas o pendientes
+            const hasActivePolicy = data?.some((policy) => {
+                if (policy.status === "active") {
+                    // Verificar si la póliza no ha expirado
+                    const endDate = new Date(policy.end_date);
+                    return endDate > new Date();
+                }
+                return policy.status === "pending";
+            });
+
+            setHasActivePolicyForVehicle(hasActivePolicy || false);
+        } catch (error) {
+            console.error("Error checking policies:", error);
+        } finally {
+            setCheckingPolicies(false);
+        }
+    };
+
+    // Función para validar datos de la cotización
+    const validateQuoteData = (): string[] => {
+        const errors: string[] = [];
+
+        // Validar que hay un vehículo seleccionado
+        if (!selectedVehicleId) {
+            errors.push("Debe seleccionar un vehículo");
+        }
+
+        // Validar datos del vehículo
+        if (!vehicleData.make?.trim()) {
+            errors.push("La marca del vehículo es requerida");
+        }
+
+        if (!vehicleData.model?.trim()) {
+            errors.push("El modelo del vehículo es requerido");
+        }
+
+        if (
+            !vehicleData.year ||
+            vehicleData.year < 1990 ||
+            vehicleData.year > new Date().getFullYear() + 1
+        ) {
+            errors.push(
+                "El año del vehículo debe estar entre 1990 y " +
+                    (new Date().getFullYear() + 1)
             );
+        }
+
+        if (
+            !vehicleData.estimatedValue ||
+            parseFloat(vehicleData.estimatedValue) <= 0
+        ) {
+            errors.push("El valor estimado debe ser mayor a 0");
+        }
+
+        // Validar datos del conductor
+        const age = parseInt(driverData.age);
+        if (!age || age < 18 || age > 100) {
+            errors.push("La edad del conductor debe estar entre 18 y 100 años");
+        }
+
+        const experience = parseInt(driverData.drivingExperience);
+        if (experience < 0 || experience > age - 16) {
+            errors.push(
+                "La experiencia de manejo no puede ser negativa o mayor a la edad menos 16 años"
+            );
+        }
+
+        // Validar que se haya seleccionado un plan
+        if (!selectedPlan) {
+            errors.push("Debe seleccionar un plan de cobertura");
+        }
+
+        // Validar que no haya pólizas activas para este vehículo
+        if (hasActivePolicyForVehicle) {
+            errors.push(
+                "Este vehículo ya tiene una póliza activa. No se pueden crear múltiples pólizas para el mismo vehículo."
+            );
+        }
+
+        return errors;
+    };
+
+    const generateQuotePDF = (quoteData: any) => {
+        const doc = new jsPDF();
+        const currentDate = new Date().toLocaleDateString("es-ES");
+        const selectedPlanDetails =
+            POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS];
+
+        // Header
+        doc.setFontSize(20);
+        doc.setFont("helvetica", "bold");
+        doc.text("CONSTANCIA DE COTIZACIÓN", 105, 25, { align: "center" });
+
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "normal");
+        doc.text("SeguraTuAuto", 105, 35, { align: "center" });
+
+        // Quote number and date
+        doc.setFontSize(10);
+        doc.text(
+            `Cotización No: ${quoteData.id || "COT-" + Date.now()}`,
+            20,
+            50
+        );
+        doc.text(`Fecha: ${currentDate}`, 150, 50);
+
+        // Customer Information
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("INFORMACIÓN DEL CLIENTE", 20, 65);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(
+            `Nombre: ${customerData?.first_name} ${customerData?.last_name}`,
+            20,
+            75
+        );
+        doc.text(`Email: ${customerData?.email}`, 20, 85);
+        doc.text(
+            `Teléfono: ${(customerData as any)?.phone || "No especificado"}`,
+            20,
+            95
+        );
+        doc.text(
+            `País: ${(customerData as any)?.country || "No especificado"}`,
+            20,
+            105
+        );
+
+        // Vehicle Information
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("INFORMACIÓN DEL VEHÍCULO", 20, 120);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`Marca: ${vehicleData.make}`, 20, 130);
+        doc.text(`Modelo: ${vehicleData.model}`, 20, 140);
+        doc.text(`Año: ${vehicleData.year}`, 20, 150);
+        doc.text(
+            `Valor Estimado: $${Number.parseFloat(
+                vehicleData.estimatedValue
+            ).toLocaleString()}`,
+            20,
+            160
+        );
+        doc.text(
+            `Uso: ${
+                vehicleData.usageType === "personal"
+                    ? "Personal"
+                    : vehicleData.usageType === "commercial"
+                    ? "Comercial"
+                    : vehicleData.usageType
+            }`,
+            20,
+            170
+        );
+        doc.text(
+            `Kilometraje Anual: ${Number.parseInt(
+                vehicleData.annualMileage
+            ).toLocaleString()} km`,
+            20,
+            180
+        );
+
+        // Plan Information
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("PLAN SELECCIONADO", 20, 195);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`Plan: ${selectedPlanDetails?.name}`, 20, 205);
+        doc.text(
+            `Prima Mensual Base: $${selectedPlanDetails?.basePrice.toLocaleString()}`,
+            20,
+            215
+        );
+
+        // Coverage Details
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("COBERTURAS INCLUIDAS:", 20, 230);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        let yPos = 240;
+        selectedPlanDetails?.coverages
+            .filter((c) => c.included)
+            .forEach((coverage, index) => {
+                doc.text(`• ${coverage.name}`, 25, yPos);
+                if (coverage.maxAmount) {
+                    doc.text(
+                        `  Hasta: $${coverage.maxAmount.toLocaleString()}`,
+                        35,
+                        yPos + 8
+                    );
+                    yPos += 16;
+                } else {
+                    yPos += 10;
+                }
+            });
+
+        // Quote Summary
+        yPos += 10;
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("RESUMEN DE COTIZACIÓN", 20, yPos);
+
+        yPos += 15;
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(
+            `Prima Anual Total: $${calculatedQuote.toLocaleString()}`,
+            20,
+            yPos
+        );
+
+        yPos += 10;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+            `Prima Mensual: $${(calculatedQuote / 12).toFixed(2)}`,
+            20,
+            yPos
+        );
+        doc.text(
+            `Prima Trimestral: $${(calculatedQuote / 4).toFixed(2)}`,
+            20,
+            yPos + 10
+        );
+        doc.text(
+            `Prima Semestral: $${(calculatedQuote / 2).toFixed(2)}`,
+            20,
+            yPos + 20
+        );
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "italic");
+        doc.text(
+            "Esta cotización tiene una validez de 30 días a partir de la fecha de emisión.",
+            20,
+            280
+        );
+        doc.text(
+            "Los precios están sujetos a evaluación final y aprobación por parte de nuestros agentes.",
+            20,
+            288
+        );
+        doc.text(`Generado el ${currentDate} - SeguraTuAuto`, 105, 295, {
+            align: "center",
+        });
+
+        // Save the PDF
+        const fileName = `Cotización_${customerData?.first_name}_${
+            customerData?.last_name
+        }_${currentDate.replace(/\//g, "-")}.pdf`;
+        doc.save(fileName);
+    };
+
+    const handleShowConfirmModal = () => {
+        // Validar datos antes de mostrar el modal
+        const errors = validateQuoteData();
+
+        if (errors.length > 0) {
+            setValidationErrors(errors);
+
+            // Mostrar errores en modal personalizado
+            const errorMessage =
+                "Por favor corrija los siguientes errores:\n\n" +
+                errors.map((error) => "• " + error).join("\n");
+
+            setNotificationModal({
+                open: true,
+                type: "error",
+                title: "Errores de validación",
+                message: errorMessage,
+            });
             return;
         }
 
-        // Store the data in sessionStorage so it can be accessed by the policy form
-        sessionStorage.setItem(
-            "policyContractData",
-            JSON.stringify(policyData)
-        );
+        // Limpiar errores y mostrar modal
+        setValidationErrors([]);
+        setShowConfirmModal(true);
+    };
 
-        // Navigate to the policy creation page using Next.js router
-        router.push("/customer/policies/new");
+    const handleCancelModal = () => {
+        setShowConfirmModal(false);
+    };
+
+    const handleContractPolicy = async () => {
+        setShowConfirmModal(false);
+        setIsProcessing(true);
+
+        // Validación final antes de procesar
+        const errors = validateQuoteData();
+        if (errors.length > 0) {
+            setNotificationModal({
+                open: true,
+                type: "error",
+                title: "Error de validación",
+                message: errors[0],
+            });
+            setIsProcessing(false);
+            return;
+        }
+
+        if (!selectedVehicleId || !customerData) {
+            setNotificationModal({
+                open: true,
+                type: "error",
+                title: "Datos insuficientes",
+                message:
+                    "No se pueden crear la cotización con los datos actuales",
+            });
+            setIsProcessing(false);
+            return;
+        }
+
+        try {
+            const selectedPlanDetails =
+                POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS];
+
+            if (!selectedPlanDetails) {
+                console.error(
+                    "Selected plan not found in POLICY_PLANS:",
+                    selectedPlan
+                );
+                setIsProcessing(false);
+                return;
+            }
+
+            // Prepare quote data
+            const currentDate = new Date();
+            const endDate = new Date(
+                currentDate.getFullYear() + 1,
+                currentDate.getMonth(),
+                currentDate.getDate()
+            );
+
+            const quoteData = {
+                customer_id: customerData.id,
+                vehicle_id: selectedVehicleId,
+                policy_type: selectedPlan,
+                start_date: currentDate.toISOString().split("T")[0],
+                end_date: endDate.toISOString().split("T")[0],
+                premium_amount: calculatedQuote,
+                payment_frequency: "monthly",
+                auto_renewal: true,
+                selected_coverages: selectedPlanDetails.coverages.map(
+                    (coverage) => ({
+                        name: coverage.name,
+                        description: coverage.description,
+                        included: coverage.included,
+                        maxAmount: coverage.maxAmount,
+                        percentage: coverage.percentage,
+                    })
+                ),
+                driver_data: driverData,
+                vehicle_data: vehicleData,
+                risk_assessment: {
+                    age: driverData.age,
+                    experience: driverData.drivingExperience,
+                    vehicleAge: new Date().getFullYear() - vehicleData.year,
+                    hasAccidents: driverData.hasAccidents,
+                    hasClaims: driverData.hasClaims,
+                    calculatedScore: 75, // Base score, can be enhanced later
+                },
+            };
+
+            console.log("Creating quote with data:", quoteData);
+
+            // Create quote via API
+            const response = await fetch("/api/quotes", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(quoteData),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+
+                // Determinar el tipo de error
+                let userMessage = "";
+                if (response.status === 400) {
+                    userMessage =
+                        "Datos de cotización incompletos o inválidos. Por favor verifica la información.";
+                } else if (response.status === 401) {
+                    userMessage =
+                        "Sesión expirada. Por favor inicia sesión nuevamente.";
+                } else if (response.status === 409) {
+                    userMessage =
+                        "Ya existe una póliza activa para este vehículo.";
+                } else if (response.status >= 500) {
+                    userMessage =
+                        "Error del servidor. Por favor intenta nuevamente en unos momentos.";
+                } else {
+                    userMessage =
+                        errorData.error ||
+                        "Error desconocido al crear la cotización.";
+                }
+
+                throw new Error(userMessage);
+            }
+
+            const { quote } = await response.json();
+            console.log("Quote created successfully:", quote);
+
+            // Generate PDF after successful quote creation
+            generateQuotePDF(quote);
+
+            // Show success modal/message
+            const successMessage =
+                "¡Cotización creada exitosamente! 🎉\n\n" +
+                `• Número de cotización: ${
+                    quote.quote_number || "COT-" + Date.now()
+                }\n` +
+                `• Prima anual: $${calculatedQuote.toLocaleString()}\n` +
+                `• Plan: ${
+                    POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS]
+                        ?.name
+                }\n\n` +
+                "✅ Se ha descargado el PDF de constancia\n" +
+                "⏳ Un agente revisará tu solicitud pronto\n" +
+                "📧 Recibirás una notificación por correo";
+
+            if (onSuccess) {
+                onSuccess({
+                    ...quote,
+                    calculatedPremium: calculatedQuote,
+                    vehicle: vehicleData,
+                    message: successMessage,
+                });
+            } else {
+                // Show success modal
+                setNotificationModal({
+                    open: true,
+                    type: "success",
+                    title: "¡Cotización creada exitosamente! 🎉",
+                    message: successMessage,
+                    onConfirm: () => {
+                        router.push("/customer/quotes?success=true");
+                    },
+                });
+            }
+        } catch (error) {
+            console.error("Error creating quote:", error);
+
+            // Show user-friendly error message
+            let errorMessage = "";
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else if (typeof error === "string") {
+                errorMessage = error;
+            } else {
+                errorMessage = "Error desconocido al procesar la cotización";
+            }
+
+            // Show error modal
+            const fullErrorMessage =
+                errorMessage +
+                "\n\n" +
+                "💡 Sugerencias:\n" +
+                "• Verifica que todos los campos estén completos\n" +
+                "• Asegúrate de tener conexión a internet\n" +
+                "• Si el problema persiste, contacta soporte";
+
+            setNotificationModal({
+                open: true,
+                type: "error",
+                title: "Error al crear la cotización",
+                message: fullErrorMessage,
+            });
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -579,56 +1068,110 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Quote Result */}
-                    {calculatedQuote > 0 && (
-                        <Card className="bg-primary/5 border-primary/20">
+                    {/* Validation Errors */}
+                    {validationErrors.length > 0 && (
+                        <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
                             <CardContent className="pt-6">
-                                <div className="text-center">
-                                    <div className="text-3xl font-bold text-primary mb-2">
-                                        ${calculatedQuote.toLocaleString()}
-                                    </div>
-                                    <div className="text-lg font-medium mb-4">
-                                        Prima Anual Estimada
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                        <div>
-                                            <div className="font-medium">
-                                                Mensual
-                                            </div>
-                                            <div className="text-muted-foreground">
-                                                $
-                                                {(calculatedQuote / 12).toFixed(
-                                                    2
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="font-medium">
-                                                Trimestral
-                                            </div>
-                                            <div className="text-muted-foreground">
-                                                $
-                                                {(calculatedQuote / 4).toFixed(
-                                                    2
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="font-medium">
-                                                Semestral
-                                            </div>
-                                            <div className="text-muted-foreground">
-                                                $
-                                                {(calculatedQuote / 2).toFixed(
-                                                    2
-                                                )}
-                                            </div>
-                                        </div>
+                                <div className="flex items-start gap-3">
+                                    <X className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2">
+                                            Errores de validación
+                                        </h3>
+                                        <ul className="space-y-1">
+                                            {validationErrors.map(
+                                                (error, index) => (
+                                                    <li
+                                                        key={index}
+                                                        className="text-sm text-red-700 dark:text-red-300"
+                                                    >
+                                                        • {error}
+                                                    </li>
+                                                )
+                                            )}
+                                        </ul>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* Active Policy Warning */}
+                    {hasActivePolicyForVehicle && selectedVehicleId && (
+                        <Card className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+                            <CardContent className="pt-6">
+                                <div className="flex items-start gap-3">
+                                    <Shield className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+                                            Vehículo ya asegurado
+                                        </h3>
+                                        <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                                            Este vehículo ya tiene una póliza
+                                            activa. No puedes crear una nueva
+                                            cotización para un vehículo que ya
+                                            está asegurado. Si deseas cambiar tu
+                                            cobertura, contacta a nuestro equipo
+                                            de soporte.
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Quote Result */}
+                    {calculatedQuote > 0 &&
+                        !hasActivePolicyForVehicle &&
+                        validationErrors.length === 0 && (
+                            <Card className="bg-primary/5 border-primary/20">
+                                <CardContent className="pt-6">
+                                    <div className="text-center">
+                                        <div className="text-3xl font-bold text-primary mb-2">
+                                            ${calculatedQuote.toLocaleString()}
+                                        </div>
+                                        <div className="text-lg font-medium mb-4">
+                                            Prima Anual Estimada
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                            <div>
+                                                <div className="font-medium">
+                                                    Mensual
+                                                </div>
+                                                <div className="text-muted-foreground">
+                                                    $
+                                                    {(
+                                                        calculatedQuote / 12
+                                                    ).toFixed(2)}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="font-medium">
+                                                    Trimestral
+                                                </div>
+                                                <div className="text-muted-foreground">
+                                                    $
+                                                    {(
+                                                        calculatedQuote / 4
+                                                    ).toFixed(2)}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="font-medium">
+                                                    Semestral
+                                                </div>
+                                                <div className="text-muted-foreground">
+                                                    $
+                                                    {(
+                                                        calculatedQuote / 2
+                                                    ).toFixed(2)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
                     {/* Actions */}
                     {vehicles.length > 0 ? (
@@ -639,12 +1182,48 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                     type="button"
                                     variant="default"
                                     size="lg"
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
-                                    onClick={handleContractPolicy}
+                                    className={`w-full font-semibold py-3 ${
+                                        hasActivePolicyForVehicle ||
+                                        validationErrors.length > 0 ||
+                                        checkingPolicies
+                                            ? "bg-gray-400 cursor-not-allowed"
+                                            : "bg-blue-600 hover:bg-blue-700"
+                                    } text-white`}
+                                    onClick={handleShowConfirmModal}
+                                    disabled={
+                                        isProcessing ||
+                                        hasActivePolicyForVehicle ||
+                                        validationErrors.length > 0 ||
+                                        checkingPolicies
+                                    }
                                 >
-                                    <Shield className="h-5 w-5 mr-2" />
-                                    Contratar Esta Póliza - $
-                                    {calculatedQuote.toLocaleString()}/año
+                                    {checkingPolicies ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                            Verificando pólizas...
+                                        </>
+                                    ) : hasActivePolicyForVehicle ? (
+                                        <>
+                                            <Shield className="h-5 w-5 mr-2" />
+                                            Vehículo ya asegurado
+                                        </>
+                                    ) : validationErrors.length > 0 ? (
+                                        <>
+                                            <X className="h-5 w-5 mr-2" />
+                                            Corregir errores primero
+                                        </>
+                                    ) : isProcessing ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                            Procesando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Shield className="h-5 w-5 mr-2" />
+                                            <Download className="h-4 w-4 mr-1" />
+                                            {`Solicitar Cotización + PDF - $${calculatedQuote.toLocaleString()}/año`}
+                                        </>
+                                    )}
                                 </Button>
                             )}
 
@@ -675,6 +1254,33 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                     )}
                 </div>
             </CardContent>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                show={showConfirmModal}
+                title="Confirmar Solicitud de Cotización"
+                message={`¿Estás seguro de que deseas solicitar esta cotización por $${calculatedQuote.toLocaleString()}/año con el plan ${
+                    POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS]
+                        ?.name
+                }? Se generará automáticamente un PDF como constancia.`}
+                confirmText="Sí, solicitar y generar PDF"
+                cancelText="Cancelar"
+                onConfirm={handleContractPolicy}
+                onCancel={handleCancelModal}
+                isLoading={isProcessing}
+            />
+
+            {/* Notification Modal */}
+            <NotificationModal
+                open={notificationModal.open}
+                onOpenChange={(open) =>
+                    setNotificationModal((prev) => ({ ...prev, open }))
+                }
+                type={notificationModal.type}
+                title={notificationModal.title}
+                message={notificationModal.message}
+                onConfirm={notificationModal.onConfirm}
+            />
         </Card>
     );
 }

@@ -523,7 +523,12 @@ export function VehicleForm({
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent 
+                                        className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                        position="popper"
+                                        side="bottom"
+                                        align="start"
+                                    >
                                         <SelectItem value="Gasolina">
                                             Gasolina
                                         </SelectItem>
@@ -556,7 +561,12 @@ export function VehicleForm({
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent 
+                                        className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                        position="popper"
+                                        side="bottom"
+                                        align="start"
+                                    >
                                         <SelectItem value="Manual">
                                             Manual
                                         </SelectItem>
@@ -581,7 +591,12 @@ export function VehicleForm({
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent 
+                                        className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                        position="popper"
+                                        side="bottom"
+                                        align="start"
+                                    >
                                         <SelectItem value="Sedán">
                                             Sedán
                                         </SelectItem>
@@ -618,7 +633,12 @@ export function VehicleForm({
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent 
+                                        className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                        position="popper"
+                                        side="bottom"
+                                        align="start"
+                                    >
                                         <SelectItem value="personal">
                                             Personal
                                         </SelectItem>
@@ -726,7 +746,12 @@ export function VehicleForm({
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent 
+                                    className="z-50 min-w-[var(--radix-select-trigger-width)] max-w-none"
+                                    position="popper"
+                                    side="bottom"
+                                    align="start"
+                                >
                                     <SelectItem value="enclosed">
                                         Garage cerrado
                                     </SelectItem>

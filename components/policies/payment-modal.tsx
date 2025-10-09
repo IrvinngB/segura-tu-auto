@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +20,20 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { CreditCard, Building2, Smartphone, Shield } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+    CreditCard,
+    Building2,
+    Smartphone,
+    Shield,
+    Plus,
+    AlertCircle,
+    Star,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { PaymentMethods } from "@/components/customer/payment-methods";
+import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
 
 interface PaymentModalProps {
     open: boolean;
@@ -52,46 +63,67 @@ export function PaymentModal({
     onPaymentSuccess,
     onPaymentError,
 }: PaymentModalProps) {
+    const { customerData } = useCustomerDataSimple();
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [loading, setLoading] = useState(false);
     const [processingPayment, setProcessingPayment] = useState(false);
+    const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
     const supabase = createClient();
 
-    // Simular métodos de pago disponibles
-    const simulatedPaymentMethods: PaymentMethod[] = [
-        {
-            id: "1",
-            type: "credit_card",
-            name: "Visa **** 4532",
-            last_four: "4532",
-            expiry_date: "12/27",
-            is_primary: true,
-        },
-        {
-            id: "2",
-            type: "debit_card",
-            name: "Mastercard **** 8945",
-            last_four: "8945",
-            expiry_date: "08/26",
-            is_primary: false,
-        },
-        {
-            id: "3",
-            type: "bank_account",
-            name: "Cuenta Bancolombia **** 1234",
-            last_four: "1234",
-            is_primary: false,
-        },
-    ];
-
-    useState(() => {
+    useEffect(() => {
         if (open) {
-            // En una implementación real, cargar métodos de pago del cliente
-            setPaymentMethods(simulatedPaymentMethods);
-            setSelectedPaymentMethod(simulatedPaymentMethods[0]?.id || "");
+            fetchPaymentMethods();
         }
-    });
+    }, [open, customerData]);
+
+    const fetchPaymentMethods = async () => {
+        if (!customerData) return;
+
+        setLoading(true);
+        try {
+            // Simular métodos de pago disponibles del cliente
+            const simulatedPaymentMethods: PaymentMethod[] = [
+                {
+                    id: "1",
+                    type: "credit_card",
+                    name: "Visa",
+                    last_four: "4532",
+                    expiry_date: "12/27",
+                    is_primary: true,
+                },
+                {
+                    id: "2",
+                    type: "debit_card",
+                    name: "Mastercard",
+                    last_four: "8945",
+                    expiry_date: "08/26",
+                    is_primary: false,
+                },
+            ];
+
+            setPaymentMethods(simulatedPaymentMethods);
+
+            // Auto-seleccionar el método principal si existe
+            const primaryMethod = simulatedPaymentMethods.find(
+                (method) => method.is_primary
+            );
+            setSelectedPaymentMethod(
+                primaryMethod?.id || simulatedPaymentMethods[0]?.id || ""
+            );
+        } catch (error) {
+            console.error("Error fetching payment methods:", error);
+            setPaymentMethods([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleMethodAdded = (newMethod: PaymentMethod) => {
+        setPaymentMethods((prev) => [...prev, newMethod]);
+        setSelectedPaymentMethod(newMethod.id);
+        setShowAddPaymentMethod(false);
+    };
 
     const getPaymentMethodIcon = (type: string) => {
         switch (type) {
@@ -107,6 +139,21 @@ export function PaymentModal({
         }
     };
 
+    const getMethodTypeName = (type: string) => {
+        switch (type) {
+            case "credit_card":
+                return "Tarjeta de Crédito";
+            case "debit_card":
+                return "Tarjeta de Débito";
+            case "bank_account":
+                return "Cuenta Bancaria";
+            case "digital_wallet":
+                return "Billetera Digital";
+            default:
+                return type;
+        }
+    };
+
     const handlePayment = async () => {
         if (!selectedPaymentMethod) {
             onPaymentError("Selecciona un método de pago");
@@ -117,7 +164,7 @@ export function PaymentModal({
 
         try {
             // Simular procesamiento de pago
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise((resolve) => setTimeout(resolve, 2000));
 
             // Crear registro de pago en la base de datos
             const { data: payment, error } = await supabase
@@ -139,20 +186,16 @@ export function PaymentModal({
                 throw error;
             }
 
-            toast({
-                title: "Pago Exitoso",
-                description: `El pago de $${amount.toLocaleString()} ha sido procesado correctamente.`,
-                variant: "default",
-            });
+            alert(
+                `Pago Exitoso: El pago de $${amount.toLocaleString()} ha sido procesado correctamente.`
+            );
 
             onPaymentSuccess(payment.id);
         } catch (error) {
             console.error("Error procesando pago:", error);
-            toast({
-                title: "Error en el Pago",
-                description: "No se pudo procesar el pago. Por favor, inténtalo de nuevo.",
-                variant: "destructive",
-            });
+            alert(
+                "Error en el Pago: No se pudo procesar el pago. Por favor, inténtalo de nuevo."
+            );
             onPaymentError("Error al procesar el pago");
         } finally {
             setProcessingPayment(false);
@@ -160,120 +203,245 @@ export function PaymentModal({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-primary" />
-                        Procesar Pago de Prima
-                    </DialogTitle>
-                    <DialogDescription>
-                        Complete el pago para activar la póliza {policyNumber}
-                    </DialogDescription>
-                </DialogHeader>
+        <>
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Shield className="h-5 w-5 text-primary" />
+                            Procesar Pago de Prima
+                        </DialogTitle>
+                        <DialogDescription>
+                            Complete el pago para activar la póliza{" "}
+                            {policyNumber}
+                        </DialogDescription>
+                    </DialogHeader>
 
-                <div className="space-y-6">
-                    {/* Payment Summary */}
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="font-medium">Monto a Pagar</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Póliza {policyNumber}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-2xl font-bold text-primary">
-                                        ${amount.toLocaleString()}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        Prima inicial
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Payment Methods */}
-                    <div className="space-y-4">
-                        <Label>Método de Pago</Label>
-                        <div className="space-y-2">
-                            {paymentMethods.map((method) => (
-                                <div
-                                    key={method.id}
-                                    className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                                        selectedPaymentMethod === method.id
-                                            ? "border-primary bg-primary/5"
-                                            : "border-border hover:bg-muted/50"
-                                    }`}
-                                    onClick={() => setSelectedPaymentMethod(method.id)}
-                                >
-                                    <div className="flex-shrink-0">
-                                        {getPaymentMethodIcon(method.type)}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium">{method.name}</span>
-                                            {method.is_primary && (
-                                                <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                                                    Principal
-                                                </span>
-                                            )}
+                    {loading ? (
+                        <div className="py-8 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                            <p>Cargando métodos de pago...</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* Payment Summary */}
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <p className="font-medium">
+                                                Monto a Pagar
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                Póliza {policyNumber}
+                                            </p>
                                         </div>
-                                        <p className="text-sm text-muted-foreground">
-                                            {method.type === "credit_card" && "Tarjeta de Crédito"}
-                                            {method.type === "debit_card" && "Tarjeta de Débito"}
-                                            {method.type === "bank_account" && "Cuenta Bancaria"}
-                                            {method.type === "digital_wallet" && "Billetera Digital"}
+                                        <div className="text-right">
+                                            <div className="text-2xl font-bold text-primary">
+                                                ${amount.toLocaleString()}
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                Prima inicial
+                                            </p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* No Payment Methods Alert */}
+                            {paymentMethods.length === 0 && (
+                                <Alert>
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>
+                                        <div className="space-y-3">
+                                            <p>
+                                                <strong>
+                                                    No tienes métodos de pago
+                                                    registrados.
+                                                </strong>
+                                                Para procesar el pago, primero
+                                                debes agregar un método de pago.
+                                            </p>
+                                            <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                    setShowAddPaymentMethod(
+                                                        true
+                                                    )
+                                                }
+                                            >
+                                                <Plus className="h-4 w-4 mr-2" />
+                                                Agregar Método de Pago
+                                            </Button>
+                                        </div>
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
+                            {/* Payment Methods */}
+                            {paymentMethods.length > 0 && (
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <Label>Selecciona Método de Pago</Label>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                setShowAddPaymentMethod(true)
+                                            }
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Nuevo
+                                        </Button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {paymentMethods.map((method) => (
+                                            <div
+                                                key={method.id}
+                                                className={`flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                                    selectedPaymentMethod ===
+                                                    method.id
+                                                        ? "border-primary bg-primary/5 shadow-sm"
+                                                        : "border-border hover:bg-muted/50 hover:border-primary/30"
+                                                }`}
+                                                onClick={() =>
+                                                    setSelectedPaymentMethod(
+                                                        method.id
+                                                    )
+                                                }
+                                            >
+                                                <div className="flex-shrink-0 text-primary">
+                                                    {getPaymentMethodIcon(
+                                                        method.type
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="font-medium">
+                                                            {method.name} ****{" "}
+                                                            {method.last_four}
+                                                        </span>
+                                                        {method.is_primary && (
+                                                            <Badge
+                                                                variant="default"
+                                                                className="text-xs"
+                                                            >
+                                                                <Star className="h-3 w-3 mr-1" />
+                                                                Principal
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                                                        <span>
+                                                            {getMethodTypeName(
+                                                                method.type
+                                                            )}
+                                                        </span>
+                                                        {method.expiry_date && (
+                                                            <span>
+                                                                Vence:{" "}
+                                                                {
+                                                                    method.expiry_date
+                                                                }
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex-shrink-0">
+                                                    {selectedPaymentMethod ===
+                                                        method.id && (
+                                                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Security Notice */}
+                            <div className="bg-muted/50 p-4 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                    <Shield className="h-4 w-4 text-green-600 mt-0.5" />
+                                    <div className="text-sm">
+                                        <p className="font-medium text-green-800 dark:text-green-200">
+                                            Pago Seguro Garantizado
+                                        </p>
+                                        <p className="text-muted-foreground">
+                                            Tu información está protegida con
+                                            encriptación SSL de grado bancario.
+                                            Cumplimos con estándares PCI DSS
+                                            Level 1.
                                         </p>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Security Notice */}
-                    <div className="bg-muted/50 p-4 rounded-lg">
-                        <div className="flex items-start gap-2">
-                            <Shield className="h-4 w-4 text-green-600 mt-0.5" />
-                            <div className="text-sm">
-                                <p className="font-medium text-green-800 dark:text-green-200">
-                                    Pago Seguro
-                                </p>
-                                <p className="text-muted-foreground">
-                                    Tu información está protegida con encriptación SSL.
-                                    Cumplimos con estándares PCI DSS.
-                                </p>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    )}
 
-                <DialogFooter>
-                    <Button
-                        variant="outline"
-                        onClick={() => onOpenChange(false)}
-                        disabled={processingPayment}
-                    >
-                        Cancelar
-                    </Button>
-                    <Button
-                        onClick={handlePayment}
-                        disabled={!selectedPaymentMethod || processingPayment}
-                        className="min-w-[120px]"
-                    >
-                        {processingPayment ? (
-                            <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                Procesando...
-                            </>
-                        ) : (
-                            `Pagar $${amount.toLocaleString()}`
-                        )}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                    <DialogFooter className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            disabled={processingPayment}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handlePayment}
+                            disabled={
+                                !selectedPaymentMethod ||
+                                processingPayment ||
+                                paymentMethods.length === 0
+                            }
+                            className="min-w-[140px]"
+                        >
+                            {processingPayment ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Procesando...
+                                </>
+                            ) : (
+                                <>
+                                    <Shield className="h-4 w-4 mr-2" />
+                                    Pagar $${amount.toLocaleString()}
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add Payment Method Modal */}
+            <Dialog
+                open={showAddPaymentMethod}
+                onOpenChange={setShowAddPaymentMethod}
+            >
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Agregar Método de Pago</DialogTitle>
+                        <DialogDescription>
+                            Agrega un método de pago para procesar el pago de tu
+                            póliza
+                        </DialogDescription>
+                    </DialogHeader>
+                    <PaymentMethods
+                        onMethodAdded={handleMethodAdded}
+                        showAddButton={false}
+                        allowEdit={false}
+                    />
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowAddPaymentMethod(false)}
+                        >
+                            Cerrar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
