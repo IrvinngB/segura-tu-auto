@@ -74,6 +74,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "@/components/ui/use-toast";
+import { CustomerPaymentModal } from "@/components/customer/customer-payment-modal";
 
 interface Payment {
     id: string;
@@ -155,6 +156,14 @@ export default function CustomerPaymentsPage() {
     const [autopayEnabled, setAutopayEnabled] = useState(false);
     const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [pendingPayment, setPendingPayment] = useState<{
+        amount: number;
+        policyNumber: string;
+        policyId: string;
+        paymentType: string;
+    } | null>(null);
+    const [customerId, setCustomerId] = useState<string>("");
     const supabase = createClient();
 
     // Datos simulados para demostración completa
@@ -288,6 +297,8 @@ export default function CustomerPaymentsPage() {
                 setError("No se encontró información del cliente");
                 return;
             }
+
+            setCustomerId(customer.id);
 
             // Cargar pólizas del cliente con vehículos
             const { data: policiesData } = await supabase
@@ -515,74 +526,31 @@ export default function CustomerPaymentsPage() {
         return upcomingPayments.reduce((sum, payment) => sum + payment.amount, 0);
     };
 
-    const handlePayment = async (paymentId: string, paymentType: string, amount: number, policyId: string) => {
-        try {
-            setLoading(true);
+    const handlePayment = (paymentId: string, paymentType: string, amount: number, policyNumber: string) => {
+        // Abrir modal de pago con los datos
+        setPendingPayment({
+            amount,
+            policyNumber,
+            policyId: paymentId, // En este caso usamos paymentId como policyId temporal
+            paymentType,
+        });
+        setShowPaymentModal(true);
+    };
 
-            // Simular procesamiento de pago
-            // En una implementación real, aquí se integraría con un procesador de pagos
-            // como Stripe, PayPal, o un gateway bancario
+    const handlePaymentSuccess = () => {
+        setShowPaymentModal(false);
+        setPendingPayment(null);
+        // Recargar datos de pagos
+        loadPaymentData();
+    };
 
-            const { data: payment, error } = await supabase
-                .from("payments")
-                .insert({
-                    policy_id: policyId,
-                    customer_id: userProfile?.id,
-                    payment_type: paymentType === "Prima Mensual" ? "premium" : "fee",
-                    amount: amount,
-                    payment_status: "completed",
-                    payment_method: "Tarjeta de crédito",
-                    payment_date: new Date().toISOString(),
-                    reference_number: `PAY-${Date.now()}`,
-                    transaction_id: `TXN-${Date.now()}`,
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            // Actualizar el estado local
-            const newPayment: Payment = {
-                id: payment.id,
-                amount: payment.amount,
-                payment_type: paymentType,
-                payment_method: payment.payment_method,
-                payment_status: payment.payment_status,
-                payment_date: payment.payment_date,
-                due_date: payment.due_date,
-                reference_number: payment.reference_number,
-                description: `Pago ${paymentType.toLowerCase()} procesado exitosamente`,
-                policy: {
-                    id: policyId,
-                    policy_number: "POL-XXXX", // En una implementación real, obtener de la póliza
-                    premium_amount: amount,
-                    payment_frequency: "monthly",
-                    next_payment_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                    status: "active",
-                },
-            };
-
-            setPayments(prev => [newPayment, ...prev]);
-
-            toast({
-                title: "Pago Exitoso",
-                description: `El pago de $${amount.toLocaleString()} ha sido procesado correctamente.`,
-                variant: "default",
-            });
-
-            // Recargar datos
-            loadPaymentData();
-
-        } catch (error) {
-            console.error("Error procesando pago:", error);
-            toast({
-                title: "Error en el Pago",
-                description: "No se pudo procesar el pago. Por favor, inténtalo de nuevo.",
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
-        }
+    const handlePaymentError = (error: string) => {
+        console.error("Error en pago:", error);
+        toast({
+            title: "Error en el Pago",
+            description: error,
+            variant: "destructive",
+        });
     };
 
     if (loading) {
@@ -1448,6 +1416,21 @@ export default function CustomerPaymentsPage() {
                     </TabsContent>
                 </Tabs>
             </div>
+
+            {/* Modal de Pago */}
+            {pendingPayment && (
+                <CustomerPaymentModal
+                    open={showPaymentModal}
+                    onOpenChange={setShowPaymentModal}
+                    amount={pendingPayment.amount}
+                    policyNumber={pendingPayment.policyNumber}
+                    policyId={pendingPayment.policyId}
+                    paymentType={pendingPayment.paymentType}
+                    customerId={customerId}
+                    onPaymentSuccess={handlePaymentSuccess}
+                    onPaymentError={handlePaymentError}
+                />
+            )}
         </ProtectedRoute>
     );
 }

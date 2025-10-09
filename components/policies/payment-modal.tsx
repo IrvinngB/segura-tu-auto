@@ -22,6 +22,9 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     CreditCard,
     Building2,
@@ -30,10 +33,15 @@ import {
     Plus,
     AlertCircle,
     Star,
+    Lock,
+    CheckCircle,
+    Loader2,
+    Eye,
+    EyeOff,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { PaymentMethods } from "@/components/customer/payment-methods";
 import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
+import { toast } from "@/components/ui/use-toast";
 
 interface PaymentModalProps {
     open: boolean;
@@ -54,6 +62,17 @@ interface PaymentMethod {
     is_primary: boolean;
 }
 
+interface NewPaymentMethod {
+    type: "credit_card" | "debit_card" | "bank_account";
+    cardNumber: string;
+    expiryDate: string;
+    cvv: string;
+    cardHolderName: string;
+    bankName?: string;
+    accountNumber?: string;
+    routingNumber?: string;
+}
+
 export function PaymentModal({
     open,
     onOpenChange,
@@ -69,6 +88,20 @@ export function PaymentModal({
     const [loading, setLoading] = useState(false);
     const [processingPayment, setProcessingPayment] = useState(false);
     const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
+    const [paymentStep, setPaymentStep] = useState<"select" | "new" | "processing" | "success">("select");
+    const [showCvv, setShowCvv] = useState(false);
+    const [newPaymentMethod, setNewPaymentMethod] = useState<NewPaymentMethod>({
+        type: "credit_card",
+        cardNumber: "",
+        expiryDate: "",
+        cvv: "",
+        cardHolderName: "",
+        bankName: "",
+        accountNumber: "",
+        routingNumber: "",
+    });
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const [saveMethod, setSaveMethod] = useState(false);
     const supabase = createClient();
 
     useEffect(() => {

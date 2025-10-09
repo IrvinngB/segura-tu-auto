@@ -175,6 +175,34 @@ CREATE TABLE public.policy_coverages (
   CONSTRAINT policy_coverages_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.policies(id),
   CONSTRAINT policy_coverages_coverage_type_id_fkey FOREIGN KEY (coverage_type_id) REFERENCES public.coverage_types(id)
 );
+CREATE TABLE public.quotes (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  quote_number character varying NOT NULL UNIQUE,
+  customer_id uuid,
+  vehicle_id uuid,
+  agent_id uuid,
+  policy_type character varying NOT NULL CHECK (policy_type::text = ANY (ARRAY['basica'::character varying, 'limitada'::character varying, 'amplia'::character varying]::text[])),
+  status character varying DEFAULT 'pending'::character varying CHECK (status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying, 'converted'::character varying]::text[])),
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  premium_amount numeric NOT NULL,
+  payment_frequency character varying NOT NULL DEFAULT 'monthly'::character varying CHECK (payment_frequency::text = ANY (ARRAY['monthly'::character varying, 'quarterly'::character varying, 'biannual'::character varying, 'annual'::character varying]::text[])),
+  auto_renewal boolean DEFAULT false,
+  selected_coverages jsonb,
+  driver_data jsonb,
+  vehicle_data jsonb,
+  risk_assessment jsonb,
+  agent_notes text,
+  reviewed_at timestamp with time zone,
+  rejected_reason text,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  expires_at timestamp with time zone DEFAULT (CURRENT_TIMESTAMP + '30 days'::interval),
+  CONSTRAINT quotes_pkey PRIMARY KEY (id),
+  CONSTRAINT quotes_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id),
+  CONSTRAINT quotes_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES public.vehicles(id),
+  CONSTRAINT quotes_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.risk_factors (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   name character varying NOT NULL,

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import {
     POLICY_PLANS,
@@ -42,7 +43,7 @@ import { format } from "date-fns";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { toast } from "@/components/ui/use-toast";
-import { PaymentModal } from "./payment-modal";
+import { PaymentModal } from "./payment-modal-new";
 
 interface PolicyFormProps {
     customerId?: string;
@@ -77,6 +78,8 @@ export function PolicyForm({
     const [isContractDataLoaded, setIsContractDataLoaded] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [pendingPolicyData, setPendingPolicyData] = useState<any>(null);
+    const [vehiclesWithPolicies, setVehiclesWithPolicies] = useState<Set<string>>(new Set());
+    const [loadingVehiclePolicies, setLoadingVehiclePolicies] = useState(false);
     const supabase = createClient();
 
     // PDF Generation Function
@@ -427,9 +430,40 @@ export function PolicyForm({
                 .eq("customer_id", customerId)
                 .order("created_at", { ascending: false });
 
-            if (data) setVehicles(data);
+            if (data) {
+                setVehicles(data);
+                // Verificar cuáles vehículos ya tienen pólizas activas
+                await checkVehicleActivePolicies(data);
+            }
         } catch (error) {
             console.error("Error fetching vehicles:", error);
+        }
+    };
+
+    const checkVehicleActivePolicies = async (vehicleList: Vehicle[]) => {
+        if (vehicleList.length === 0) return;
+
+        try {
+            setLoadingVehiclePolicies(true);
+            
+            // Obtener todas las pólizas activas para estos vehículos
+            const vehicleIds = vehicleList.map(v => v.id);
+            const { data: activePolicies } = await supabase
+                .from("policies")
+                .select("vehicle_id")
+                .in("vehicle_id", vehicleIds)
+                .in("status", ["active", "suspended"]); // Considera activas y suspendidas como ocupadas
+
+            if (activePolicies) {
+                const vehiclesWithActivePolicies = new Set(
+                    activePolicies.map(policy => policy.vehicle_id)
+                );
+                setVehiclesWithPolicies(vehiclesWithActivePolicies);
+            }
+        } catch (error) {
+            console.error("Error checking vehicle policies:", error);
+        } finally {
+            setLoadingVehiclePolicies(false);
         }
     };
 
@@ -806,7 +840,14 @@ export function PolicyForm({
                                 ) : (
                                     <Select
                                         value={selectedVehicle}
-                                        onValueChange={setSelectedVehicle}
+                                        onValueChange={(value) => {
+                                            if (vehiclesWithPolicies.has(value)) {
+                                                setError("Este vehículo ya tiene una póliza activa. Un vehículo solo puede tener una póliza activa a la vez.");
+                                                return;
+                                            }
+                                            setError(""); // Limpiar errores previos
+                                            setSelectedVehicle(value);
+                                        }}
                                         disabled={vehicles.length === 0}
                                     >
                                         <SelectTrigger>
@@ -819,20 +860,33 @@ export function PolicyForm({
                                             />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {vehicles.map((vehicle) => (
-                                                <SelectItem
-                                                    key={vehicle.id}
-                                                    value={vehicle.id}
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        <Car className="h-4 w-4" />
-                                                        {vehicle.year}{" "}
-                                                        {vehicle.make}{" "}
-                                                        {vehicle.model} -{" "}
-                                                        {vehicle.license_plate}
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
+                                            {vehicles.map((vehicle) => {
+                                                const hasActivePolicy = vehiclesWithPolicies.has(vehicle.id);
+                                                return (
+                                                    <SelectItem
+                                                        key={vehicle.id}
+                                                        value={vehicle.id}
+                                                        disabled={hasActivePolicy}
+                                                        className={hasActivePolicy ? "opacity-50" : ""}
+                                                    >
+                                                        <div className="flex items-center justify-between w-full">
+                                                            <div className="flex items-center gap-2">
+                                                                <Car className="h-4 w-4" />
+                                                                {vehicle.year}{" "}
+                                                                {vehicle.make}{" "}
+                                                                {vehicle.model} -{" "}
+                                                                {vehicle.license_plate}
+                                                            </div>
+                                                            {hasActivePolicy && (
+                                                                <Badge variant="destructive" className="ml-2">
+                                                                    <Shield className="h-3 w-3 mr-1" />
+                                                                    Asegurado
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </SelectItem>
+                                                );
+                                            })}
                                         </SelectContent>
                                     </Select>
                                 )}
