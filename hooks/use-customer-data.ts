@@ -49,8 +49,8 @@ export function useCustomerData() {
 
             if (cached) {
                 const parsed = JSON.parse(cached);
-                // Cache válido por 5 minutos
-                if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+                // Cache válido por 10 minutos (increased from 5)
+                if (Date.now() - parsed.timestamp < 10 * 60 * 1000) {
                     console.log("✅ Usando datos del cache");
                     setCustomerData(parsed.data);
                     setLoading(false);

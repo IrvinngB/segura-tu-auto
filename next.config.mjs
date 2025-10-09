@@ -16,6 +16,10 @@ const nextConfig = {
   },
   // Compresión
   compress: true,
+  // Optimización de navegación
+  poweredByHeader: false,
+  reactStrictMode: true,
+  swcMinify: true,
   // Optimización de bundles
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {

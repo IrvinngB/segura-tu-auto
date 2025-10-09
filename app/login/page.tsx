@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "@/lib/supabase/client";
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowLeft, Home } from "lucide-react";
+import { Shield, Mail, Lock, Eye, EyeOff, Home, Loader2 } from "lucide-react";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -25,6 +26,8 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [loginSuccess, setLoginSuccess] = useState(false);
+    const [isPending, startTransition] = useTransition();
     const router = useRouter();
     const supabase = createClient();
 
@@ -58,6 +61,7 @@ export default function LoginPage() {
         setError("");
 
         try {
+            // Limpiar cache de manera más eficiente
             const keysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
@@ -67,6 +71,7 @@ export default function LoginPage() {
             }
             keysToRemove.forEach((key) => localStorage.removeItem(key));
 
+            // Autenticación
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
@@ -78,35 +83,91 @@ export default function LoginPage() {
             }
 
             if (data.user) {
-                const { data: userData, error: userError } = await supabase
-                    .from("users")
-                    .select("role")
-                    .eq("id", data.user.id)
-                    .maybeSingle();
+                // Mostrar pantalla de carga antes de hacer queries
+                setLoginSuccess(true);
 
-                if (userError) {
-                    console.error("Error fetching user data:", userError);
-                    console.warn("User profile not found, redirecting to home");
-                    router.push("/");
+                // Prefetch de datos en paralelo para reducir tiempo de carga
+                const [userData, customerData] = await Promise.all([
+                    supabase
+                        .from("users")
+                        .select("*")
+                        .eq("id", data.user.id)
+                        .maybeSingle(),
+                    supabase
+                        .from("customers")
+                        .select(`
+                            id,
+                            user_id,
+                            user:users!customers_user_id_fkey(
+                                first_name,
+                                last_name,
+                                email,
+                                role
+                            )
+                        `)
+                        .eq("user_id", data.user.id)
+                        .maybeSingle()
+                ]);
+
+                if (userData.error) {
+                    console.error("Error fetching user data:", userData.error);
+                    startTransition(() => {
+                        router.push("/");
+                    });
                     return;
                 }
 
-                if (!userData) {
+                if (!userData.data) {
                     console.warn("User profile not found, redirecting to home");
-                    router.push("/");
+                    startTransition(() => {
+                        router.push("/");
+                    });
                     return;
                 }
 
-                console.log(`✅ Login successful for ${userData.role}`);
-                router.push("/");
+                // Guardar datos en cache para acceso rápido
+                const userCacheKey = `user_profile_${data.user.id}`;
+                sessionStorage.setItem(
+                    userCacheKey,
+                    JSON.stringify({
+                        data: userData.data,
+                        timestamp: Date.now(),
+                    })
+                );
+
+                // Si hay datos de customer, también cachearlos
+                if (customerData.data && !customerData.error) {
+                    const customerCacheKey = `customer_data_${data.user.id}`;
+                    sessionStorage.setItem(
+                        customerCacheKey,
+                        JSON.stringify({
+                            data: customerData.data,
+                            timestamp: Date.now(),
+                        })
+                    );
+                }
+
+                console.log(`✅ Login successful for ${userData.data.role}`);
+                
+                // Usar transición para navegación más suave
+                startTransition(() => {
+                    router.push("/");
+                    router.refresh();
+                });
             }
         } catch (err) {
             console.error("Login error:", err);
             setError(getErrorMessage("An unexpected error occurred"));
+            setLoginSuccess(false);
         } finally {
             setLoading(false);
         }
     };
+
+    // Mostrar pantalla de carga completa cuando login es exitoso
+    if (loginSuccess) {
+        return <LoadingScreen message="Iniciando sesión..." />;
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
@@ -206,11 +267,16 @@ export default function LoginPage() {
                             <Button
                                 type="submit"
                                 className="w-full"
-                                disabled={loading}
+                                disabled={loading || isPending}
                             >
-                                {loading
-                                    ? "Iniciando sesión..."
-                                    : "Iniciar Sesión"}
+                                {loading || isPending ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Iniciando sesión...
+                                    </>
+                                ) : (
+                                    "Iniciar Sesión"
+                                )}
                             </Button>
                         </form>
 

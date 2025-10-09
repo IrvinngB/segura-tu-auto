@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo, memo } from "react";
-import Link from "next/link";
+import { useState, useMemo, memo, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { OptimizedLink, usePrefetchRoutes } from "@/components/navigation/optimized-link";
 import {
     Shield,
     FileText,
@@ -165,6 +165,13 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
         [userProfile?.role]
     );
 
+    // Prefetch de rutas más usadas para carga instantánea
+    const routesToPrefetch = useMemo(() => {
+        return filteredNavigation.slice(0, 5).map(item => item.href);
+    }, [filteredNavigation]);
+
+    usePrefetchRoutes(routesToPrefetch);
+
     // Agrupar elementos por categorías
     const groupedNavigation = useMemo(
         () => ({
@@ -246,7 +253,7 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
                             pathname.startsWith(item.href + "/");
                         return (
                             <li key={item.name}>
-                                <Link
+                                <OptimizedLink
                                     href={item.href}
                                     className={cn(
                                         "flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors group",
@@ -254,14 +261,18 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
                                             ? "bg-primary text-primary-foreground"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     )}
-                                    onClick={() => setIsOpen(false)}
-                                    title={item.description}
                                 >
-                                    <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                                    <span className="truncate">
-                                        {item.name}
+                                    <span 
+                                        className="flex items-center w-full"
+                                        onClick={() => setIsOpen(false)}
+                                        title={item.description}
+                                    >
+                                        <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                                        <span className="truncate">
+                                            {item.name}
+                                        </span>
                                     </span>
-                                </Link>
+                                </OptimizedLink>
                             </li>
                         );
                     })}

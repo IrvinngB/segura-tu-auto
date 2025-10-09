@@ -31,10 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (cached) {
         const parsed = JSON.parse(cached)
-        // Cache valid for 5 minutes
-        if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+        // Cache valid for 10 minutes (increased from 5)
+        if (Date.now() - parsed.timestamp < 10 * 60 * 1000) {
+          console.log("✅ Using cached user profile")
           return parsed.data
         }
+        console.log("⏰ Cache expired, fetching fresh data")
       }
 
       const { data, error } = await supabase.from("users").select("*").eq("id", userId).maybeSingle()
@@ -156,12 +158,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null)
 
         if (session?.user) {
+          // Fetch profile in background, show UI faster
           const profile = await fetchUserProfile(session.user.id)
           if (mounted) {
             setUserProfile(profile)
           }
         }
 
+        // Set loading to false earlier to show UI
         if (mounted) {
           setLoading(false)
         }
@@ -197,15 +201,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserProfile(null)
           }
         }
-
-        if (mounted) {
-          setLoading(false)
-        }
       } catch (error) {
         console.error("Error in auth state change:", error)
-        if (mounted) {
-          setLoading(false)
-        }
       }
     })
 

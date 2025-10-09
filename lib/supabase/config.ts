@@ -13,13 +13,27 @@ export const supabaseConfig = {
     secure: process.env.NODE_ENV === 'production',
   },
   
-  // Configuración de auth
+  // Configuración de auth optimizada
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce' as const,
-  }
+    // Reducir el tiempo de refresco para mejor UX
+    storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+    storageKey: 'sb-auth-token',
+  },
+
+  // Configuración de rendimiento
+  db: {
+    schema: 'public',
+  },
+  
+  global: {
+    headers: {
+      'x-client-info': 'supabase-js-web',
+    },
+  },
 }
 
 // Validar que las variables de entorno estén configuradas

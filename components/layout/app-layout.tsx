@@ -1,24 +1,43 @@
 "use client";
 
-import { useMemo, memo } from "react";
+import { useMemo, memo, Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { RoleBasedSidebar } from "@/components/navigation/role-based-sidebar";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 interface AppLayoutProps {
     children: React.ReactNode;
 }
 
 export const AppLayout = memo(function AppLayout({ children }: AppLayoutProps) {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const pathname = usePathname();
+    const [showInitialLoader, setShowInitialLoader] = useState(true);
+
+    // Ocultar el loader inicial después de un tiempo máximo
+    useEffect(() => {
+        if (!loading) {
+            // Pequeño delay para transición suave
+            const timer = setTimeout(() => {
+                setShowInitialLoader(false);
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [loading]);
 
     // No mostrar sidebar en páginas de autenticación y en la página principal si no hay usuario
     const publicPages = useMemo(() => ["/login", "/register", "/auth"], []);
+    const isPublicPage = useMemo(() => 
+        publicPages.some((page) => pathname.startsWith(page)),
+        [pathname, publicPages]
+    );
+    
     const shouldShowSidebar = useMemo(() => {
         // Si es una página pública, no mostrar sidebar
-        if (publicPages.some((page) => pathname.startsWith(page))) {
+        if (isPublicPage) {
             return false;
         }
         // Si es la página principal y no hay usuario, no mostrar sidebar
@@ -27,7 +46,12 @@ export const AppLayout = memo(function AppLayout({ children }: AppLayoutProps) {
         }
         // Si hay usuario, mostrar sidebar
         return !!user;
-    }, [user, pathname, publicPages]);
+    }, [user, pathname, isPublicPage]);
+
+    // Mostrar loading screen solo al inicio y en páginas privadas
+    if (loading && showInitialLoader && !isPublicPage) {
+        return <LoadingScreen message="Cargando..." />;
+    }
 
     return (
         <div className="min-h-screen bg-background">
@@ -39,7 +63,9 @@ export const AppLayout = memo(function AppLayout({ children }: AppLayoutProps) {
                     shouldShowSidebar ? "lg:ml-64" : "ml-0"
                 )}
             >
-                <main className="min-h-screen">{children}</main>
+                <Suspense fallback={<DashboardSkeleton />}>
+                    <main className="min-h-screen">{children}</main>
+                </Suspense>
             </div>
         </div>
     );
