@@ -221,12 +221,24 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                 .in("vehicle_id", vehicleIds)
                 .in("status", ["active", "suspended"]); // Considera activas y suspendidas como ocupadas
 
+            // También verificar cotizaciones pendientes
+            const { data: pendingQuotes } = await supabase
+                .from("quotes")
+                .select("vehicle_id")
+                .in("vehicle_id", vehicleIds)
+                .in("status", ["pending", "approved"]);
+
+            const vehiclesWithActivePolicies = new Set<string>();
+            
             if (activePolicies) {
-                const vehiclesWithActivePolicies = new Set(
-                    activePolicies.map(policy => policy.vehicle_id)
-                );
-                setVehiclesWithPolicies(vehiclesWithActivePolicies);
+                activePolicies.forEach(policy => vehiclesWithActivePolicies.add(policy.vehicle_id));
             }
+            
+            if (pendingQuotes) {
+                pendingQuotes.forEach(quote => vehiclesWithActivePolicies.add(quote.vehicle_id));
+            }
+            
+            setVehiclesWithPolicies(vehiclesWithActivePolicies);
         } catch (error) {
             console.error("Error checking vehicle policies:", error);
         } finally {
@@ -352,10 +364,10 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             errors.push("Debe seleccionar un plan de cobertura");
         }
 
-        // Validar que no haya pólizas activas para este vehículo
+        // Validar que no haya pólizas activas o cotizaciones pendientes para este vehículo
         if (hasActivePolicyForVehicle) {
             errors.push(
-                "Este vehículo ya tiene una póliza activa. No se pueden crear múltiples pólizas para el mismo vehículo."
+                "Este vehículo ya tiene una póliza activa o una cotización pendiente. No se pueden crear múltiples cotizaciones para el mismo vehículo."
             );
         }
 

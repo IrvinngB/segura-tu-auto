@@ -324,12 +324,32 @@ export function PaymentMethods({
     const handleDeleteMethod = async (methodId: string) => {
         if (
             confirm(
-                "¿Estás seguro de que quieres eliminar este método de pago?"
+                "¿Estás seguro de que quieres eliminar este método de pago? Esta acción no se puede deshacer."
             )
         ) {
-            setPaymentMethods((methods) =>
-                methods.filter((method) => method.id !== methodId)
-            );
+            try {
+                // Eliminar de la base de datos
+                const { error } = await supabase
+                    .from('payment_methods')
+                    .delete()
+                    .eq('id', methodId);
+
+                if (error) {
+                    console.error('Error deleting payment method:', error);
+                    alert('Error al eliminar el método de pago');
+                    return;
+                }
+
+                // Solo actualizar el estado local si la eliminación fue exitosa
+                setPaymentMethods((methods) =>
+                    methods.filter((method) => method.id !== methodId)
+                );
+
+                console.log('Payment method deleted successfully');
+            } catch (error) {
+                console.error('Error deleting payment method:', error);
+                alert('Error inesperado al eliminar el método de pago');
+            }
         }
     };
 

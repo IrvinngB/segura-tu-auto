@@ -24,7 +24,6 @@ export function LoadingScreen({
         >
             <div className="relative">
                 <Shield className="h-16 w-16 text-primary animate-pulse" />
-                <Loader2 className="h-6 w-6 text-primary animate-spin absolute bottom-0 right-0" />
             </div>
             <div className="text-center space-y-2">
                 <p className="text-lg font-medium text-foreground">{message}</p>
