@@ -132,9 +132,12 @@ export default function CustomerNewPolicyPage() {
                                                     <CheckCircle className="h-5 w-5 text-white" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="text-xs font-medium text-green-700 mb-1">PASO 1</div>
+                                                    <div className="text-xs font-medium text-green-700 mb-1">
+                                                        PASO 1
+                                                    </div>
                                                     <div className="text-sm font-semibold text-green-800">
-                                                        Crear cotización con información del vehículo
+                                                        Crear cotización con
+                                                        información del vehículo
                                                     </div>
                                                 </div>
                                             </div>
@@ -150,9 +153,12 @@ export default function CustomerNewPolicyPage() {
                                                     <AlertCircle className="h-5 w-5 text-white" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="text-xs font-medium text-yellow-700 mb-1">PASO 2</div>
+                                                    <div className="text-xs font-medium text-yellow-700 mb-1">
+                                                        PASO 2
+                                                    </div>
                                                     <div className="text-sm font-semibold text-yellow-800">
-                                                        Esperar revisión y aprobación del agente
+                                                        Esperar revisión y
+                                                        aprobación del agente
                                                     </div>
                                                 </div>
                                             </div>
@@ -168,9 +174,12 @@ export default function CustomerNewPolicyPage() {
                                                     <CreditCard className="h-5 w-5 text-white" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="text-xs font-medium text-blue-700 mb-1">PASO 3</div>
+                                                    <div className="text-xs font-medium text-blue-700 mb-1">
+                                                        PASO 3
+                                                    </div>
                                                     <div className="text-sm font-semibold text-blue-800">
-                                                        Configurar método de pago y procesar prima
+                                                        Configurar método de
+                                                        pago y procesar prima
                                                     </div>
                                                 </div>
                                             </div>
@@ -186,9 +195,12 @@ export default function CustomerNewPolicyPage() {
                                                     <FileText className="h-5 w-5 text-white" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="text-xs font-medium text-purple-700 mb-1">PASO 4</div>
+                                                    <div className="text-xs font-medium text-purple-700 mb-1">
+                                                        PASO 4
+                                                    </div>
                                                     <div className="text-sm font-semibold text-purple-800">
-                                                        Póliza activada automáticamente
+                                                        Póliza activada
+                                                        automáticamente
                                                     </div>
                                                 </div>
                                             </div>
@@ -404,7 +416,7 @@ export default function CustomerNewPolicyPage() {
                                 currentStep >= 2 ? "bg-primary" : "bg-muted"
                             }`}
                         ></div>
-                       
+
                         <div
                             className={`w-16 h-1 ${
                                 currentStep >= 2 ? "bg-primary" : "bg-muted"
