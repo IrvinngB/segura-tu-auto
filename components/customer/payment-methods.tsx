@@ -100,7 +100,9 @@ export function PaymentMethods({
         methodId: "",
         methodName: "",
     });
-    const [deletingMethodId, setDeletingMethodId] = useState<string | null>(null);
+    const [deletingMethodId, setDeletingMethodId] = useState<string | null>(
+        null
+    );
     const supabase = createClient();
 
     // Form data for new/edit payment method
@@ -494,8 +496,8 @@ export function PaymentMethods({
                             Métodos de Pago
                         </CardTitle>
                         <CardDescription>
-                            Gestiona tus métodos de pago para las primas de
-                            tus pólizas
+                            Gestiona tus métodos de pago para las primas de tus
+                            pólizas
                         </CardDescription>
                     </div>
                 </CardHeader>
@@ -601,10 +603,12 @@ export function PaymentMethods({
                                                 className="text-red-600 hover:text-red-700"
                                                 title="Eliminar"
                                                 disabled={
-                                                    deletingMethodId === method.id
+                                                    deletingMethodId ===
+                                                    method.id
                                                 }
                                             >
-                                                {deletingMethodId === method.id ? (
+                                                {deletingMethodId ===
+                                                method.id ? (
                                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
                                                 ) : (
                                                     <Trash2 className="h-4 w-4" />
@@ -866,7 +870,8 @@ export function PaymentMethods({
                 description={
                     <div className="space-y-2">
                         <p>
-                            ¿Estás seguro de que deseas eliminar el método de pago{" "}
+                            ¿Estás seguro de que deseas eliminar el método de
+                            pago{" "}
                             <span className="font-semibold">
                                 {deleteDialog.methodName}
                             </span>
