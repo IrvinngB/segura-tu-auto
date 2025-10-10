@@ -3,7 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
     console.log("🔍 GET /api/quotes - Starting request");
-    console.log("🍪 Request cookies:", request.cookies.getAll().map(c => ({ name: c.name, hasValue: !!c.value })));
+    console.log(
+        "🍪 Request cookies:",
+        request.cookies
+            .getAll()
+            .map((c) => ({ name: c.name, hasValue: !!c.value }))
+    );
 
     const supabase = await createClient();
 
@@ -12,7 +17,10 @@ export async function GET(request: NextRequest) {
         error: authError,
     } = await supabase.auth.getUser();
 
-    console.log("🔐 Auth result:", { userId: user?.id, authError: authError?.message });
+    console.log("🔐 Auth result:", {
+        userId: user?.id,
+        authError: authError?.message,
+    });
 
     if (authError || !user) {
         console.log("❌ Unauthorized access");
@@ -187,17 +195,21 @@ export async function POST(request: NextRequest) {
 
         // Check if vehicle already has an active policy OR pending quotes
         console.log("🔍 Checking for existing policies and quotes...");
-        
+
         // Check for active policies
-        const { data: existingPolicies, error: checkPolicyError } = await supabase
-            .from("policies")
-            .select("id, status, end_date")
-            .eq("vehicle_id", vehicle_id)
-            .eq("customer_id", customer_id)
-            .in("status", ["active", "pending"]);
+        const { data: existingPolicies, error: checkPolicyError } =
+            await supabase
+                .from("policies")
+                .select("id, status, end_date")
+                .eq("vehicle_id", vehicle_id)
+                .eq("customer_id", customer_id)
+                .in("status", ["active", "pending"]);
 
         if (checkPolicyError) {
-            console.error("Error checking existing policies:", checkPolicyError);
+            console.error(
+                "Error checking existing policies:",
+                checkPolicyError
+            );
             return NextResponse.json(
                 {
                     error: "Error validating vehicle policies",

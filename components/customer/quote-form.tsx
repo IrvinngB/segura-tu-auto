@@ -86,7 +86,9 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     const [calculatedQuote, setCalculatedQuote] = useState(0);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [vehiclesWithPolicies, setVehiclesWithPolicies] = useState<Set<string>>(new Set());
+    const [vehiclesWithPolicies, setVehiclesWithPolicies] = useState<
+        Set<string>
+    >(new Set());
     const [loadingVehiclePolicies, setLoadingVehiclePolicies] = useState(false);
     const supabase = createClient();
 
@@ -186,11 +188,13 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                 setVehicles(data);
                 // Verificar cuáles vehículos ya tienen pólizas activas
                 await checkVehicleActivePolicies(data);
-                
+
                 // Auto-select first available vehicle (without active policy)
                 if (data.length > 0) {
                     // Primero intentar con vehículos sin póliza activa
-                    const availableVehicle = data.find(vehicle => !vehiclesWithPolicies.has(vehicle.id));
+                    const availableVehicle = data.find(
+                        (vehicle) => !vehiclesWithPolicies.has(vehicle.id)
+                    );
                     if (availableVehicle) {
                         setSelectedVehicleId(availableVehicle.id);
                     } else {
@@ -212,9 +216,9 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
         try {
             setLoadingVehiclePolicies(true);
-            
+
             // Obtener todas las pólizas activas para estos vehículos
-            const vehicleIds = vehicleList.map(v => v.id);
+            const vehicleIds = vehicleList.map((v) => v.id);
             const { data: activePolicies } = await supabase
                 .from("policies")
                 .select("vehicle_id")
@@ -229,15 +233,19 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                 .in("status", ["pending", "approved"]);
 
             const vehiclesWithActivePolicies = new Set<string>();
-            
+
             if (activePolicies) {
-                activePolicies.forEach(policy => vehiclesWithActivePolicies.add(policy.vehicle_id));
+                activePolicies.forEach((policy) =>
+                    vehiclesWithActivePolicies.add(policy.vehicle_id)
+                );
             }
-            
+
             if (pendingQuotes) {
-                pendingQuotes.forEach(quote => vehiclesWithActivePolicies.add(quote.vehicle_id));
+                pendingQuotes.forEach((quote) =>
+                    vehiclesWithActivePolicies.add(quote.vehicle_id)
+                );
             }
-            
+
             setVehiclesWithPolicies(vehiclesWithActivePolicies);
         } catch (error) {
             console.error("Error checking vehicle policies:", error);
@@ -808,12 +816,17 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                         <Select
                                             value={selectedVehicleId}
                                             onValueChange={(value) => {
-                                                if (vehiclesWithPolicies.has(value)) {
+                                                if (
+                                                    vehiclesWithPolicies.has(
+                                                        value
+                                                    )
+                                                ) {
                                                     setNotificationModal({
                                                         open: true,
                                                         type: "warning",
                                                         title: "Vehículo Ya Asegurado",
-                                                        message: "Este vehículo ya tiene una póliza activa. Un vehículo solo puede tener una póliza activa a la vez. Puedes cotizar para otros vehículos disponibles.",
+                                                        message:
+                                                            "Este vehículo ya tiene una póliza activa. Un vehículo solo puede tener una póliza activa a la vez. Puedes cotizar para otros vehículos disponibles.",
                                                     });
                                                     return;
                                                 }
@@ -825,24 +838,45 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {vehicles.map((vehicle) => {
-                                                    const hasActivePolicy = vehiclesWithPolicies.has(vehicle.id);
+                                                    const hasActivePolicy =
+                                                        vehiclesWithPolicies.has(
+                                                            vehicle.id
+                                                        );
                                                     return (
                                                         <SelectItem
                                                             key={vehicle.id}
                                                             value={vehicle.id}
-                                                            disabled={hasActivePolicy}
-                                                            className={hasActivePolicy ? "opacity-50" : ""}
+                                                            disabled={
+                                                                hasActivePolicy
+                                                            }
+                                                            className={
+                                                                hasActivePolicy
+                                                                    ? "opacity-50"
+                                                                    : ""
+                                                            }
                                                         >
                                                             <div className="flex items-center justify-between w-full">
                                                                 <div className="flex items-center gap-2">
                                                                     <Car className="h-4 w-4" />
-                                                                    {vehicle.year}{" "}
-                                                                    {vehicle.make}{" "}
-                                                                    {vehicle.model} -{" "}
-                                                                    {vehicle.license_plate}
+                                                                    {
+                                                                        vehicle.year
+                                                                    }{" "}
+                                                                    {
+                                                                        vehicle.make
+                                                                    }{" "}
+                                                                    {
+                                                                        vehicle.model
+                                                                    }{" "}
+                                                                    -{" "}
+                                                                    {
+                                                                        vehicle.license_plate
+                                                                    }
                                                                 </div>
                                                                 {hasActivePolicy && (
-                                                                    <Badge variant="destructive" className="ml-2">
+                                                                    <Badge
+                                                                        variant="destructive"
+                                                                        className="ml-2"
+                                                                    >
                                                                         <Shield className="h-3 w-3 mr-1" />
                                                                         Asegurado
                                                                     </Badge>

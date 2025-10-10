@@ -113,11 +113,11 @@ export function PaymentMethods({
         try {
             // Obtener métodos de pago reales de Supabase
             const { data, error } = await supabase
-                .from('payment_methods')
-                .select('*')
-                .eq('customer_id', customerData.id)
-                .eq('is_active', true)
-                .order('created_at', { ascending: false });
+                .from("payment_methods")
+                .select("*")
+                .eq("customer_id", customerData.id)
+                .eq("is_active", true)
+                .order("created_at", { ascending: false });
 
             if (error) {
                 console.error("Error fetching payment methods:", error);
@@ -202,27 +202,36 @@ export function PaymentMethods({
 
         setSubmitting(true);
         setFormError("");
-        
+
         try {
             // Validate form based on payment method type
-            if (formData.type === "credit_card" || formData.type === "debit_card") {
+            if (
+                formData.type === "credit_card" ||
+                formData.type === "debit_card"
+            ) {
                 if (!formData.card_number) {
                     throw new Error("El número de tarjeta es requerido");
                 }
                 if (!validateCardNumber(formData.card_number)) {
-                    throw new Error("El número de tarjeta no es válido (debe tener 13-19 dígitos)");
+                    throw new Error(
+                        "El número de tarjeta no es válido (debe tener 13-19 dígitos)"
+                    );
                 }
                 if (!formData.expiry_date) {
                     throw new Error("La fecha de expiración es requerida");
                 }
                 if (!validateExpiryDate(formData.expiry_date)) {
-                    throw new Error("La fecha de expiración no es válida o ya expiró (formato: MM/YY)");
+                    throw new Error(
+                        "La fecha de expiración no es válida o ya expiró (formato: MM/YY)"
+                    );
                 }
                 if (!formData.cvv) {
                     throw new Error("El CVV es requerido");
                 }
                 if (!validateCVV(formData.cvv)) {
-                    throw new Error("El CVV no es válido (debe tener 3-4 dígitos)");
+                    throw new Error(
+                        "El CVV no es válido (debe tener 3-4 dígitos)"
+                    );
                 }
                 if (!formData.cardholder_name.trim()) {
                     throw new Error("El nombre del titular es requerido");
@@ -232,20 +241,26 @@ export function PaymentMethods({
                     throw new Error("El número de cuenta es requerido");
                 }
                 if (!validateAccountNumber(formData.account_number)) {
-                    throw new Error("El número de cuenta no es válido (debe tener 8-17 dígitos)");
+                    throw new Error(
+                        "El número de cuenta no es válido (debe tener 8-17 dígitos)"
+                    );
                 }
                 if (!formData.routing_number) {
                     throw new Error("El número de ruta es requerido");
                 }
                 if (!validateRoutingNumber(formData.routing_number)) {
-                    throw new Error("El número de ruta no es válido (debe tener 9 dígitos)");
+                    throw new Error(
+                        "El número de ruta no es válido (debe tener 9 dígitos)"
+                    );
                 }
                 if (!formData.bank_name.trim()) {
                     throw new Error("El nombre del banco es requerido");
                 }
             } else if (formData.type === "digital_wallet") {
                 if (!formData.wallet_email) {
-                    throw new Error("El email de la billetera digital es requerido");
+                    throw new Error(
+                        "El email de la billetera digital es requerido"
+                    );
                 }
                 if (!validateEmail(formData.wallet_email)) {
                     throw new Error("El email no tiene un formato válido");
@@ -256,13 +271,23 @@ export function PaymentMethods({
             const paymentMethodData = {
                 customer_id: customerData.id,
                 type: formData.type,
-                name: formData.cardholder_name || formData.bank_name || "Método de Pago",
-                last_four: formData.card_number.slice(-4) || formData.account_number.slice(-4) || "****",
+                name:
+                    formData.cardholder_name ||
+                    formData.bank_name ||
+                    "Método de Pago",
+                last_four:
+                    formData.card_number.slice(-4) ||
+                    formData.account_number.slice(-4) ||
+                    "****",
                 expiry_date: formData.expiry_date || null,
-                brand: formData.type === "credit_card" || formData.type === "debit_card" ? "Visa" : null,
+                brand:
+                    formData.type === "credit_card" ||
+                    formData.type === "debit_card"
+                        ? "Visa"
+                        : null,
                 bank_name: formData.bank_name || null,
                 is_primary: formData.is_primary,
-                is_active: true
+                is_active: true,
             };
 
             let newMethod: PaymentMethod;
@@ -270,16 +295,20 @@ export function PaymentMethods({
             if (editingMethod) {
                 // Actualizar método existente
                 const { data, error } = await supabase
-                    .from('payment_methods')
+                    .from("payment_methods")
                     .update(paymentMethodData)
-                    .eq('id', editingMethod.id)
+                    .eq("id", editingMethod.id)
                     .select()
                     .single();
 
-                if (error) throw new Error("Error al actualizar el método de pago: " + error.message);
-                
+                if (error)
+                    throw new Error(
+                        "Error al actualizar el método de pago: " +
+                            error.message
+                    );
+
                 newMethod = data;
-                
+
                 // Actualizar en el estado local
                 setPaymentMethods((methods) =>
                     methods.map((method) =>
@@ -289,15 +318,18 @@ export function PaymentMethods({
             } else {
                 // Crear nuevo método
                 const { data, error } = await supabase
-                    .from('payment_methods')
+                    .from("payment_methods")
                     .insert(paymentMethodData)
                     .select()
                     .single();
 
-                if (error) throw new Error("Error al guardar el método de pago: " + error.message);
-                
+                if (error)
+                    throw new Error(
+                        "Error al guardar el método de pago: " + error.message
+                    );
+
                 newMethod = data;
-                
+
                 // Agregar al estado local
                 setPaymentMethods((methods) => [...methods, newMethod]);
                 onMethodAdded?.(newMethod);
@@ -330,13 +362,13 @@ export function PaymentMethods({
             try {
                 // Eliminar de la base de datos
                 const { error } = await supabase
-                    .from('payment_methods')
+                    .from("payment_methods")
                     .delete()
-                    .eq('id', methodId);
+                    .eq("id", methodId);
 
                 if (error) {
-                    console.error('Error deleting payment method:', error);
-                    alert('Error al eliminar el método de pago');
+                    console.error("Error deleting payment method:", error);
+                    alert("Error al eliminar el método de pago");
                     return;
                 }
 
@@ -345,10 +377,10 @@ export function PaymentMethods({
                     methods.filter((method) => method.id !== methodId)
                 );
 
-                console.log('Payment method deleted successfully');
+                console.log("Payment method deleted successfully");
             } catch (error) {
-                console.error('Error deleting payment method:', error);
-                alert('Error inesperado al eliminar el método de pago');
+                console.error("Error deleting payment method:", error);
+                alert("Error inesperado al eliminar el método de pago");
             }
         }
     };
@@ -357,23 +389,24 @@ export function PaymentMethods({
     const validateExpiryDate = (expiry: string): boolean => {
         const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
         if (!regex.test(expiry)) return false;
-        
-        const [month, year] = expiry.split('/');
+
+        const [month, year] = expiry.split("/");
         const currentDate = new Date();
         const currentYear = currentDate.getFullYear() % 100;
         const currentMonth = currentDate.getMonth() + 1;
-        
+
         const expiryYear = parseInt(year);
         const expiryMonth = parseInt(month);
-        
+
         if (expiryYear < currentYear) return false;
-        if (expiryYear === currentYear && expiryMonth < currentMonth) return false;
-        
+        if (expiryYear === currentYear && expiryMonth < currentMonth)
+            return false;
+
         return true;
     };
 
     const validateCardNumber = (cardNumber: string): boolean => {
-        const cleaned = cardNumber.replace(/\s+/g, '');
+        const cleaned = cardNumber.replace(/\s+/g, "");
         return /^\d{13,19}$/.test(cleaned);
     };
 
@@ -611,7 +644,9 @@ export function PaymentMethods({
                                         id="cardholder_name"
                                         value={formData.cardholder_name}
                                         onChange={(e) =>
-                                            updateFormData({ cardholder_name: e.target.value })
+                                            updateFormData({
+                                                cardholder_name: e.target.value,
+                                            })
                                         }
                                         placeholder="Juan Pérez"
                                     />
@@ -627,7 +662,9 @@ export function PaymentMethods({
                                             const value = e.target.value
                                                 .replace(/\D/g, "")
                                                 .slice(0, 16);
-                                            updateFormData({ card_number: value });
+                                            updateFormData({
+                                                card_number: value,
+                                            });
                                         }}
                                         placeholder="1234 5678 9012 3456"
                                         maxLength={16}
