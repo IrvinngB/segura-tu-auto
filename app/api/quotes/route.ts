@@ -1,8 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
 import { type NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
     console.log("🔍 GET /api/quotes - Starting request");
+    console.log("🍪 Request cookies:", request.cookies.getAll().map(c => ({ name: c.name, hasValue: !!c.value })));
 
     const supabase = await createClient();
 
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
         error: authError,
     } = await supabase.auth.getUser();
 
-    console.log("🔐 Auth result:", { user: user?.id, authError });
+    console.log("🔐 Auth result:", { userId: user?.id, authError: authError?.message });
 
     if (authError || !user) {
         console.log("❌ Unauthorized access");
