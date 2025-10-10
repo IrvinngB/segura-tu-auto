@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,31 +87,8 @@ export function CustomerPaymentModal({
     onPaymentError,
 }: CustomerPaymentModalProps) {
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
-    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
-        {
-            id: "1",
-            type: "credit_card",
-            name: "Visa",
-            last_four: "4532",
-            expiry_date: "12/27",
-            is_primary: true,
-        },
-        {
-            id: "2",
-            type: "debit_card",
-            name: "Mastercard",
-            last_four: "8945",
-            expiry_date: "08/26",
-            is_primary: false,
-        },
-        {
-            id: "3",
-            type: "bank_account",
-            name: "Banco Nacional",
-            last_four: "1234",
-            is_primary: false,
-        },
-    ]);
+    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+    const [loadingMethods, setLoadingMethods] = useState(true);
     const [processingPayment, setProcessingPayment] = useState(false);
     const [paymentStep, setPaymentStep] = useState<"select" | "new" | "processing" | "success">("select");
     const [showCvv, setShowCvv] = useState(false);
@@ -128,6 +105,42 @@ export function CustomerPaymentModal({
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [saveMethod, setSaveMethod] = useState(false);
     const supabase = createClient();
+
+    // Load payment methods when modal opens
+    useEffect(() => {
+        if (open && customerId) {
+            loadPaymentMethods();
+        }
+    }, [open, customerId]);
+
+    const loadPaymentMethods = async () => {
+        try {
+            setLoadingMethods(true);
+            const response = await fetch("/api/payment-methods");
+            
+            if (!response.ok) {
+                throw new Error("Error loading payment methods");
+            }
+
+            const data = await response.json();
+            setPaymentMethods(data.paymentMethods || []);
+            
+            // Auto-select primary method if available
+            const primaryMethod = data.paymentMethods?.find((m: PaymentMethod) => m.is_primary);
+            if (primaryMethod) {
+                setSelectedPaymentMethod(primaryMethod.id);
+            }
+        } catch (error) {
+            console.error("Error loading payment methods:", error);
+            toast({
+                title: "Error",
+                description: "No se pudieron cargar los métodos de pago",
+                variant: "destructive",
+            });
+        } finally {
+            setLoadingMethods(false);
+        }
+    };
 
     const validateCardNumber = (cardNumber: string): boolean => {
         // Algoritmo de Luhn para validar números de tarjeta
@@ -290,6 +303,33 @@ export function CustomerPaymentModal({
             const result = await simulatePaymentProcessing();
 
             if (result.success && result.paymentId) {
+                // Si es un método nuevo y el usuario quiere guardarlo
+                if (paymentStep === "new" && saveMethod) {
+                    try {
+                        const response = await fetch("/api/payment-methods", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                type: newPaymentMethod.type,
+                                name: newPaymentMethod.type === "credit_card" ? "Visa" : 
+                                      newPaymentMethod.type === "debit_card" ? "Mastercard" : 
+                                      newPaymentMethod.bankName || "Banco",
+                                last_four: newPaymentMethod.cardNumber.slice(-4) || 
+                                          newPaymentMethod.accountNumber?.slice(-4) || "****",
+                                expiry_date: newPaymentMethod.expiryDate || null,
+                                is_primary: paymentMethods.length === 0, // Primary si es el primero
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            console.error("Error saving payment method");
+                        }
+                    } catch (error) {
+                        console.error("Error saving payment method:", error);
+                        // No fallar el pago si falla guardar el método
+                    }
+                }
+
                 // Guardar el pago en la base de datos
                 const { error: paymentError } = await supabase
                     .from("payments")

@@ -85,6 +85,15 @@ export async function PATCH(
 
             console.log("🎫 Generated policy number:", policyNumber);
 
+            // Calculate total coverage limit from selected coverages
+            let totalCoverageLimit = 0;
+            if (existingQuote.selected_coverages && Array.isArray(existingQuote.selected_coverages)) {
+                totalCoverageLimit = existingQuote.selected_coverages.reduce(
+                    (sum: number, coverage: any) => sum + (coverage.coverage_limit || 0),
+                    0
+                );
+            }
+
             // Create policy
             const policyData = {
                 policy_number: policyNumber,
@@ -96,9 +105,10 @@ export async function PATCH(
                 start_date: existingQuote.start_date,
                 end_date: existingQuote.end_date,
                 premium_amount: existingQuote.premium_amount,
-                payment_frequency: existingQuote.payment_frequency,
-                auto_renewal: existingQuote.auto_renewal,
+                payment_frequency: existingQuote.payment_frequency || "monthly",
+                auto_renewal: existingQuote.auto_renewal || false,
                 risk_assessment: existingQuote.risk_assessment,
+                total_coverage_limit: totalCoverageLimit > 0 ? totalCoverageLimit : null,
             };
 
             console.log("💾 Policy data to insert:", policyData);

@@ -224,7 +224,7 @@ export default function CustomerPaymentsPage() {
             setCustomerId(customer.id);
 
             // Cargar pólizas del cliente con vehículos
-            const { data: policiesData } = await supabase
+            const { data: policiesData, error: policiesError } = await supabase
                 .from("policies")
                 .select(
                     `
@@ -235,6 +235,15 @@ export default function CustomerPaymentsPage() {
                 )
                 .eq("customer_id", customer.id)
                 .order("created_at", { ascending: false });
+
+            console.log("📋 Policies loaded:", policiesData);
+            console.log("❌ Policies error:", policiesError);
+
+            if (policiesData) {
+                setPolicies(policiesData);
+            } else {
+                setPolicies([]);
+            }
 
             // Cargar pagos reales del cliente con información de póliza
             const { data: paymentsData } = await supabase
@@ -782,76 +791,105 @@ export default function CustomerPaymentsPage() {
                                     <div className="space-y-4">
                                         <h3 className="text-lg font-semibold">Pólizas Activas</h3>
 
+                                        {/* Debug info */}
+                                        <div className="text-xs text-muted-foreground mb-2">
+                                            Total pólizas: {policies.length} | 
+                                            Activas: {policies.filter(p => p.status === 'active').length}
+                                        </div>
+
                                         {/* Pólizas reales del cliente */}
                                         {policies.length > 0 ? (
-                                            policies
-                                                .filter(policy => policy.status === 'active')
-                                                .map((policy) => {
-                                                    const monthlyAmount = Math.round(policy.premium_amount / 12);
-                                                    const nextPaymentDate = calculateNextPaymentDate(policy);
-                                                    
-                                                    return (
-                                                        <div key={policy.id} className="border rounded-lg p-6 space-y-4">
-                                                            <div className="flex justify-between items-start">
-                                                                <div className="space-y-2">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Shield className="h-5 w-5 text-green-600" />
-                                                                        <h4 className="font-semibold">
-                                                                            Póliza {policy.policy_type === 'basica' ? 'Básica' : 
-                                                                                   policy.policy_type === 'limitada' ? 'Limitada' : 
-                                                                                   'Todo Riesgo'}
-                                                                        </h4>
-                                                                        <Badge className={
-                                                                            policy.status === 'active' 
-                                                                                ? "bg-green-100 text-green-800" 
-                                                                                : "bg-gray-100 text-gray-800"
-                                                                        }>
-                                                                            {policy.status === 'active' ? 'Activa' : 'Inactiva'}
-                                                                        </Badge>
+                                            <>
+                                                {/* Mostrar pólizas activas */}
+                                                {policies
+                                                    .filter(policy => policy.status === 'active')
+                                                    .map((policy) => {
+                                                        const monthlyAmount = Math.round(policy.premium_amount / 12);
+                                                        const nextPaymentDate = calculateNextPaymentDate(policy);
+                                                        
+                                                        return (
+                                                            <div key={policy.id} className="border rounded-lg p-6 space-y-4">
+                                                                <div className="flex justify-between items-start">
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Shield className="h-5 w-5 text-green-600" />
+                                                                            <h4 className="font-semibold">
+                                                                                Póliza {policy.policy_type === 'basica' ? 'Básica' : 
+                                                                                       policy.policy_type === 'limitada' ? 'Limitada' : 
+                                                                                       'Todo Riesgo'}
+                                                                            </h4>
+                                                                            <Badge className={
+                                                                                policy.status === 'active' 
+                                                                                    ? "bg-green-100 text-green-800" 
+                                                                                    : "bg-gray-100 text-gray-800"
+                                                                            }>
+                                                                                {policy.status === 'active' ? 'Activa' : 'Inactiva'}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <p className="text-sm text-muted-foreground">
+                                                                            Número: {policy.policy_number}
+                                                                            {policy.vehicle && ` • Vehículo: ${policy.vehicle.make} ${policy.vehicle.model} ${policy.vehicle.year}`}
+                                                                        </p>
+                                                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                                                            <div>
+                                                                                <span className="font-medium">Prima Mensual:</span> ${monthlyAmount.toLocaleString()}
+                                                                            </div>
+                                                                            <div>
+                                                                                <span className="font-medium">Próximo Pago:</span> {
+                                                                                    nextPaymentDate ? format(new Date(nextPaymentDate), "d MMM yyyy", { locale: es }) : 'N/A'
+                                                                                }
+                                                                            </div>
+                                                                            <div>
+                                                                                <span className="font-medium">Prima Anual:</span> ${policy.premium_amount.toLocaleString()}
+                                                                            </div>
+                                                                            <div>
+                                                                                <span className="font-medium">Cobertura Total:</span> ${policy.total_coverage_limit?.toLocaleString() || 'N/A'}
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
-                                                                    <p className="text-sm text-muted-foreground">
-                                                                        Número: {policy.policy_number}
-                                                                        {policy.vehicle && ` • Vehículo: ${policy.vehicle.make} ${policy.vehicle.model} ${policy.vehicle.year}`}
-                                                                    </p>
-                                                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                                                        <div>
-                                                                            <span className="font-medium">Prima Mensual:</span> ${monthlyAmount.toLocaleString()}
+                                                                    <div className="text-right space-y-2">
+                                                                        <div className="text-2xl font-bold text-green-600">
+                                                                            ${monthlyAmount.toLocaleString()}
                                                                         </div>
-                                                                        <div>
-                                                                            <span className="font-medium">Próximo Pago:</span> {
-                                                                                nextPaymentDate ? format(new Date(nextPaymentDate), "d MMM yyyy", { locale: es }) : 'N/A'
-                                                                            }
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="font-medium">Prima Anual:</span> ${policy.premium_amount.toLocaleString()}
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="font-medium">Cobertura Total:</span> ${policy.total_coverage_limit?.toLocaleString() || 'N/A'}
-                                                                        </div>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            onClick={() => handlePayment(
+                                                                                policy.id, 
+                                                                                "Prima Mensual", 
+                                                                                monthlyAmount, 
+                                                                                policy.policy_number
+                                                                            )}
+                                                                            disabled={loading}
+                                                                            className="w-full"
+                                                                        >
+                                                                            Pagar Prima
+                                                                        </Button>
                                                                     </div>
-                                                                </div>
-                                                                <div className="text-right space-y-2">
-                                                                    <div className="text-2xl font-bold text-green-600">
-                                                                        ${monthlyAmount.toLocaleString()}
-                                                                    </div>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        onClick={() => handlePayment(
-                                                                            policy.id, 
-                                                                            "Prima Mensual", 
-                                                                            monthlyAmount, 
-                                                                            policy.policy_number
-                                                                        )}
-                                                                        disabled={loading}
-                                                                        className="w-full"
-                                                                    >
-                                                                        Pagar Prima
-                                                                    </Button>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                })
+                                                        );
+                                                    })
+                                                }
+
+                                                {/* Mostrar todas las pólizas para debug */}
+                                                {policies.filter(p => p.status !== 'active').length > 0 && (
+                                                    <div className="mt-6">
+                                                        <h3 className="text-lg font-semibold mb-2 text-orange-600">
+                                                            Otras Pólizas (Debug)
+                                                        </h3>
+                                                        {policies.filter(p => p.status !== 'active').map((policy) => (
+                                                            <div key={policy.id} className="border border-orange-200 rounded-lg p-4 mb-2">
+                                                                <p className="text-sm">
+                                                                    <strong>Número:</strong> {policy.policy_number} | 
+                                                                    <strong> Estado:</strong> {policy.status} | 
+                                                                    <strong> Tipo:</strong> {policy.policy_type} | 
+                                                                    <strong> Prima:</strong> ${policy.premium_amount}
+                                                                </p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </>
                                         ) : (
                                             <div className="text-center py-8 text-muted-foreground">
                                                 <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -867,7 +905,9 @@ export default function CustomerPaymentsPage() {
                                         <Card className="bg-green-50 border-green-200">
                                             <CardContent className="pt-4">
                                                 <div className="text-center">
-                                                    <div className="text-2xl font-bold text-green-600">2</div>
+                                                    <div className="text-2xl font-bold text-green-600">
+                                                        {policies.filter(p => p.status === 'active').length}
+                                                    </div>
                                                     <p className="text-sm text-green-700">Pólizas Activas</p>
                                                 </div>
                                             </CardContent>
@@ -876,7 +916,12 @@ export default function CustomerPaymentsPage() {
                                         <Card className="bg-blue-50 border-blue-200">
                                             <CardContent className="pt-4">
                                                 <div className="text-center">
-                                                    <div className="text-2xl font-bold text-blue-600">$2,100.00</div>
+                                                    <div className="text-2xl font-bold text-blue-600">
+                                                        ${policies
+                                                            .filter(p => p.status === 'active')
+                                                            .reduce((sum, p) => sum + Math.round(p.premium_amount / 12), 0)
+                                                            .toLocaleString()}
+                                                    </div>
                                                     <p className="text-sm text-blue-700">Prima Mensual Total</p>
                                                 </div>
                                             </CardContent>
@@ -885,7 +930,12 @@ export default function CustomerPaymentsPage() {
                                         <Card className="bg-purple-50 border-purple-200">
                                             <CardContent className="pt-4">
                                                 <div className="text-center">
-                                                    <div className="text-2xl font-bold text-purple-600">$75,000.00</div>
+                                                    <div className="text-2xl font-bold text-purple-600">
+                                                        ${policies
+                                                            .filter(p => p.status === 'active')
+                                                            .reduce((sum, p) => sum + (p.total_coverage_limit || 0), 0)
+                                                            .toLocaleString()}
+                                                    </div>
                                                     <p className="text-sm text-purple-700">Cobertura Total</p>
                                                 </div>
                                             </CardContent>
