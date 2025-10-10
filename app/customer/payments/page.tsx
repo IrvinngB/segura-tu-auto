@@ -792,17 +792,14 @@ export default function CustomerPaymentsPage() {
                                         <h3 className="text-lg font-semibold">Pólizas Activas</h3>
 
                                         {/* Debug info */}
-                                        <div className="text-xs text-muted-foreground mb-2">
-                                            Total pólizas: {policies.length} | 
-                                            Activas: {policies.filter(p => p.status === 'active').length}
-                                        </div>
+
 
                                         {/* Pólizas reales del cliente */}
                                         {policies.length > 0 ? (
                                             <>
-                                                {/* Mostrar pólizas activas */}
+                                                {/* Mostrar pólizas pendientes de pago */}
                                                 {policies
-                                                    .filter(policy => policy.status === 'active')
+                                                    .filter(policy => policy.status === 'draft')
                                                     .map((policy) => {
                                                         const monthlyAmount = Math.round(policy.premium_amount / 12);
                                                         const nextPaymentDate = calculateNextPaymentDate(policy);
@@ -819,11 +816,15 @@ export default function CustomerPaymentsPage() {
                                                                                        'Todo Riesgo'}
                                                                             </h4>
                                                                             <Badge className={
-                                                                                policy.status === 'active' 
-                                                                                    ? "bg-green-100 text-green-800" 
+                                                                                policy.status === 'draft' 
+                                                                                    ? "bg-yellow-100 text-yellow-800" 
+                                                                                    : policy.status === 'active'
+                                                                                    ? "bg-green-100 text-green-800"
                                                                                     : "bg-gray-100 text-gray-800"
                                                                             }>
-                                                                                {policy.status === 'active' ? 'Activa' : 'Inactiva'}
+                                                                                {policy.status === 'draft' ? 'Pendiente de Pago' : 
+                                                                                 policy.status === 'active' ? 'Activa' : 
+                                                                                 'Inactiva'}
                                                                             </Badge>
                                                                         </div>
                                                                         <p className="text-sm text-muted-foreground">
@@ -871,22 +872,47 @@ export default function CustomerPaymentsPage() {
                                                     })
                                                 }
 
-                                                {/* Mostrar todas las pólizas para debug */}
-                                                {policies.filter(p => p.status !== 'active').length > 0 && (
+
+                                            
+                                                {/* Mostrar pólizas activas */}
+                                                {policies.filter(p => p.status === 'active').length > 0 && (
                                                     <div className="mt-6">
-                                                        <h3 className="text-lg font-semibold mb-2 text-orange-600">
-                                                            Otras Pólizas (Debug)
+                                                        <h3 className="text-lg font-semibold mb-4 text-green-600 flex items-center gap-2">
+                                                            <Shield className="h-5 w-5" />
+                                                            Pólizas Activas
                                                         </h3>
-                                                        {policies.filter(p => p.status !== 'active').map((policy) => (
-                                                            <div key={policy.id} className="border border-orange-200 rounded-lg p-4 mb-2">
-                                                                <p className="text-sm">
-                                                                    <strong>Número:</strong> {policy.policy_number} | 
-                                                                    <strong> Estado:</strong> {policy.status} | 
-                                                                    <strong> Tipo:</strong> {policy.policy_type} | 
-                                                                    <strong> Prima:</strong> ${policy.premium_amount}
-                                                                </p>
-                                                            </div>
-                                                        ))}
+                                                        {policies.filter(p => p.status === 'active').map((policy) => {
+                                                            const monthlyAmount = Math.round(policy.premium_amount / 12);
+                                                            
+                                                            return (
+                                                                <div key={policy.id} className="border border-green-200 rounded-lg p-4 mb-3 bg-green-50">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <div className="space-y-1">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <h4 className="font-semibold">
+                                                                                    Póliza {policy.policy_type === 'basica' ? 'Básica' : 
+                                                                                           policy.policy_type === 'limitada' ? 'Limitada' : 
+                                                                                           'Todo Riesgo'}
+                                                                                </h4>
+                                                                                <Badge className="bg-green-100 text-green-800">
+                                                                                    Activa
+                                                                                </Badge>
+                                                                            </div>
+                                                                            <p className="text-sm text-muted-foreground">
+                                                                                {policy.policy_number}
+                                                                                {policy.vehicle && ` • ${policy.vehicle.make} ${policy.vehicle.model}`}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <p className="text-sm text-muted-foreground">Prima Mensual</p>
+                                                                            <p className="text-lg font-semibold text-green-600">
+                                                                                ${monthlyAmount.toLocaleString()}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
                                             </>

@@ -330,27 +330,32 @@ export function CustomerPaymentModal({
                     }
                 }
 
-                // Guardar el pago en la base de datos
-                const { error: paymentError } = await supabase
-                    .from("payments")
-                    .insert({
-                        policy_id: policyId,
-                        customer_id: customerId,
-                        payment_type: paymentType === "Prima Mensual" ? "premium" : "fee",
-                        amount: amount,
-                        payment_method: paymentStep === "new" 
-                            ? `${newPaymentMethod.type === "credit_card" ? "Tarjeta de Crédito" : 
-                               newPaymentMethod.type === "debit_card" ? "Tarjeta Débito" : "Cuenta Bancaria"}`
-                            : paymentMethods.find(m => m.id === selectedPaymentMethod)?.name,
-                        payment_status: "completed",
-                        payment_date: new Date().toISOString(),
-                        reference_number: result.paymentId,
-                        transaction_id: result.paymentId,
-                    });
+                // Procesar el pago usando el endpoint
+                const selectedPaymentMethodId = paymentStep === "new" 
+                    ? paymentMethods[0]?.id // Usar el primer método disponible o crear uno temporal
+                    : selectedPaymentMethod;
 
-                if (paymentError) {
-                    throw new Error(paymentError.message);
+                if (!selectedPaymentMethodId) {
+                    throw new Error("No se encontró método de pago válido");
                 }
+
+                const paymentResponse = await fetch("/api/payments", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        policy_id: policyId,
+                        payment_method_id: selectedPaymentMethodId,
+                        amount: amount,
+                        payment_type: paymentType === "Prima Mensual" ? "premium" : "fee",
+                    }),
+                });
+
+                if (!paymentResponse.ok) {
+                    const errorData = await paymentResponse.json();
+                    throw new Error(errorData.error || "Error procesando el pago");
+                }
+
+                const paymentData = await paymentResponse.json();
 
                 setPaymentStep("success");
                 

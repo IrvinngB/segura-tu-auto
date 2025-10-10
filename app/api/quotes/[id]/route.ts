@@ -94,14 +94,14 @@ export async function PATCH(
                 );
             }
 
-            // Create policy
+            // Create policy with draft status (pendiente de pago)
             const policyData = {
                 policy_number: policyNumber,
                 customer_id: existingQuote.customer_id,
                 vehicle_id: existingQuote.vehicle_id,
                 agent_id: user.id,
                 policy_type: existingQuote.policy_type,
-                status: "active",
+                status: "draft", // Póliza pendiente de pago (usar draft hasta el pago)
                 start_date: existingQuote.start_date,
                 end_date: existingQuote.end_date,
                 premium_amount: existingQuote.premium_amount,

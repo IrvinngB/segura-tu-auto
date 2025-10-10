@@ -360,6 +360,12 @@ export default function CustomerNewPolicyPage() {
                                 currentStep >= 2 ? "bg-primary" : "bg-muted"
                             }`}
                         ></div>
+                       
+                        <div
+                            className={`w-16 h-1 ${
+                                currentStep >= 2 ? "bg-primary" : "bg-muted"
+                            }`}
+                        ></div>
                         <div className="flex items-center">
                             <div
                                 className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -369,23 +375,6 @@ export default function CustomerNewPolicyPage() {
                                 }`}
                             >
                                 2
-                            </div>
-                            <span className="ml-2 text-sm">Pago</span>
-                        </div>
-                        <div
-                            className={`w-16 h-1 ${
-                                currentStep >= 3 ? "bg-primary" : "bg-muted"
-                            }`}
-                        ></div>
-                        <div className="flex items-center">
-                            <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                    currentStep >= 3
-                                        ? "bg-primary text-white"
-                                        : "bg-muted text-muted-foreground"
-                                }`}
-                            >
-                                3
                             </div>
                             <span className="ml-2 text-sm">Confirmación</span>
                         </div>
