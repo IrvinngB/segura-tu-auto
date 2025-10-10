@@ -202,7 +202,7 @@ export function QuoteList({ customerId }: QuoteListProps) {
             175
         );
         doc.text(
-            `Prima Mensual: $${(quote.premium_amount / 12).toFixed(2)}`,
+            `Prima Mensual: $${Math.round(quote.premium_amount / 12).toLocaleString()}`,
             20,
             185
         );
@@ -651,23 +651,17 @@ export function QuoteList({ customerId }: QuoteListProps) {
                                     <span>Prima Mensual:</span>
                                     <span>
                                         $
-                                        {(
-                                            selectedQuote.premium_amount / 12
-                                        ).toFixed(2)}
+                                        {Math.round(selectedQuote.premium_amount / 12).toLocaleString()}
                                     </span>
                                     <span>Prima Trimestral:</span>
                                     <span>
                                         $
-                                        {(
-                                            selectedQuote.premium_amount / 4
-                                        ).toFixed(2)}
+                                        {Math.round((selectedQuote.premium_amount / 12) * 3).toLocaleString()}
                                     </span>
                                     <span>Prima Semestral:</span>
                                     <span>
                                         $
-                                        {(
-                                            selectedQuote.premium_amount / 2
-                                        ).toFixed(2)}
+                                        {Math.round((selectedQuote.premium_amount / 12) * 6).toLocaleString()}
                                     </span>
                                 </div>
                             </div>
