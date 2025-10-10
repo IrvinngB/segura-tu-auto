@@ -119,36 +119,80 @@ export default function CustomerNewPolicyPage() {
                             </Alert>
 
                             <div className="space-y-4">
-                                <h3 className="font-semibold">
+                                <h3 className="font-semibold text-lg text-center mb-6">
                                     Pasos del proceso:
                                 </h3>
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                                        <CheckCircle className="h-5 w-5 text-green-600" />
-                                        <span className="text-sm">
-                                            1. Crear cotización con información
-                                            del vehículo
-                                        </span>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Step 1 */}
+                                    <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 hover:border-green-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/10"></div>
+                                        <div className="relative p-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-shrink-0 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-md">
+                                                    <CheckCircle className="h-5 w-5 text-white" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-xs font-medium text-green-700 mb-1">PASO 1</div>
+                                                    <div className="text-sm font-semibold text-green-800">
+                                                        Crear cotización con información del vehículo
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
-                                        <AlertCircle className="h-5 w-5 text-yellow-600" />
-                                        <span className="text-sm">
-                                            2. Esperar revisión y aprobación del
-                                            agente
-                                        </span>
+
+                                    {/* Step 2 */}
+                                    <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-50 to-orange-100 border border-yellow-200 hover:border-yellow-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-orange-500/10"></div>
+                                        <div className="relative p-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-shrink-0 w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center shadow-md">
+                                                    <AlertCircle className="h-5 w-5 text-white" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-xs font-medium text-yellow-700 mb-1">PASO 2</div>
+                                                    <div className="text-sm font-semibold text-yellow-800">
+                                                        Esperar revisión y aprobación del agente
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                                        <CreditCard className="h-5 w-5 text-blue-600" />
-                                        <span className="text-sm">
-                                            3. Configurar método de pago y
-                                            procesar prima
-                                        </span>
+
+                                    {/* Step 3 */}
+                                    <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 hover:border-blue-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/10"></div>
+                                        <div className="relative p-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-shrink-0 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-md">
+                                                    <CreditCard className="h-5 w-5 text-white" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-xs font-medium text-blue-700 mb-1">PASO 3</div>
+                                                    <div className="text-sm font-semibold text-blue-800">
+                                                        Configurar método de pago y procesar prima
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
-                                        <FileText className="h-5 w-5 text-purple-600" />
-                                        <span className="text-sm">
-                                            4. Póliza activada automáticamente
-                                        </span>
+
+                                    {/* Step 4 */}
+                                    <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 hover:border-purple-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-violet-500/10"></div>
+                                        <div className="relative p-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex-shrink-0 w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center shadow-md">
+                                                    <FileText className="h-5 w-5 text-white" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-xs font-medium text-purple-700 mb-1">PASO 4</div>
+                                                    <div className="text-sm font-semibold text-purple-800">
+                                                        Póliza activada automáticamente
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
