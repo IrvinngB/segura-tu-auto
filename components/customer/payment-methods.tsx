@@ -38,9 +38,12 @@ import {
     Star,
     Shield,
     Check,
+    AlertTriangle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface PaymentMethod {
     id: string;
@@ -79,6 +82,7 @@ export function PaymentMethods({
     allowEdit = true,
 }: PaymentMethodsProps) {
     const { customerData } = useCustomerDataSimple();
+    const { toast } = useToast();
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -87,6 +91,16 @@ export function PaymentMethods({
     );
     const [submitting, setSubmitting] = useState(false);
     const [formError, setFormError] = useState<string>("");
+    const [deleteDialog, setDeleteDialog] = useState<{
+        open: boolean;
+        methodId: string;
+        methodName: string;
+    }>({
+        open: false,
+        methodId: "",
+        methodName: "",
+    });
+    const [deletingMethodId, setDeletingMethodId] = useState<string | null>(null);
     const supabase = createClient();
 
     // Form data for new/edit payment method
@@ -353,35 +367,59 @@ export function PaymentMethods({
         );
     };
 
-    const handleDeleteMethod = async (methodId: string) => {
-        if (
-            confirm(
-                "¿Estás seguro de que quieres eliminar este método de pago? Esta acción no se puede deshacer."
-            )
-        ) {
-            try {
-                // Eliminar de la base de datos
-                const { error } = await supabase
-                    .from("payment_methods")
-                    .delete()
-                    .eq("id", methodId);
+    const handleDeleteMethod = (methodId: string, methodName: string) => {
+        // Abrir el diálogo de confirmación
+        setDeleteDialog({
+            open: true,
+            methodId,
+            methodName,
+        });
+    };
 
-                if (error) {
-                    console.error("Error deleting payment method:", error);
-                    alert("Error al eliminar el método de pago");
-                    return;
-                }
+    const confirmDeleteMethod = async () => {
+        const { methodId, methodName } = deleteDialog;
 
-                // Solo actualizar el estado local si la eliminación fue exitosa
-                setPaymentMethods((methods) =>
-                    methods.filter((method) => method.id !== methodId)
-                );
+        try {
+            setDeletingMethodId(methodId);
+            setFormError("");
 
-                console.log("Payment method deleted successfully");
-            } catch (error) {
+            // Eliminar de la base de datos
+            const { error } = await supabase
+                .from("payment_methods")
+                .delete()
+                .eq("id", methodId);
+
+            if (error) {
                 console.error("Error deleting payment method:", error);
-                alert("Error inesperado al eliminar el método de pago");
+                setFormError("Error al eliminar el método de pago");
+                return;
             }
+
+            // Solo actualizar el estado local si la eliminación fue exitosa
+            setPaymentMethods((methods) =>
+                methods.filter((method) => method.id !== methodId)
+            );
+
+            // Cerrar el diálogo
+            setDeleteDialog({
+                open: false,
+                methodId: "",
+                methodName: "",
+            });
+
+            // Mostrar mensaje de éxito
+            toast({
+                title: "¡Método de pago eliminado!",
+                description: `${methodName} ha sido eliminado exitosamente.`,
+                variant: "default",
+            });
+
+            console.log("Payment method deleted successfully");
+        } catch (error) {
+            console.error("Error deleting payment method:", error);
+            setFormError("Error inesperado al eliminar el método de pago");
+        } finally {
+            setDeletingMethodId(null);
         }
     };
 
@@ -450,23 +488,15 @@ export function PaymentMethods({
         <>
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle className="flex items-center gap-2">
-                                <Shield className="h-5 w-5" />
-                                Métodos de Pago
-                            </CardTitle>
-                            <CardDescription>
-                                Gestiona tus métodos de pago para las primas de
-                                tus pólizas
-                            </CardDescription>
-                        </div>
-                        {showAddButton && (
-                            <Button onClick={handleAddMethod}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Agregar
-                            </Button>
-                        )}
+                    <div>
+                        <CardTitle className="flex items-center gap-2">
+                            <Shield className="h-5 w-5" />
+                            Métodos de Pago
+                        </CardTitle>
+                        <CardDescription>
+                            Gestiona tus métodos de pago para las primas de
+                            tus pólizas
+                        </CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -564,13 +594,21 @@ export function PaymentMethods({
                                                 size="sm"
                                                 onClick={() =>
                                                     handleDeleteMethod(
-                                                        method.id
+                                                        method.id,
+                                                        `${method.name} ****${method.last_four}`
                                                     )
                                                 }
                                                 className="text-red-600 hover:text-red-700"
                                                 title="Eliminar"
+                                                disabled={
+                                                    deletingMethodId === method.id
+                                                }
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                {deletingMethodId === method.id ? (
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                                ) : (
+                                                    <Trash2 className="h-4 w-4" />
+                                                )}
                                             </Button>
                                         </div>
                                     )}
@@ -817,6 +855,35 @@ export function PaymentMethods({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Diálogo de confirmación para eliminar método de pago */}
+            <ConfirmDialog
+                open={deleteDialog.open}
+                onOpenChange={(open) =>
+                    setDeleteDialog((prev) => ({ ...prev, open }))
+                }
+                title="Eliminar Método de Pago"
+                description={
+                    <div className="space-y-2">
+                        <p>
+                            ¿Estás seguro de que deseas eliminar el método de pago{" "}
+                            <span className="font-semibold">
+                                {deleteDialog.methodName}
+                            </span>
+                            ?
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            Esta acción no se puede deshacer y se eliminará
+                            permanentemente de tu cuenta.
+                        </p>
+                    </div>
+                }
+                confirmText="Sí, eliminar"
+                cancelText="Cancelar"
+                onConfirm={confirmDeleteMethod}
+                variant="destructive"
+                icon={<AlertTriangle className="h-5 w-5" />}
+            />
         </>
     );
 }
