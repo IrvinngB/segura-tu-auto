@@ -38,9 +38,12 @@ import {
     Star,
     Shield,
     Check,
+    AlertTriangle,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface PaymentMethod {
     id: string;
@@ -79,6 +82,7 @@ export function PaymentMethods({
     allowEdit = true,
 }: PaymentMethodsProps) {
     const { customerData } = useCustomerDataSimple();
+    const { toast } = useToast();
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -87,6 +91,18 @@ export function PaymentMethods({
     );
     const [submitting, setSubmitting] = useState(false);
     const [formError, setFormError] = useState<string>("");
+    const [deleteDialog, setDeleteDialog] = useState<{
+        open: boolean;
+        methodId: string;
+        methodName: string;
+    }>({
+        open: false,
+        methodId: "",
+        methodName: "",
+    });
+    const [deletingMethodId, setDeletingMethodId] = useState<string | null>(
+        null
+    );
     const supabase = createClient();
 
     // Form data for new/edit payment method
@@ -113,11 +129,11 @@ export function PaymentMethods({
         try {
             // Obtener métodos de pago reales de Supabase
             const { data, error } = await supabase
-                .from('payment_methods')
-                .select('*')
-                .eq('customer_id', customerData.id)
-                .eq('is_active', true)
-                .order('created_at', { ascending: false });
+                .from("payment_methods")
+                .select("*")
+                .eq("customer_id", customerData.id)
+                .eq("is_active", true)
+                .order("created_at", { ascending: false });
 
             if (error) {
                 console.error("Error fetching payment methods:", error);
@@ -202,27 +218,36 @@ export function PaymentMethods({
 
         setSubmitting(true);
         setFormError("");
-        
+
         try {
             // Validate form based on payment method type
-            if (formData.type === "credit_card" || formData.type === "debit_card") {
+            if (
+                formData.type === "credit_card" ||
+                formData.type === "debit_card"
+            ) {
                 if (!formData.card_number) {
                     throw new Error("El número de tarjeta es requerido");
                 }
                 if (!validateCardNumber(formData.card_number)) {
-                    throw new Error("El número de tarjeta no es válido (debe tener 13-19 dígitos)");
+                    throw new Error(
+                        "El número de tarjeta no es válido (debe tener 13-19 dígitos)"
+                    );
                 }
                 if (!formData.expiry_date) {
                     throw new Error("La fecha de expiración es requerida");
                 }
                 if (!validateExpiryDate(formData.expiry_date)) {
-                    throw new Error("La fecha de expiración no es válida o ya expiró (formato: MM/YY)");
+                    throw new Error(
+                        "La fecha de expiración no es válida o ya expiró (formato: MM/YY)"
+                    );
                 }
                 if (!formData.cvv) {
                     throw new Error("El CVV es requerido");
                 }
                 if (!validateCVV(formData.cvv)) {
-                    throw new Error("El CVV no es válido (debe tener 3-4 dígitos)");
+                    throw new Error(
+                        "El CVV no es válido (debe tener 3-4 dígitos)"
+                    );
                 }
                 if (!formData.cardholder_name.trim()) {
                     throw new Error("El nombre del titular es requerido");
@@ -232,20 +257,26 @@ export function PaymentMethods({
                     throw new Error("El número de cuenta es requerido");
                 }
                 if (!validateAccountNumber(formData.account_number)) {
-                    throw new Error("El número de cuenta no es válido (debe tener 8-17 dígitos)");
+                    throw new Error(
+                        "El número de cuenta no es válido (debe tener 8-17 dígitos)"
+                    );
                 }
                 if (!formData.routing_number) {
                     throw new Error("El número de ruta es requerido");
                 }
                 if (!validateRoutingNumber(formData.routing_number)) {
-                    throw new Error("El número de ruta no es válido (debe tener 9 dígitos)");
+                    throw new Error(
+                        "El número de ruta no es válido (debe tener 9 dígitos)"
+                    );
                 }
                 if (!formData.bank_name.trim()) {
                     throw new Error("El nombre del banco es requerido");
                 }
             } else if (formData.type === "digital_wallet") {
                 if (!formData.wallet_email) {
-                    throw new Error("El email de la billetera digital es requerido");
+                    throw new Error(
+                        "El email de la billetera digital es requerido"
+                    );
                 }
                 if (!validateEmail(formData.wallet_email)) {
                     throw new Error("El email no tiene un formato válido");
@@ -256,13 +287,23 @@ export function PaymentMethods({
             const paymentMethodData = {
                 customer_id: customerData.id,
                 type: formData.type,
-                name: formData.cardholder_name || formData.bank_name || "Método de Pago",
-                last_four: formData.card_number.slice(-4) || formData.account_number.slice(-4) || "****",
+                name:
+                    formData.cardholder_name ||
+                    formData.bank_name ||
+                    "Método de Pago",
+                last_four:
+                    formData.card_number.slice(-4) ||
+                    formData.account_number.slice(-4) ||
+                    "****",
                 expiry_date: formData.expiry_date || null,
-                brand: formData.type === "credit_card" || formData.type === "debit_card" ? "Visa" : null,
+                brand:
+                    formData.type === "credit_card" ||
+                    formData.type === "debit_card"
+                        ? "Visa"
+                        : null,
                 bank_name: formData.bank_name || null,
                 is_primary: formData.is_primary,
-                is_active: true
+                is_active: true,
             };
 
             let newMethod: PaymentMethod;
@@ -270,16 +311,20 @@ export function PaymentMethods({
             if (editingMethod) {
                 // Actualizar método existente
                 const { data, error } = await supabase
-                    .from('payment_methods')
+                    .from("payment_methods")
                     .update(paymentMethodData)
-                    .eq('id', editingMethod.id)
+                    .eq("id", editingMethod.id)
                     .select()
                     .single();
 
-                if (error) throw new Error("Error al actualizar el método de pago: " + error.message);
-                
+                if (error)
+                    throw new Error(
+                        "Error al actualizar el método de pago: " +
+                            error.message
+                    );
+
                 newMethod = data;
-                
+
                 // Actualizar en el estado local
                 setPaymentMethods((methods) =>
                     methods.map((method) =>
@@ -289,15 +334,18 @@ export function PaymentMethods({
             } else {
                 // Crear nuevo método
                 const { data, error } = await supabase
-                    .from('payment_methods')
+                    .from("payment_methods")
                     .insert(paymentMethodData)
                     .select()
                     .single();
 
-                if (error) throw new Error("Error al guardar el método de pago: " + error.message);
-                
+                if (error)
+                    throw new Error(
+                        "Error al guardar el método de pago: " + error.message
+                    );
+
                 newMethod = data;
-                
+
                 // Agregar al estado local
                 setPaymentMethods((methods) => [...methods, newMethod]);
                 onMethodAdded?.(newMethod);
@@ -321,15 +369,59 @@ export function PaymentMethods({
         );
     };
 
-    const handleDeleteMethod = async (methodId: string) => {
-        if (
-            confirm(
-                "¿Estás seguro de que quieres eliminar este método de pago?"
-            )
-        ) {
+    const handleDeleteMethod = (methodId: string, methodName: string) => {
+        // Abrir el diálogo de confirmación
+        setDeleteDialog({
+            open: true,
+            methodId,
+            methodName,
+        });
+    };
+
+    const confirmDeleteMethod = async () => {
+        const { methodId, methodName } = deleteDialog;
+
+        try {
+            setDeletingMethodId(methodId);
+            setFormError("");
+
+            // Eliminar de la base de datos
+            const { error } = await supabase
+                .from("payment_methods")
+                .delete()
+                .eq("id", methodId);
+
+            if (error) {
+                console.error("Error deleting payment method:", error);
+                setFormError("Error al eliminar el método de pago");
+                return;
+            }
+
+            // Solo actualizar el estado local si la eliminación fue exitosa
             setPaymentMethods((methods) =>
                 methods.filter((method) => method.id !== methodId)
             );
+
+            // Cerrar el diálogo
+            setDeleteDialog({
+                open: false,
+                methodId: "",
+                methodName: "",
+            });
+
+            // Mostrar mensaje de éxito
+            toast({
+                title: "¡Método de pago eliminado!",
+                description: `${methodName} ha sido eliminado exitosamente.`,
+                variant: "default",
+            });
+
+            console.log("Payment method deleted successfully");
+        } catch (error) {
+            console.error("Error deleting payment method:", error);
+            setFormError("Error inesperado al eliminar el método de pago");
+        } finally {
+            setDeletingMethodId(null);
         }
     };
 
@@ -337,23 +429,24 @@ export function PaymentMethods({
     const validateExpiryDate = (expiry: string): boolean => {
         const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
         if (!regex.test(expiry)) return false;
-        
-        const [month, year] = expiry.split('/');
+
+        const [month, year] = expiry.split("/");
         const currentDate = new Date();
         const currentYear = currentDate.getFullYear() % 100;
         const currentMonth = currentDate.getMonth() + 1;
-        
+
         const expiryYear = parseInt(year);
         const expiryMonth = parseInt(month);
-        
+
         if (expiryYear < currentYear) return false;
-        if (expiryYear === currentYear && expiryMonth < currentMonth) return false;
-        
+        if (expiryYear === currentYear && expiryMonth < currentMonth)
+            return false;
+
         return true;
     };
 
     const validateCardNumber = (cardNumber: string): boolean => {
-        const cleaned = cardNumber.replace(/\s+/g, '');
+        const cleaned = cardNumber.replace(/\s+/g, "");
         return /^\d{13,19}$/.test(cleaned);
     };
 
@@ -397,23 +490,15 @@ export function PaymentMethods({
         <>
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle className="flex items-center gap-2">
-                                <Shield className="h-5 w-5" />
-                                Métodos de Pago
-                            </CardTitle>
-                            <CardDescription>
-                                Gestiona tus métodos de pago para las primas de
-                                tus pólizas
-                            </CardDescription>
-                        </div>
-                        {showAddButton && (
-                            <Button onClick={handleAddMethod}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Agregar
-                            </Button>
-                        )}
+                    <div>
+                        <CardTitle className="flex items-center gap-2">
+                            <Shield className="h-5 w-5" />
+                            Métodos de Pago
+                        </CardTitle>
+                        <CardDescription>
+                            Gestiona tus métodos de pago para las primas de tus
+                            pólizas
+                        </CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -511,13 +596,23 @@ export function PaymentMethods({
                                                 size="sm"
                                                 onClick={() =>
                                                     handleDeleteMethod(
-                                                        method.id
+                                                        method.id,
+                                                        `${method.name} ****${method.last_four}`
                                                     )
                                                 }
                                                 className="text-red-600 hover:text-red-700"
                                                 title="Eliminar"
+                                                disabled={
+                                                    deletingMethodId ===
+                                                    method.id
+                                                }
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                {deletingMethodId ===
+                                                method.id ? (
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                                ) : (
+                                                    <Trash2 className="h-4 w-4" />
+                                                )}
                                             </Button>
                                         </div>
                                     )}
@@ -591,7 +686,9 @@ export function PaymentMethods({
                                         id="cardholder_name"
                                         value={formData.cardholder_name}
                                         onChange={(e) =>
-                                            updateFormData({ cardholder_name: e.target.value })
+                                            updateFormData({
+                                                cardholder_name: e.target.value,
+                                            })
                                         }
                                         placeholder="Juan Pérez"
                                     />
@@ -607,7 +704,9 @@ export function PaymentMethods({
                                             const value = e.target.value
                                                 .replace(/\D/g, "")
                                                 .slice(0, 16);
-                                            updateFormData({ card_number: value });
+                                            updateFormData({
+                                                card_number: value,
+                                            });
                                         }}
                                         placeholder="1234 5678 9012 3456"
                                         maxLength={16}
@@ -760,6 +859,36 @@ export function PaymentMethods({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Diálogo de confirmación para eliminar método de pago */}
+            <ConfirmDialog
+                open={deleteDialog.open}
+                onOpenChange={(open) =>
+                    setDeleteDialog((prev) => ({ ...prev, open }))
+                }
+                title="Eliminar Método de Pago"
+                description={
+                    <div className="space-y-2">
+                        <p>
+                            ¿Estás seguro de que deseas eliminar el método de
+                            pago{" "}
+                            <span className="font-semibold">
+                                {deleteDialog.methodName}
+                            </span>
+                            ?
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            Esta acción no se puede deshacer y se eliminará
+                            permanentemente de tu cuenta.
+                        </p>
+                    </div>
+                }
+                confirmText="Sí, eliminar"
+                cancelText="Cancelar"
+                onConfirm={confirmDeleteMethod}
+                variant="destructive"
+                icon={<AlertTriangle className="h-5 w-5" />}
+            />
         </>
     );
 }

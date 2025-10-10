@@ -86,7 +86,9 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     const [calculatedQuote, setCalculatedQuote] = useState(0);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [vehiclesWithPolicies, setVehiclesWithPolicies] = useState<Set<string>>(new Set());
+    const [vehiclesWithPolicies, setVehiclesWithPolicies] = useState<
+        Set<string>
+    >(new Set());
     const [loadingVehiclePolicies, setLoadingVehiclePolicies] = useState(false);
     const supabase = createClient();
 
@@ -186,11 +188,13 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                 setVehicles(data);
                 // Verificar cuáles vehículos ya tienen pólizas activas
                 await checkVehicleActivePolicies(data);
-                
+
                 // Auto-select first available vehicle (without active policy)
                 if (data.length > 0) {
                     // Primero intentar con vehículos sin póliza activa
-                    const availableVehicle = data.find(vehicle => !vehiclesWithPolicies.has(vehicle.id));
+                    const availableVehicle = data.find(
+                        (vehicle) => !vehiclesWithPolicies.has(vehicle.id)
+                    );
                     if (availableVehicle) {
                         setSelectedVehicleId(availableVehicle.id);
                     } else {
@@ -212,21 +216,37 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
         try {
             setLoadingVehiclePolicies(true);
-            
+
             // Obtener todas las pólizas activas para estos vehículos
-            const vehicleIds = vehicleList.map(v => v.id);
+            const vehicleIds = vehicleList.map((v) => v.id);
             const { data: activePolicies } = await supabase
                 .from("policies")
                 .select("vehicle_id")
                 .in("vehicle_id", vehicleIds)
                 .in("status", ["active", "suspended"]); // Considera activas y suspendidas como ocupadas
 
+            // También verificar cotizaciones pendientes
+            const { data: pendingQuotes } = await supabase
+                .from("quotes")
+                .select("vehicle_id")
+                .in("vehicle_id", vehicleIds)
+                .in("status", ["pending", "approved"]);
+
+            const vehiclesWithActivePolicies = new Set<string>();
+
             if (activePolicies) {
-                const vehiclesWithActivePolicies = new Set(
-                    activePolicies.map(policy => policy.vehicle_id)
+                activePolicies.forEach((policy) =>
+                    vehiclesWithActivePolicies.add(policy.vehicle_id)
                 );
-                setVehiclesWithPolicies(vehiclesWithActivePolicies);
             }
+
+            if (pendingQuotes) {
+                pendingQuotes.forEach((quote) =>
+                    vehiclesWithActivePolicies.add(quote.vehicle_id)
+                );
+            }
+
+            setVehiclesWithPolicies(vehiclesWithActivePolicies);
         } catch (error) {
             console.error("Error checking vehicle policies:", error);
         } finally {
@@ -352,10 +372,10 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             errors.push("Debe seleccionar un plan de cobertura");
         }
 
-        // Validar que no haya pólizas activas para este vehículo
+        // Validar que no haya pólizas activas o cotizaciones pendientes para este vehículo
         if (hasActivePolicyForVehicle) {
             errors.push(
-                "Este vehículo ya tiene una póliza activa. No se pueden crear múltiples pólizas para el mismo vehículo."
+                "Este vehículo ya tiene una póliza activa o una cotización pendiente. No se pueden crear múltiples cotizaciones para el mismo vehículo."
             );
         }
 
@@ -796,12 +816,17 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                         <Select
                                             value={selectedVehicleId}
                                             onValueChange={(value) => {
-                                                if (vehiclesWithPolicies.has(value)) {
+                                                if (
+                                                    vehiclesWithPolicies.has(
+                                                        value
+                                                    )
+                                                ) {
                                                     setNotificationModal({
                                                         open: true,
                                                         type: "warning",
                                                         title: "Vehículo Ya Asegurado",
-                                                        message: "Este vehículo ya tiene una póliza activa. Un vehículo solo puede tener una póliza activa a la vez. Puedes cotizar para otros vehículos disponibles.",
+                                                        message:
+                                                            "Este vehículo ya tiene una póliza activa. Un vehículo solo puede tener una póliza activa a la vez. Puedes cotizar para otros vehículos disponibles.",
                                                     });
                                                     return;
                                                 }
@@ -813,24 +838,45 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {vehicles.map((vehicle) => {
-                                                    const hasActivePolicy = vehiclesWithPolicies.has(vehicle.id);
+                                                    const hasActivePolicy =
+                                                        vehiclesWithPolicies.has(
+                                                            vehicle.id
+                                                        );
                                                     return (
                                                         <SelectItem
                                                             key={vehicle.id}
                                                             value={vehicle.id}
-                                                            disabled={hasActivePolicy}
-                                                            className={hasActivePolicy ? "opacity-50" : ""}
+                                                            disabled={
+                                                                hasActivePolicy
+                                                            }
+                                                            className={
+                                                                hasActivePolicy
+                                                                    ? "opacity-50"
+                                                                    : ""
+                                                            }
                                                         >
                                                             <div className="flex items-center justify-between w-full">
                                                                 <div className="flex items-center gap-2">
                                                                     <Car className="h-4 w-4" />
-                                                                    {vehicle.year}{" "}
-                                                                    {vehicle.make}{" "}
-                                                                    {vehicle.model} -{" "}
-                                                                    {vehicle.license_plate}
+                                                                    {
+                                                                        vehicle.year
+                                                                    }{" "}
+                                                                    {
+                                                                        vehicle.make
+                                                                    }{" "}
+                                                                    {
+                                                                        vehicle.model
+                                                                    }{" "}
+                                                                    -{" "}
+                                                                    {
+                                                                        vehicle.license_plate
+                                                                    }
                                                                 </div>
                                                                 {hasActivePolicy && (
-                                                                    <Badge variant="destructive" className="ml-2">
+                                                                    <Badge
+                                                                        variant="destructive"
+                                                                        className="ml-2"
+                                                                    >
                                                                         <Shield className="h-3 w-3 mr-1" />
                                                                         Asegurado
                                                                     </Badge>

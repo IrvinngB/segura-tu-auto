@@ -3,7 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
     console.log("🔍 GET /api/quotes - Starting request");
-    console.log("🍪 Request cookies:", request.cookies.getAll().map(c => ({ name: c.name, hasValue: !!c.value })));
+    console.log(
+        "🍪 Request cookies:",
+        request.cookies
+            .getAll()
+            .map((c) => ({ name: c.name, hasValue: !!c.value }))
+    );
 
     const supabase = await createClient();
 
@@ -12,7 +17,10 @@ export async function GET(request: NextRequest) {
         error: authError,
     } = await supabase.auth.getUser();
 
-    console.log("🔐 Auth result:", { userId: user?.id, authError: authError?.message });
+    console.log("🔐 Auth result:", {
+        userId: user?.id,
+        authError: authError?.message,
+    });
 
     if (authError || !user) {
         console.log("❌ Unauthorized access");
@@ -185,20 +193,44 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Check if vehicle already has an active policy
-        console.log("🔍 Checking for existing policies...");
-        const { data: existingPolicies, error: checkError } = await supabase
-            .from("policies")
-            .select("id, status, end_date")
-            .eq("vehicle_id", vehicle_id)
-            .eq("customer_id", customer_id)
-            .in("status", ["active", "pending"]);
+        // Check if vehicle already has an active policy OR pending quotes
+        console.log("🔍 Checking for existing policies and quotes...");
 
-        if (checkError) {
-            console.error("Error checking existing policies:", checkError);
+        // Check for active policies
+        const { data: existingPolicies, error: checkPolicyError } =
+            await supabase
+                .from("policies")
+                .select("id, status, end_date")
+                .eq("vehicle_id", vehicle_id)
+                .eq("customer_id", customer_id)
+                .in("status", ["active", "pending"]);
+
+        if (checkPolicyError) {
+            console.error(
+                "Error checking existing policies:",
+                checkPolicyError
+            );
             return NextResponse.json(
                 {
                     error: "Error validating vehicle policies",
+                },
+                { status: 500 }
+            );
+        }
+
+        // Check for pending quotes
+        const { data: existingQuotes, error: checkQuoteError } = await supabase
+            .from("quotes")
+            .select("id, status, created_at")
+            .eq("vehicle_id", vehicle_id)
+            .eq("customer_id", customer_id)
+            .in("status", ["pending", "approved"]);
+
+        if (checkQuoteError) {
+            console.error("Error checking existing quotes:", checkQuoteError);
+            return NextResponse.json(
+                {
+                    error: "Error validating existing quotes",
                 },
                 { status: 500 }
             );
@@ -213,11 +245,24 @@ export async function POST(request: NextRequest) {
             return policy.status === "pending";
         });
 
+        // Check if there's a pending quote for this vehicle
+        const hasPendingQuote = existingQuotes && existingQuotes.length > 0;
+
         if (hasActivePolicy) {
             console.log("❌ Vehicle already has active policy");
             return NextResponse.json(
                 {
-                    error: "This vehicle already has an active policy. Cannot create quotes for vehicles with existing coverage.",
+                    error: "Este vehículo ya tiene una póliza activa. No se pueden crear cotizaciones para vehículos con cobertura existente.",
+                },
+                { status: 409 }
+            );
+        }
+
+        if (hasPendingQuote) {
+            console.log("❌ Vehicle already has pending quote");
+            return NextResponse.json(
+                {
+                    error: "Ya existe una cotización pendiente para este vehículo. Por favor espera a que sea procesada antes de crear una nueva.",
                 },
                 { status: 409 }
             );

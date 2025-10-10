@@ -9,10 +9,10 @@ interface LoadingScreenProps {
     className?: string;
 }
 
-export function LoadingScreen({ 
-    message = "Cargando...", 
+export function LoadingScreen({
+    message = "Cargando...",
     fullScreen = true,
-    className 
+    className,
 }: LoadingScreenProps) {
     return (
         <div
@@ -24,7 +24,6 @@ export function LoadingScreen({
         >
             <div className="relative">
                 <Shield className="h-16 w-16 text-primary animate-pulse" />
-                <Loader2 className="h-6 w-6 text-primary animate-spin absolute bottom-0 right-0" />
             </div>
             <div className="text-center space-y-2">
                 <p className="text-lg font-medium text-foreground">{message}</p>
@@ -42,7 +41,9 @@ export function InlineLoadingSpinner({ message }: { message?: string }) {
     return (
         <div className="flex items-center gap-3 py-8">
             <Loader2 className="h-5 w-5 text-primary animate-spin" />
-            {message && <span className="text-sm text-muted-foreground">{message}</span>}
+            {message && (
+                <span className="text-sm text-muted-foreground">{message}</span>
+            )}
         </div>
     );
 }
