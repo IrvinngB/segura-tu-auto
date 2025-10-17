@@ -87,77 +87,115 @@ export function PolicyForm({
         try {
             const doc = new jsPDF();
             const pageWidth = doc.internal.pageSize.width;
+            const pageHeight = doc.internal.pageSize.height;
             const margin = 20;
             let yPosition = 30;
 
             // Helper function to add text with automatic line wrapping
-            const addWrappedText = (text: string, x: number, y: number, maxWidth: number) => {
+            const addWrappedText = (text: string, x: number, y: number, maxWidth: number, fontSize: number = 10) => {
+                doc.setFontSize(fontSize);
                 const lines = doc.splitTextToSize(text, maxWidth);
                 doc.text(lines, x, y);
-                return y + (lines.length * 7);
+                return y + (lines.length * (fontSize * 0.4));
             };
 
-            // Header
-            doc.setFontSize(20);
-            doc.setFont("helvetica", "bold");
-            doc.text("PÓLIZA DE SEGURO VEHICULAR", pageWidth / 2, yPosition, { align: "center" });
-            
-            yPosition += 20;
+            // Header with background color
+            doc.setFillColor(0, 102, 204); // Blue background
+            doc.rect(0, 0, pageWidth, 50, 'F');
 
-            // Policy Number
-            doc.setFontSize(14);
+            // Header text
+            doc.setTextColor(255, 255, 255); // White text
+            doc.setFontSize(24);
             doc.setFont("helvetica", "bold");
-            doc.text(`Número de Póliza: ${policy.policy_number}`, margin, yPosition);
-            yPosition += 15;
+            doc.text("PÓLIZA DE SEGURO VEHICULAR", pageWidth / 2, 25, { align: "center" });
 
-            // Company Information
             doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.text("ASEGURADORA PREMIUM", margin, yPosition);
-            yPosition += 7;
-            doc.text("Dirección: Calle Principal #123, Ciudad", margin, yPosition);
-            yPosition += 7;
-            doc.text("Teléfono: (507) 123-4567", margin, yPosition);
-            yPosition += 7;
-            doc.text("Email: contacto@aseguradorapremium.com", margin, yPosition);
-            yPosition += 15;
+            doc.text("ASEGURADORA PREMIUM", pageWidth / 2, 35, { align: "center" });
+            doc.text("Seguros de calidad para tu tranquilidad", pageWidth / 2, 42, { align: "center" });
 
-            // Policy Information Section
-            doc.setFontSize(14);
+            yPosition = 60;
+            doc.setTextColor(0, 0, 0); // Black text for content
+
+            // Policy Number Box
+            doc.setDrawColor(0, 102, 204); // Blue border
+            doc.setFillColor(240, 248, 255); // Light blue background
+            doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 15, 'FD');
+            doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("INFORMACIÓN DE LA PÓLIZA", margin, yPosition);
+            doc.text(`Número de Póliza: ${policy.policy_number}`, margin + 5, yPosition + 5);
+
+            yPosition += 25;
+
+            // Company Information Section
+            doc.setDrawColor(0, 102, 204);
+            doc.setFillColor(245, 245, 245);
+            doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 25, 'FD');
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("INFORMACIÓN DE LA EMPRESA", margin + 5, yPosition + 2);
+            yPosition += 10;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.text("ASEGURADORA PREMIUM", margin + 10, yPosition + 2);
+            yPosition += 5;
+            doc.text("Dirección: Calle Principal #123, Ciudad de Panamá", margin + 10, yPosition + 2);
+            yPosition += 5;
+            doc.text("Teléfono: (507) 123-4567 | Email: contacto@aseguradorapremium.com", margin + 10, yPosition + 2);
             yPosition += 10;
 
-            doc.setFontSize(11);
+            // Policy Information Section
+            doc.setDrawColor(0, 102, 204);
+            doc.setFillColor(250, 250, 250);
+            doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 40, 'FD');
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("INFORMACIÓN DE LA PÓLIZA", margin + 5, yPosition + 2);
+            yPosition += 10;
+
+            doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            
-            // Policy details table-like format
+
+            // Policy details table-like format with styling
             const policyInfo = [
-                [`Fecha de Inicio:`, policy.start_date],
-                [`Fecha de Vencimiento:`, policy.end_date],
-                [`Tipo de Póliza:`, policy.policy_type.toUpperCase()],
-                [`Prima Mensual:`, `$${policy.premium_amount.toLocaleString()}`],
-                [`Frecuencia de Pago:`, policy.payment_frequency],
-                [`Renovación Automática:`, policy.auto_renewal ? 'Sí' : 'No']
+                [`Fecha de Inicio:`, policy.start_date, '#0066CC'],
+                [`Fecha de Vencimiento:`, policy.end_date, '#0066CC'],
+                [`Tipo de Póliza:`, policy.policy_type.toUpperCase(), '#0066CC'],
+                [`Prima Mensual:`, `$${policy.premium_amount.toLocaleString()}`, '#28A745'],
+                [`Frecuencia de Pago:`, policy.payment_frequency, '#0066CC'],
+                [`Renovación Automática:`, policy.auto_renewal ? 'Sí' : 'No', '#0066CC']
             ];
 
-            policyInfo.forEach(([label, value]) => {
+            policyInfo.forEach(([label, value, color]) => {
+                // Draw background for each row
+                doc.setFillColor(255, 255, 255);
+                doc.rect(margin + 5, yPosition - 3, pageWidth - 2 * margin - 10, 8, 'F');
+
                 doc.setFont("helvetica", "bold");
-                doc.text(label, margin, yPosition);
+                doc.setTextColor(0, 102, 204);
+                doc.text(label, margin + 10, yPosition + 3);
                 doc.setFont("helvetica", "normal");
-                doc.text(value, margin + 60, yPosition);
-                yPosition += 7;
+                if (color === '#28A745') {
+                    doc.setTextColor(40, 167, 69);
+                } else {
+                    doc.setTextColor(0, 0, 0);
+                }
+                doc.text(value, margin + 80, yPosition + 3);
+                yPosition += 8;
             });
 
             yPosition += 10;
 
             // Customer Information Section
-            doc.setFontSize(14);
+            doc.setDrawColor(0, 102, 204);
+            doc.setFillColor(245, 245, 245);
+            doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 30, 'FD');
+            doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("INFORMACIÓN DEL ASEGURADO", margin, yPosition);
+            doc.setTextColor(0, 0, 0);
+            doc.text("INFORMACIÓN DEL ASEGURADO", margin + 5, yPosition + 2);
             yPosition += 10;
 
-            doc.setFontSize(11);
+            doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
 
             const customerInfo = [
@@ -170,22 +208,29 @@ export function PolicyForm({
             ];
 
             customerInfo.forEach(([label, value]) => {
+                doc.setFillColor(255, 255, 255);
+                doc.rect(margin + 5, yPosition - 3, pageWidth - 2 * margin - 10, 8, 'F');
                 doc.setFont("helvetica", "bold");
-                doc.text(label, margin, yPosition);
+                doc.setTextColor(0, 102, 204);
+                doc.text(label, margin + 10, yPosition + 3);
                 doc.setFont("helvetica", "normal");
-                doc.text(value, margin + 60, yPosition);
-                yPosition += 7;
+                doc.setTextColor(0, 0, 0);
+                doc.text(value, margin + 60, yPosition + 3);
+                yPosition += 8;
             });
 
             yPosition += 10;
 
             // Vehicle Information Section
-            doc.setFontSize(14);
+            doc.setDrawColor(0, 102, 204);
+            doc.setFillColor(245, 245, 245);
+            doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 30, 'FD');
+            doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("INFORMACIÓN DEL VEHÍCULO", margin, yPosition);
+            doc.text("INFORMACIÓN DEL VEHÍCULO", margin + 5, yPosition + 2);
             yPosition += 10;
 
-            doc.setFontSize(11);
+            doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
 
             const vehicleInfo = [
@@ -199,22 +244,29 @@ export function PolicyForm({
             ];
 
             vehicleInfo.forEach(([label, value]) => {
+                doc.setFillColor(255, 255, 255);
+                doc.rect(margin + 5, yPosition - 3, pageWidth - 2 * margin - 10, 8, 'F');
                 doc.setFont("helvetica", "bold");
-                doc.text(label, margin, yPosition);
+                doc.setTextColor(0, 102, 204);
+                doc.text(label, margin + 10, yPosition + 3);
                 doc.setFont("helvetica", "normal");
-                doc.text(value, margin + 60, yPosition);
-                yPosition += 7;
+                doc.setTextColor(0, 0, 0);
+                doc.text(value, margin + 70, yPosition + 3);
+                yPosition += 8;
             });
 
             yPosition += 10;
 
             // Coverage Information Section
-            doc.setFontSize(14);
+            doc.setDrawColor(0, 102, 204);
+            doc.setFillColor(245, 245, 245);
+            doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 25, 'FD');
+            doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("COBERTURAS INCLUIDAS", margin, yPosition);
+            doc.text("COBERTURAS INCLUIDAS", margin + 5, yPosition + 2);
             yPosition += 10;
 
-            doc.setFontSize(11);
+            doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
 
             const selectedPlan = POLICY_PLANS[policy.policy_type as keyof typeof POLICY_PLANS];
@@ -222,43 +274,54 @@ export function PolicyForm({
                 selectedPlan.coverages
                     .filter(coverage => coverage.included)
                     .forEach(coverage => {
+                        // Draw bullet point background
+                        doc.setFillColor(220, 220, 220);
+                        doc.circle(margin + 8, yPosition + 2, 2, 'F');
                         doc.setFont("helvetica", "bold");
-                        doc.text(`• ${coverage.name}`, margin, yPosition);
-                        yPosition += 6;
+                        doc.setTextColor(0, 102, 204);
+                        doc.text(`• ${coverage.name}`, margin + 15, yPosition + 5);
+                        yPosition += 8;
                         doc.setFont("helvetica", "normal");
+                        doc.setTextColor(0, 0, 0);
                         yPosition = addWrappedText(
                             `  ${coverage.description}`,
-                            margin + 5,
+                            margin + 15,
                             yPosition,
-                            pageWidth - margin * 2 - 5
+                            pageWidth - margin * 2 - 15,
+                            9
                         );
                         if (coverage.maxAmount) {
-                            doc.text(`  Cobertura máxima: $${coverage.maxAmount.toLocaleString()}`, margin + 5, yPosition);
-                            yPosition += 6;
+                            doc.setFont("helvetica", "italic");
+                            doc.text(`  Cobertura máxima: $${coverage.maxAmount.toLocaleString()}`, margin + 15, yPosition);
+                            yPosition += 8;
                         }
                         if (coverage.percentage) {
-                            doc.text(`  Cobertura: ${coverage.percentage}%`, margin + 5, yPosition);
-                            yPosition += 6;
+                            doc.setFont("helvetica", "italic");
+                            doc.text(`  Cobertura: ${coverage.percentage}%`, margin + 15, yPosition);
+                            yPosition += 8;
                         }
-                        yPosition += 3;
+                        yPosition += 5;
                     });
             }
 
-            // Check if we need a new page
-            if (yPosition > 250) {
+            // Check if we need a new page for terms
+            if (yPosition > pageHeight - 100) {
                 doc.addPage();
                 yPosition = 30;
             }
 
             yPosition += 10;
 
-            // Terms and Conditions
+            // Terms and Conditions with styled header
+            doc.setDrawColor(0, 102, 204);
+            doc.setFillColor(245, 245, 245);
+            doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 15, 'FD');
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("TÉRMINOS Y CONDICIONES", margin, yPosition);
+            doc.text("TÉRMINOS Y CONDICIONES", margin + 5, yPosition + 2);
             yPosition += 10;
 
-            doc.setFontSize(10);
+            doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
 
             const terms = [
@@ -272,16 +335,19 @@ export function PolicyForm({
             ];
 
             terms.forEach(term => {
-                yPosition = addWrappedText(term, margin, yPosition, pageWidth - margin * 2);
-                yPosition += 5;
+                yPosition = addWrappedText(term, margin + 5, yPosition, pageWidth - margin * 2 - 5, 9);
+                yPosition += 3;
             });
 
-            // Footer
-            const footerY = doc.internal.pageSize.height - 30;
-            doc.setFontSize(10);
+            // Footer with styled line
+            const footerY = pageHeight - 20;
+            doc.setDrawColor(0, 102, 204);
+            doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+            doc.setFontSize(8);
             doc.setFont("helvetica", "italic");
+            doc.setTextColor(100, 100, 100);
             doc.text(`Documento generado el ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')}`, margin, footerY);
-            doc.text("Aseguradora Premium - Todos los derechos reservados", pageWidth / 2, footerY + 7, { align: "center" });
+            doc.text("Aseguradora Premium - Todos los derechos reservados", pageWidth / 2, footerY + 5, { align: "center" });
 
             // Save the PDF
             const fileName = `Poliza_${policy.policy_number}_${customerData.user?.last_name || 'Cliente'}.pdf`;
@@ -289,7 +355,7 @@ export function PolicyForm({
 
             toast({
                 title: "PDF Generado",
-                description: `El documento ${fileName} ha sido descargado exitosamente.`,
+                description: `El documento ${fileName} ha sido descargado exitosamente con estilos mejorados.`,
             });
 
         } catch (error) {
