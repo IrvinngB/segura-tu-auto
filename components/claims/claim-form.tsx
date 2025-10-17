@@ -280,44 +280,66 @@ export function ClaimForm({
             // Upload files if any
             if (uploadedFiles.length > 0) {
                 console.log("📁 Uploading files:", uploadedFiles.length);
-                for (const file of uploadedFiles) {
-                    const fileName = `${claim.id}/${Date.now()}-${file.name}`;
-                    console.log("⬆️ Uploading file:", fileName);
+                const uploadPromises = uploadedFiles.map(async (file) => {
+                    try {
+                        const fileName = `${claim.id}/${Date.now()}-${file.name}`;
+                        console.log("⬆️ Uploading file:", fileName);
 
-                    const { data: uploadData, error: uploadError } =
-                        await supabase.storage
+                        const { data: uploadData, error: uploadError } =
+                            await supabase.storage
+                                .from("Documentos")
+                                .upload(fileName, file);
+
+                        if (uploadError) {
+                            console.error("❌ Error uploading file:", uploadError);
+                            throw new Error(`Error uploading ${file.name}: ${uploadError.message}`);
+                        }
+
+                        console.log("✅ File uploaded:", uploadData);
+
+                        // Save document record
+                        const { error: docError } = await supabase
                             .from("documents")
-                            .upload(fileName, file);
+                            .insert({
+                                claim_id: claim.id,
+                                customer_id: selectedCustomer,
+                                document_type: file.type.startsWith("image/")
+                                    ? "photo"
+                                    : "other",
+                                file_name: file.name,
+                                file_path: uploadData.path,
+                                file_size: file.size,
+                                mime_type: file.type,
+                                uploaded_by: claim.customer_id,
+                                is_verified: false,
+                            });
 
-                    if (uploadError) {
-                        console.error("❌ Error uploading file:", uploadError);
-                        // Continue with other files instead of stopping
-                        continue;
+                        if (docError) {
+                            console.error("❌ Error saving document record:", docError);
+                            // Try to cleanup uploaded file
+                            await supabase.storage.from("Documentos").remove([fileName]);
+                            throw new Error(`Error saving document record for ${file.name}: ${docError.message}`);
+                        }
+
+                        return { success: true, fileName: file.name };
+                    } catch (error) {
+                        console.error(`Failed to upload ${file.name}:`, error);
+                        return { 
+                            success: false, 
+                            fileName: file.name, 
+                            error: error instanceof Error ? error.message : "Unknown error" 
+                        };
                     }
+                });
 
-                    console.log("✅ File uploaded:", uploadData);
+                const uploadResults = await Promise.allSettled(uploadPromises);
+                const failures = uploadResults
+                    .map((result, index) => result.status === 'fulfilled' ? result.value : { success: false, fileName: uploadedFiles[index].name, error: "Upload failed" })
+                    .filter(result => !result.success);
 
-                    // Save document record
-                    const { error: docError } = await supabase
-                        .from("documents")
-                        .insert({
-                            claim_id: claim.id,
-                            customer_id: customerId,
-                            document_type: file.type.startsWith("image/")
-                                ? "photo"
-                                : "other",
-                            file_name: file.name,
-                            file_path: uploadData.path,
-                            file_size: file.size,
-                            mime_type: file.type,
-                        });
-
-                    if (docError) {
-                        console.error(
-                            "❌ Error saving document record:",
-                            docError
-                        );
-                    }
+                if (failures.length > 0) {
+                    console.warn("Some files failed to upload:", failures);
+                    setError(`Reclamación creada, pero algunos archivos no se pudieron subir: ${failures.map(f => f.fileName).join(", ")}`);
                 }
             }
 
