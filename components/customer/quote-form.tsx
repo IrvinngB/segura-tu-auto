@@ -523,17 +523,17 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.text(
-            `Prima Mensual: $${(calculatedQuote / 12).toFixed(2)}`,
+            `Prima Mensual: $${Math.round(calculatedQuote / 12).toLocaleString()}`,
             20,
             yPos
         );
         doc.text(
-            `Prima Trimestral: $${(calculatedQuote / 4).toFixed(2)}`,
+            `Prima Trimestral: $${Math.round((calculatedQuote / 12) * 3).toLocaleString()}`,
             20,
             yPos + 10
         );
         doc.text(
-            `Prima Semestral: $${(calculatedQuote / 2).toFixed(2)}`,
+            `Prima Semestral: $${Math.round((calculatedQuote / 12) * 6).toLocaleString()}`,
             20,
             yPos + 20
         );
@@ -1219,6 +1219,15 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                             <Card className="bg-primary/5 border-primary/20">
                                 <CardContent className="pt-6">
                                     <div className="text-center">
+                                        <div className="mb-4">
+                                            <div className="text-sm text-muted-foreground mb-1">
+                                                Plan {POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS]?.name} - Base: $
+                                                {POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS]?.basePrice}/mes
+                                            </div>
+                                            <div className="text-lg font-semibold text-primary mb-1">
+                                                Prima Mensual Ajustada: ${Math.round(calculatedQuote / 12).toLocaleString()}
+                                            </div>
+                                        </div>
                                         <div className="text-3xl font-bold text-primary mb-2">
                                             ${calculatedQuote.toLocaleString()}
                                         </div>
@@ -1232,9 +1241,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                                 </div>
                                                 <div className="text-muted-foreground">
                                                     $
-                                                    {(
-                                                        calculatedQuote / 12
-                                                    ).toFixed(2)}
+                                                    {Math.round(calculatedQuote / 12).toLocaleString()}
                                                 </div>
                                             </div>
                                             <div>
@@ -1243,9 +1250,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                                 </div>
                                                 <div className="text-muted-foreground">
                                                     $
-                                                    {(
-                                                        calculatedQuote / 4
-                                                    ).toFixed(2)}
+                                                    {Math.round((calculatedQuote / 12) * 3).toLocaleString()}
                                                 </div>
                                             </div>
                                             <div>
@@ -1254,11 +1259,14 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                                                 </div>
                                                 <div className="text-muted-foreground">
                                                     $
-                                                    {(
-                                                        calculatedQuote / 2
-                                                    ).toFixed(2)}
+                                                    {Math.round((calculatedQuote / 12) * 6).toLocaleString()}
                                                 </div>
                                             </div>
+                                        </div>
+                                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                                            <p className="text-xs text-blue-700">
+                                                <strong>Nota:</strong> El precio final puede variar del precio base del plan debido a factores como edad del conductor, experiencia, historial de accidentes y características del vehículo.
+                                            </p>
                                         </div>
                                     </div>
                                 </CardContent>
