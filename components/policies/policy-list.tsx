@@ -37,6 +37,7 @@ import {
     Calendar,
     Download,
     Car,
+    RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -49,6 +50,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { PolicyRenewal } from "@/components/policies/policy-renewal";
 
 interface PolicyListProps {
     customerId?: string;
@@ -69,6 +71,8 @@ export function PolicyList({
     const [typeFilter, setTypeFilter] = useState("all");
     const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [showRenewalModal, setShowRenewalModal] = useState(false);
+    const [renewalPolicy, setRenewalPolicy] = useState<Policy | null>(null);
     const supabase = createClient();
 
     useEffect(() => {
@@ -380,6 +384,29 @@ export function PolicyList({
         }
     };
 
+    const handleRenewPolicy = (policy: Policy) => {
+        setRenewalPolicy(policy);
+        setShowRenewalModal(true);
+    };
+
+    const handleRenewalSuccess = (renewedPolicy: Policy) => {
+        // Actualizar la lista de pólizas
+        fetchPolicies();
+        setShowRenewalModal(false);
+        setRenewalPolicy(null);
+    };
+
+    const closeRenewalModal = () => {
+        setShowRenewalModal(false);
+        setRenewalPolicy(null);
+    };
+
+    const isPolicyExpired = (endDate: string) => {
+        const end = new Date(endDate);
+        const now = new Date();
+        return end < now;
+    };
+
     const getStatusBadge = (status: string) => {
         const statusConfig = {
             active: { label: "Activa", classes: "status-badge status-active" },
@@ -655,6 +682,19 @@ export function PolicyList({
                                                 >
                                                     <Download className="h-4 w-4" />
                                                 </Button>
+                                                {(policy.status === "expired" || isPolicyExpired(policy.end_date)) && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleRenewPolicy(policy)
+                                                        }
+                                                        title="Renovar póliza"
+                                                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                    >
+                                                        <RefreshCw className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
@@ -1029,6 +1069,15 @@ export function PolicyList({
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Renewal Modal */}
+            {showRenewalModal && renewalPolicy && (
+                <PolicyRenewal
+                    policy={renewalPolicy}
+                    onRenewalSuccess={handleRenewalSuccess}
+                    onClose={closeRenewalModal}
+                />
+            )}
         </Card>
     );
 }

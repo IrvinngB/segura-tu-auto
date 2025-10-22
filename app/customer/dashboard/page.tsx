@@ -36,12 +36,14 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
+import { RenewalNotificationsPanel } from "@/components/policies/renewal-notifications-panel";
 
 export default function CustomerDashboard() {
     const { userProfile } = useAuth();
     const [policies, setPolicies] = useState<Policy[]>([]);
     const [claims, setClaims] = useState<Claim[]>([]);
     const [payments, setPayments] = useState<Payment[]>([]);
+    const [customerId, setCustomerId] = useState<string>("");
     const [loading, setLoading] = useState(true);
     const supabase = createClient();
 
@@ -70,6 +72,8 @@ export default function CustomerDashboard() {
                 .single();
 
             if (!customer) return;
+            
+            setCustomerId(customer.id);
 
             // Fetch policies
             const { data: policiesData } = await supabase
@@ -361,6 +365,15 @@ export default function CustomerDashboard() {
                             </div>
                         </CardContent>
                     </Card>
+                </div>
+
+                {/* Renewal Notifications Panel */}
+                <div className="mb-8">
+                    {customerId && (
+                        <RenewalNotificationsPanel 
+                            customerId={customerId} 
+                        />
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
