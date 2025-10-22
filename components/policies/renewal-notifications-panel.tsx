@@ -1,32 +1,36 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { usePolicyRenewalNotifications, useRenewalStats } from "@/hooks/use-policy-renewal-notifications";
-import { PolicyRenewal } from "@/components/policies/policy-renewal";
-import type { Policy } from "@/lib/types/database";
-import { 
-  AlertTriangle, 
-  Clock, 
-  RefreshCw, 
-  Bell, 
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  usePolicyRenewalNotifications,
+  useRenewalStats,
+} from '@/hooks/use-policy-renewal-notifications';
+import { PolicyRenewal } from '@/components/policies/policy-renewal';
+import type { Policy } from '@/lib/types/database';
+import {
+  AlertTriangle,
+  Clock,
+  RefreshCw,
+  Bell,
   Calendar,
   Shield,
   X,
-  CheckCircle
-} from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+  CheckCircle,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface RenewalNotificationsPanelProps {
   customerId: string;
 }
 
 export function RenewalNotificationsPanel({ customerId }: RenewalNotificationsPanelProps) {
-  const { notifications, loading, error, markAsRenewed, dismissNotification } = usePolicyRenewalNotifications(customerId);
+  const { notifications, loading, error, markAsRenewed, dismissNotification } =
+    usePolicyRenewalNotifications(customerId);
   const stats = useRenewalStats(customerId);
   const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
   const [showRenewalModal, setShowRenewalModal] = useState(false);
@@ -41,11 +45,11 @@ export function RenewalNotificationsPanel({ customerId }: RenewalNotificationsPa
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "expired":
+      case 'expired':
         return <AlertTriangle className="h-4 w-4" />;
-      case "expiring":
+      case 'expiring':
         return <Clock className="h-4 w-4" />;
-      case "renewable":
+      case 'renewable':
         return <RefreshCw className="h-4 w-4" />;
       default:
         return <Bell className="h-4 w-4" />;
@@ -55,36 +59,36 @@ export function RenewalNotificationsPanel({ customerId }: RenewalNotificationsPa
   const getNotificationMessage = (notification: any) => {
     const policy = notification.policy;
     const vehicleInfo = `${policy.vehicle?.make} ${policy.vehicle?.model} ${policy.vehicle?.year}`;
-    
+
     switch (notification.type) {
-      case "expired":
+      case 'expired':
         const daysSinceExpiry = Math.abs(notification.daysUntilExpiry);
         return {
-          title: "Póliza Vencida",
+          title: 'Póliza Vencida',
           message: `Su póliza para ${vehicleInfo} venció hace ${daysSinceExpiry} días. Renueve ahora para mantener su protección.`,
-          variant: "destructive" as const,
-          urgency: "high" as const
+          variant: 'destructive' as const,
+          urgency: 'high' as const,
         };
-      case "expiring":
+      case 'expiring':
         return {
-          title: "Póliza por Vencer",
+          title: 'Póliza por Vencer',
           message: `Su póliza para ${vehicleInfo} vence en ${notification.daysUntilExpiry} días. Renueve antes del vencimiento.`,
-          variant: "default" as const,
-          urgency: "medium" as const
+          variant: 'default' as const,
+          urgency: 'medium' as const,
         };
-      case "renewable":
+      case 'renewable':
         return {
-          title: "Renovación Disponible",
+          title: 'Renovación Disponible',
           message: `Puede renovar anticipadamente su póliza para ${vehicleInfo}. Vence en ${notification.daysUntilExpiry} días.`,
-          variant: "secondary" as const,
-          urgency: "low" as const
+          variant: 'secondary' as const,
+          urgency: 'low' as const,
         };
       default:
         return {
-          title: "Notificación",
-          message: "Información de póliza disponible",
-          variant: "outline" as const,
-          urgency: "low" as const
+          title: 'Notificación',
+          message: 'Información de póliza disponible',
+          variant: 'outline' as const,
+          urgency: 'low' as const,
         };
     }
   };
@@ -178,50 +182,52 @@ export function RenewalNotificationsPanel({ customerId }: RenewalNotificationsPa
           {sortedNotifications.length === 0 ? (
             <div className="text-center py-8">
               <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-green-600 mb-2">
-                ¡Todo al día!
-              </h3>
+              <h3 className="text-lg font-semibold text-green-600 mb-2">¡Todo al día!</h3>
               <p className="text-muted-foreground">
                 No tiene notificaciones de renovación pendientes
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {sortedNotifications.map((notification) => {
+              {sortedNotifications.map(notification => {
                 const notificationInfo = getNotificationMessage(notification);
                 const policy = notification.policy;
-                
+
                 return (
-                  <Alert 
-                    key={notification.id} 
+                  <Alert
+                    key={notification.id}
                     className={`relative ${
-                      notificationInfo.variant === "destructive" 
-                        ? "border-red-200 bg-red-50" 
-                        : notificationInfo.variant === "default"
-                        ? "border-yellow-200 bg-yellow-50"
-                        : "border-blue-200 bg-blue-50"
+                      notificationInfo.variant === 'destructive'
+                        ? 'border-red-200 bg-red-50'
+                        : notificationInfo.variant === 'default'
+                          ? 'border-yellow-200 bg-yellow-50'
+                          : 'border-blue-200 bg-blue-50'
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 ${
-                        notificationInfo.variant === "destructive" 
-                          ? "text-red-600" 
-                          : notificationInfo.variant === "default"
-                          ? "text-yellow-600"
-                          : "text-blue-600"
-                      }`}>
+                      <div
+                        className={`mt-0.5 ${
+                          notificationInfo.variant === 'destructive'
+                            ? 'text-red-600'
+                            : notificationInfo.variant === 'default'
+                              ? 'text-yellow-600'
+                              : 'text-blue-600'
+                        }`}
+                      >
                         {getNotificationIcon(notification.type)}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className={`font-semibold ${
-                            notificationInfo.variant === "destructive" 
-                              ? "text-red-800" 
-                              : notificationInfo.variant === "default"
-                              ? "text-yellow-800"
-                              : "text-blue-800"
-                          }`}>
+                          <h4
+                            className={`font-semibold ${
+                              notificationInfo.variant === 'destructive'
+                                ? 'text-red-800'
+                                : notificationInfo.variant === 'default'
+                                  ? 'text-yellow-800'
+                                  : 'text-blue-800'
+                            }`}
+                          >
                             {notificationInfo.title}
                           </h4>
                           <Button
@@ -233,17 +239,19 @@ export function RenewalNotificationsPanel({ customerId }: RenewalNotificationsPa
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
-                        
-                        <AlertDescription className={`mb-3 ${
-                          notificationInfo.variant === "destructive" 
-                            ? "text-red-700" 
-                            : notificationInfo.variant === "default"
-                            ? "text-yellow-700"
-                            : "text-blue-700"
-                        }`}>
+
+                        <AlertDescription
+                          className={`mb-3 ${
+                            notificationInfo.variant === 'destructive'
+                              ? 'text-red-700'
+                              : notificationInfo.variant === 'default'
+                                ? 'text-yellow-700'
+                                : 'text-blue-700'
+                          }`}
+                        >
                           {notificationInfo.message}
                         </AlertDescription>
-                        
+
                         <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                           <span className="flex items-center gap-1">
                             <Shield className="h-3 w-3" />
@@ -251,10 +259,10 @@ export function RenewalNotificationsPanel({ customerId }: RenewalNotificationsPa
                           </span>
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            Vence: {format(new Date(policy.end_date), "dd/MM/yyyy", { locale: es })}
+                            Vence: {format(new Date(policy.end_date), 'dd/MM/yyyy', { locale: es })}
                           </span>
                         </div>
-                        
+
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -263,17 +271,17 @@ export function RenewalNotificationsPanel({ customerId }: RenewalNotificationsPa
                               setShowRenewalModal(true);
                             }}
                             className={`${
-                              notificationInfo.variant === "destructive" 
-                                ? "bg-red-600 hover:bg-red-700" 
-                                : notificationInfo.variant === "default"
-                                ? "bg-yellow-600 hover:bg-yellow-700"
-                                : "bg-blue-600 hover:bg-blue-700"
+                              notificationInfo.variant === 'destructive'
+                                ? 'bg-red-600 hover:bg-red-700'
+                                : notificationInfo.variant === 'default'
+                                  ? 'bg-yellow-600 hover:bg-yellow-700'
+                                  : 'bg-blue-600 hover:bg-blue-700'
                             } text-white`}
                           >
                             <RefreshCw className="h-3 w-3 mr-1" />
-                            {notification.type === "expired" ? "Renovar Ahora" : "Renovar"}
+                            {notification.type === 'expired' ? 'Renovar Ahora' : 'Renovar'}
                           </Button>
-                          {notification.type !== "expired" && (
+                          {notification.type !== 'expired' && (
                             <Button
                               variant="outline"
                               size="sm"

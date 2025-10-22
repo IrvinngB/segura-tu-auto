@@ -1,27 +1,33 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { createClient } from "@/lib/supabase/client";
-import type { Policy, Vehicle, Customer } from "@/lib/types/database";
-import { 
-  Calendar, 
-  RefreshCw, 
-  Shield, 
-  Car, 
-  DollarSign, 
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { createClient } from '@/lib/supabase/client';
+import type { Policy, Vehicle, Customer } from '@/lib/types/database';
+import {
+  Calendar,
+  RefreshCw,
+  Shield,
+  Car,
+  DollarSign,
   AlertTriangle,
   CheckCircle,
   Clock,
-  CreditCard
-} from "lucide-react";
-import { format, addYears } from "date-fns";
-import { es } from "date-fns/locale";
+  CreditCard,
+} from 'lucide-react';
+import { format, addYears } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface PolicyRenewalProps {
   policy: Policy;
@@ -31,10 +37,10 @@ interface PolicyRenewalProps {
 
 export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenewalProps) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [step, setStep] = useState<"review" | "confirm" | "processing" | "success">("review");
+  const [error, setError] = useState('');
+  const [step, setStep] = useState<'review' | 'confirm' | 'processing' | 'success'>('review');
   const [renewedPolicy, setRenewedPolicy] = useState<Policy | null>(null);
-  
+
   const supabase = createClient();
 
   // Calcular nuevas fechas y prima
@@ -43,49 +49,51 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
   const renewalPremium = Math.round(policy.premium_amount * 1.05); // 5% de incremento anual
 
   const handleRenewal = async () => {
-    if (step !== "confirm") return;
-    
+    if (step !== 'confirm') return;
+
     setLoading(true);
-    setStep("processing");
-    setError("");
-    
+    setStep('processing');
+    setError('');
+
     try {
       // Generar nuevo número de póliza
       const newPolicyNumber = `${policy.policy_number}-R${new Date().getFullYear()}`;
-      
+
       // Crear nueva póliza renovada
       const { data: newPolicy, error: policyError } = await supabase
-        .from("policies")
+        .from('policies')
         .insert({
           policy_number: newPolicyNumber,
           customer_id: policy.customer_id,
           vehicle_id: policy.vehicle_id,
           agent_id: policy.agent_id,
           policy_type: policy.policy_type,
-          status: "active",
-          start_date: format(newStartDate, "yyyy-MM-dd"),
-          end_date: format(newEndDate, "yyyy-MM-dd"),
+          status: 'active',
+          start_date: format(newStartDate, 'yyyy-MM-dd'),
+          end_date: format(newEndDate, 'yyyy-MM-dd'),
           premium_amount: renewalPremium,
           total_coverage_limit: policy.total_coverage_limit,
           payment_frequency: policy.payment_frequency,
           auto_renewal: policy.auto_renewal,
           risk_assessment: policy.risk_assessment,
         })
-        .select(`
+        .select(
+          `
           *,
           customer:customers(*),
           vehicle:vehicles(*),
           agent:users(first_name, last_name, email)
-        `)
+        `
+        )
         .single();
 
       if (policyError) throw policyError;
 
       // Copiar coberturas de la póliza anterior
       const { data: oldCoverages } = await supabase
-        .from("policy_coverages")
-        .select("*")
-        .eq("policy_id", policy.id);
+        .from('policy_coverages')
+        .select('*')
+        .eq('policy_id', policy.id);
 
       if (oldCoverages && oldCoverages.length > 0) {
         const newCoverages = oldCoverages.map(coverage => ({
@@ -97,7 +105,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
         }));
 
         const { error: coverageError } = await supabase
-          .from("policy_coverages")
+          .from('policy_coverages')
           .insert(newCoverages);
 
         if (coverageError) throw coverageError;
@@ -105,39 +113,36 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
 
       // Actualizar póliza anterior como renovada
       const { error: updateError } = await supabase
-        .from("policies")
-        .update({ 
-          status: "expired",
-          updated_at: new Date().toISOString()
+        .from('policies')
+        .update({
+          status: 'expired',
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", policy.id);
+        .eq('id', policy.id);
 
       if (updateError) throw updateError;
 
       // Crear comunicación automática
-      await supabase
-        .from("communications")
-        .insert({
-          customer_id: policy.customer_id,
-          policy_id: newPolicy.id,
-          communication_type: "email",
-          direction: "outbound",
-          subject: `Póliza Renovada - ${newPolicyNumber}`,
-          content: `Su póliza ha sido renovada exitosamente. Nueva vigencia: ${format(newStartDate, "dd/MM/yyyy", { locale: es })} al ${format(newEndDate, "dd/MM/yyyy", { locale: es })}. Prima anual: $${renewalPremium.toLocaleString("es-CO")}`,
-          status: "sent"
-        });
+      await supabase.from('communications').insert({
+        customer_id: policy.customer_id,
+        policy_id: newPolicy.id,
+        communication_type: 'email',
+        direction: 'outbound',
+        subject: `Póliza Renovada - ${newPolicyNumber}`,
+        content: `Su póliza ha sido renovada exitosamente. Nueva vigencia: ${format(newStartDate, 'dd/MM/yyyy', { locale: es })} al ${format(newEndDate, 'dd/MM/yyyy', { locale: es })}. Prima anual: $${renewalPremium.toLocaleString('es-CO')}`,
+        status: 'sent',
+      });
 
       setRenewedPolicy(newPolicy);
-      setStep("success");
-      
+      setStep('success');
+
       setTimeout(() => {
         onRenewalSuccess(newPolicy);
       }, 2000);
-
     } catch (err: any) {
-      console.error("Error renovando póliza:", err);
-      setError(err.message || "Error al renovar la póliza");
-      setStep("review");
+      console.error('Error renovando póliza:', err);
+      setError(err.message || 'Error al renovar la póliza');
+      setStep('review');
     } finally {
       setLoading(false);
     }
@@ -145,14 +150,15 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
 
   const renderStepContent = () => {
     switch (step) {
-      case "review":
+      case 'review':
         return (
           <div className="space-y-6">
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Su póliza está vencida desde el {format(new Date(policy.end_date), "dd/MM/yyyy", { locale: es })}. 
-                Es importante renovarla para mantener su cobertura.
+                Su póliza está vencida desde el{' '}
+                {format(new Date(policy.end_date), 'dd/MM/yyyy', { locale: es })}. Es importante
+                renovarla para mantener su cobertura.
               </AlertDescription>
             </Alert>
 
@@ -177,13 +183,15 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Vigencia:</span>
                     <span className="font-medium">
-                      {format(new Date(policy.start_date), "dd/MM/yyyy", { locale: es })} - {" "}
-                      {format(new Date(policy.end_date), "dd/MM/yyyy", { locale: es })}
+                      {format(new Date(policy.start_date), 'dd/MM/yyyy', { locale: es })} -{' '}
+                      {format(new Date(policy.end_date), 'dd/MM/yyyy', { locale: es })}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Prima:</span>
-                    <span className="font-medium">${policy.premium_amount.toLocaleString("es-CO")}</span>
+                    <span className="font-medium">
+                      ${policy.premium_amount.toLocaleString('es-CO')}
+                    </span>
                   </div>
                   <Badge variant="destructive" className="w-full justify-center">
                     VENCIDA
@@ -202,7 +210,9 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Número:</span>
-                    <span className="font-medium">{policy.policy_number}-R{new Date().getFullYear()}</span>
+                    <span className="font-medium">
+                      {policy.policy_number}-R{new Date().getFullYear()}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tipo:</span>
@@ -211,13 +221,13 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Vigencia:</span>
                     <span className="font-medium">
-                      {format(newStartDate, "dd/MM/yyyy", { locale: es })} - {" "}
-                      {format(newEndDate, "dd/MM/yyyy", { locale: es })}
+                      {format(newStartDate, 'dd/MM/yyyy', { locale: es })} -{' '}
+                      {format(newEndDate, 'dd/MM/yyyy', { locale: es })}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Prima:</span>
-                    <span className="font-medium">${renewalPremium.toLocaleString("es-CO")}</span>
+                    <span className="font-medium">${renewalPremium.toLocaleString('es-CO')}</span>
                   </div>
                   <Badge variant="default" className="w-full justify-center bg-green-600">
                     NUEVA - 12 MESES
@@ -260,15 +270,15 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
             <Alert>
               <DollarSign className="h-4 w-4" />
               <AlertDescription>
-                <strong>Incremento anual:</strong> La prima ha sido ajustada con un incremento del 5% 
-                (+${(renewalPremium - policy.premium_amount).toLocaleString("es-CO")}) 
-                según las tarifas vigentes.
+                <strong>Incremento anual:</strong> La prima ha sido ajustada con un incremento del
+                5% (+${(renewalPremium - policy.premium_amount).toLocaleString('es-CO')}) según las
+                tarifas vigentes.
               </AlertDescription>
             </Alert>
           </div>
         );
 
-      case "confirm":
+      case 'confirm':
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -284,7 +294,9 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
                 <div className="space-y-2">
                   <div className="flex justify-between font-medium">
                     <span>Nueva póliza:</span>
-                    <span>{policy.policy_number}-R{new Date().getFullYear()}</span>
+                    <span>
+                      {policy.policy_number}-R{new Date().getFullYear()}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Vigencia:</span>
@@ -293,7 +305,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
                   <div className="flex justify-between">
                     <span>Prima anual:</span>
                     <span className="text-green-600 font-bold">
-                      ${renewalPremium.toLocaleString("es-CO")}
+                      ${renewalPremium.toLocaleString('es-CO')}
                     </span>
                   </div>
                 </div>
@@ -302,7 +314,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
           </div>
         );
 
-      case "processing":
+      case 'processing':
         return (
           <div className="text-center space-y-4 py-8">
             <Clock className="h-16 w-16 text-blue-600 mx-auto animate-spin" />
@@ -313,14 +325,12 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
           </div>
         );
 
-      case "success":
+      case 'success':
         return (
           <div className="text-center space-y-4 py-8">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
             <h3 className="text-lg font-semibold text-green-600">¡Renovación Exitosa!</h3>
-            <p className="text-muted-foreground">
-              Su póliza ha sido renovada exitosamente.
-            </p>
+            <p className="text-muted-foreground">Su póliza ha sido renovada exitosamente.</p>
             {renewedPolicy && (
               <Card className="border-green-200">
                 <CardContent className="pt-6">
@@ -331,7 +341,9 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
                     </div>
                     <div className="flex justify-between">
                       <span>Estado:</span>
-                      <Badge variant="default" className="bg-green-600">ACTIVA</Badge>
+                      <Badge variant="default" className="bg-green-600">
+                        ACTIVA
+                      </Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -344,27 +356,27 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
 
   const renderFooter = () => {
     switch (step) {
-      case "review":
+      case 'review':
         return (
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button onClick={() => setStep("confirm")} className="bg-green-600 hover:bg-green-700">
+            <Button onClick={() => setStep('confirm')} className="bg-green-600 hover:bg-green-700">
               <RefreshCw className="h-4 w-4 mr-2" />
               Continuar Renovación
             </Button>
           </div>
         );
-      
-      case "confirm":
+
+      case 'confirm':
         return (
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setStep("review")}>
+            <Button variant="outline" onClick={() => setStep('review')}>
               Volver
             </Button>
-            <Button 
-              onClick={handleRenewal} 
+            <Button
+              onClick={handleRenewal}
               disabled={loading}
               className="bg-green-600 hover:bg-green-700"
             >
@@ -373,11 +385,11 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
             </Button>
           </div>
         );
-      
-      case "processing":
+
+      case 'processing':
         return null;
-      
-      case "success":
+
+      case 'success':
         return (
           <div className="flex justify-center">
             <Button onClick={onClose} className="bg-green-600 hover:bg-green-700">
@@ -404,9 +416,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
         {error && (
           <Alert className="border-red-200 bg-red-50">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-red-800">
-              {error}
-            </AlertDescription>
+            <AlertDescription className="text-red-800">{error}</AlertDescription>
           </Alert>
         )}
 

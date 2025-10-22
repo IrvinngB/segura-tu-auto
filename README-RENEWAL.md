@@ -49,18 +49,22 @@ Se ha implementado un sistema completo de renovación de pólizas que incluye:
 ## 🧪 Cómo Probar la Funcionalidad
 
 ### Paso 1: Ejecutar el Servidor
+
 ```bash
 npm run dev
 ```
+
 El servidor estará disponible en http://localhost:3001
 
 ### Paso 2: Autenticarse en el Sistema
+
 1. Navegar a http://localhost:3001/login
 2. Iniciar sesión con credenciales de cliente
 
 ### Paso 3: Insertar Póliza Vencida de Prueba
 
 **Opción A - Script en Navegador (Recomendado):**
+
 1. Abrir las herramientas de desarrollador (F12)
 2. Ir a la pestaña "Console"
 3. Copiar y pegar el contenido del archivo `scripts/insert-expired-policy-browser.js`
@@ -68,6 +72,7 @@ El servidor estará disponible en http://localhost:3001
 5. El script creará automáticamente una póliza vencida para el usuario logueado
 
 **Opción B - Script SQL (Requiere acceso directo a BD):**
+
 1. Ejecutar el archivo `scripts/insert-expired-policy.sql` en la base de datos
 2. Esto creará un usuario de prueba con email `cliente.test@example.com`
 
@@ -94,11 +99,13 @@ El servidor estará disponible en http://localhost:3001
 ## 📊 Características del Sistema
 
 ### Tipos de Notificaciones
+
 - **🔴 Vencidas:** Pólizas vencidas (hasta 90 días de gracia)
 - **🟡 Por Vencer:** Pólizas que vencen en 30 días o menos
 - **🔵 Renovables:** Pólizas que pueden renovarse anticipadamente (60 días antes)
 
 ### Proceso de Renovación
+
 1. **Validación:** Verificar que la póliza sea renovable
 2. **Cálculo:** Nueva prima con incremento del 5% anual
 3. **Generación:** Nuevo número de póliza (formato: `ORIGINAL-R2025`)
@@ -107,6 +114,7 @@ El servidor estará disponible en http://localhost:3001
 6. **Comunicación:** Registro automático de comunicación al cliente
 
 ### Características Técnicas
+
 - **Tiempo Real:** Actualizaciones automáticas cada 5 minutos
 - **Responsive:** Diseño adaptable a móviles y escritorio
 - **Accesibilidad:** Componentes con ARIA labels y navegación por teclado
@@ -119,7 +127,7 @@ Al ejecutar el script de prueba se crea:
 
 - **Usuario:** cliente.test@example.com (si usa script SQL)
 - **Vehículo:** Toyota Corolla 2019, placa ABC-123
-- **Póliza Vencida:** 
+- **Póliza Vencida:**
   - Tipo: Amplia
   - Prima: $850,000 - $980,000 COP
   - Vencimiento: Hace 15-20 días
