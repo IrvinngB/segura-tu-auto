@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest) {
   )
 
   // Refresh session if expired - this is important for API routes
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
@@ -41,6 +41,14 @@ export async function middleware(request: NextRequest) {
 
   if (isPublicPath || pathname === "/") {
     return supabaseResponse
+  }
+
+  // Check if user is authenticated for protected routes
+  if (!user) {
+    console.log("🚫 User not authenticated, redirecting to login");
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
   }
 
   return supabaseResponse

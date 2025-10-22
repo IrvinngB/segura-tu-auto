@@ -125,11 +125,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      // Clear all cache first
-      clearAllCache()
-
-      // Sign out from Supabase
+      // Sign out from Supabase first
       await supabase.auth.signOut()
+
+      // Then clear all cache
+      clearAllCache()
 
       // Clear local state
       setUser(null)

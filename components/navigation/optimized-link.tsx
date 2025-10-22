@@ -19,7 +19,7 @@ export function OptimizedLink({
     href, 
     children, 
     className, 
-    prefetch = true 
+    prefetch = false  // Deshabilitado para evitar prefetch automático de Next.js
 }: PrefetchLinkProps) {
     const router = useRouter();
 
@@ -49,13 +49,11 @@ export function usePrefetchRoutes(routes: string[]) {
     const router = useRouter();
 
     useEffect(() => {
-        // Prefetch después de un pequeño delay para no interferir con la carga inicial
-        const timer = setTimeout(() => {
-            routes.forEach(route => {
+        // Prefetch con delay entre cada uno para no sobrecargar
+        routes.forEach((route, index) => {
+            setTimeout(() => {
                 router.prefetch(route);
-            });
-        }, 1000);
-
-        return () => clearTimeout(timer);
+            }, index * 200); // 200ms delay between each prefetch
+        });
     }, [routes, router]);
 }
