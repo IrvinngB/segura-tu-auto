@@ -203,13 +203,13 @@ export function ClaimProcessing({ claim, onClaimUpdated }: ClaimProcessingProps)
 
   const getNextPossibleStatuses = (currentStatus: string) => {
     const transitions = {
-      submitted: ['under_review', 'denied'],
-      under_review: ['investigating', 'approved', 'denied'],
-      investigating: ['approved', 'denied'],
-      approved: ['paid', 'closed'],
-      denied: ['closed'],
+      submitted: ['under_review', 'investigating', 'denied'],
+      under_review: ['investigating', 'approved', 'denied', 'submitted'],
+      investigating: ['approved', 'denied', 'under_review', 'closed'],
+      approved: ['paid', 'closed', 'investigating'],
+      denied: ['closed', 'under_review'],
       paid: ['closed'],
-      closed: [],
+      closed: ['under_review'],
     };
 
     return transitions[currentStatus as keyof typeof transitions] || [];
@@ -377,7 +377,7 @@ export function ClaimProcessing({ claim, onClaimUpdated }: ClaimProcessingProps)
 
             {/* Selector de nuevo estado */}
             <div className="space-y-2">
-              <Label>Nuevo Estado</Label>
+              <Label className="text-sm font-medium">Nuevo Estado</Label>
               <Select
                 value={actionData.status}
                 onValueChange={(
@@ -391,13 +391,19 @@ export function ClaimProcessing({ claim, onClaimUpdated }: ClaimProcessingProps)
                     | 'paid'
                 ) => setActionData(prev => ({ ...prev, status: value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 w-64 bg-card border-muted-foreground/20 hover:border-muted-foreground/40 focus:border-primary transition-colors">
                   <SelectValue placeholder="Seleccionar nuevo estado" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-card border-muted-foreground/20">
                   {nextStatuses.map(status => (
-                    <SelectItem key={status} value={status}>
-                      <span className="flex items-center gap-2">{getStatusBadge(status)}</span>
+                    <SelectItem
+                      key={status}
+                      value={status}
+                      className="cursor-pointer hover:bg-muted/60 focus:bg-muted/80 transition-colors py-2"
+                    >
+                      <span className="flex items-center gap-2 w-full">
+                        {getStatusBadge(status)}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
