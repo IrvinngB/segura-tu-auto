@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { createClient } from '@/lib/supabase/client';
-import { simpleUpdateExpiredPolicies } from '@/lib/simple-update-policies';
+import { simpleUpdateExpiredPolicies, activateDraftPolicies } from '@/lib/simple-update-policies';
 import type { Policy } from '@/lib/types/database';
 import { Search, Eye, Edit, FileText, Calendar, Download, Car, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
@@ -66,7 +66,11 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
 
   const fetchPolicies = async () => {
     try {
-      // First, force update any expired policies
+      // First, activate draft policies that were approved by agents
+      console.log('🔄 Activando pólizas aprobadas por agentes...');
+      await activateDraftPolicies();
+
+      // Then, force update any expired policies
       console.log('🔄 Actualizando pólizas vencidas en lista...');
       await simpleUpdateExpiredPolicies();
 

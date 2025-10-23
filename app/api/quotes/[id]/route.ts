@@ -1,221 +1,189 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { type NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function PATCH(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
-    console.log("🔄 PATCH /api/quotes/[id] - Starting quote action");
-    console.log("📋 Quote ID:", params.id);
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  console.log('🔄 PATCH /api/quotes/[id] - Starting quote action');
+  console.log('📋 Quote ID:', params.id);
 
-    const supabase = await createClient();
+  const supabase = await createClient();
 
-    const {
-        data: { user },
-        error: authError,
-    } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-    console.log("🔐 Auth check:", {
-        user: user?.id,
-        authError: authError?.message,
-    });
+  console.log('🔐 Auth check:', {
+    user: user?.id,
+    authError: authError?.message,
+  });
 
-    if (authError || !user) {
-        console.log("❌ Authentication failed");
-        return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (authError || !user) {
+    console.log('❌ Authentication failed');
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
+
+  try {
+    // Check if user is agent or admin
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!userProfile || !['admin', 'agent'].includes(userProfile.role)) {
+      return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 });
     }
 
-    try {
-        // Check if user is agent or admin
-        const { data: userProfile } = await supabase
-            .from("users")
-            .select("role")
-            .eq("id", user.id)
-            .single();
+    const body = await request.json();
+    const { action, notes, rejected_reason } = body;
 
-        if (!userProfile || !["admin", "agent"].includes(userProfile.role)) {
-            return NextResponse.json(
-                { error: "Permisos insuficientes" },
-                { status: 403 }
-            );
-        }
+    console.log('📝 Request body:', { action, notes, rejected_reason });
 
-        const body = await request.json();
-        const { action, notes, rejected_reason } = body;
+    if (!['approve', 'reject'].includes(action)) {
+      console.log('❌ Invalid action:', action);
+      return NextResponse.json({ error: 'Acción inválida' }, { status: 400 });
+    }
 
-        console.log("📝 Request body:", { action, notes, rejected_reason });
+    // Get the quote to check if it exists and is pending
+    const { data: existingQuote, error: fetchError } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('id', params.id)
+      .single();
 
-        if (!["approve", "reject"].includes(action)) {
-            console.log("❌ Invalid action:", action);
-            return NextResponse.json(
-                { error: "Acción inválida" },
-                { status: 400 }
-            );
-        }
+    if (fetchError || !existingQuote) {
+      return NextResponse.json({ error: 'Cotización no encontrada' }, { status: 404 });
+    }
 
-        // Get the quote to check if it exists and is pending
-        const { data: existingQuote, error: fetchError } = await supabase
-            .from("quotes")
-            .select("*")
-            .eq("id", params.id)
-            .single();
+    if (existingQuote.status !== 'pending') {
+      return NextResponse.json({ error: 'La cotización no está pendiente' }, { status: 400 });
+    }
 
-        if (fetchError || !existingQuote) {
-            return NextResponse.json(
-                { error: "Cotización no encontrada" },
-                { status: 404 }
-            );
-        }
+    if (action === 'approve') {
+      console.log('✅ Approving quote and creating policy...');
 
-        if (existingQuote.status !== "pending") {
-            return NextResponse.json(
-                { error: "La cotización no está pendiente" },
-                { status: 400 }
-            );
-        }
+      // If approving, create a policy from the quote
+      const policyNumber = `POL-${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)
+        .toUpperCase()}`;
 
-        if (action === "approve") {
-            console.log("✅ Approving quote and creating policy...");
+      console.log('🎫 Generated policy number:', policyNumber);
 
-            // If approving, create a policy from the quote
-            const policyNumber = `POL-${Date.now()}-${Math.random()
-                .toString(36)
-                .substr(2, 9)
-                .toUpperCase()}`;
-
-            console.log("🎫 Generated policy number:", policyNumber);
-
-            // Calculate total coverage limit from selected coverages
-            let totalCoverageLimit = 0;
-            if (existingQuote.selected_coverages && Array.isArray(existingQuote.selected_coverages)) {
-                totalCoverageLimit = existingQuote.selected_coverages.reduce(
-                    (sum: number, coverage: any) => sum + (coverage.coverage_limit || 0),
-                    0
-                );
-            }
-
-            // Create policy with draft status (pendiente de pago)
-            const policyData = {
-                policy_number: policyNumber,
-                customer_id: existingQuote.customer_id,
-                vehicle_id: existingQuote.vehicle_id,
-                agent_id: user.id,
-                policy_type: existingQuote.policy_type,
-                status: "draft", // Póliza pendiente de pago (usar draft hasta el pago)
-                start_date: existingQuote.start_date,
-                end_date: existingQuote.end_date,
-                premium_amount: existingQuote.premium_amount,
-                payment_frequency: existingQuote.payment_frequency || "monthly",
-                auto_renewal: existingQuote.auto_renewal || false,
-                risk_assessment: existingQuote.risk_assessment,
-                total_coverage_limit: totalCoverageLimit > 0 ? totalCoverageLimit : null,
-            };
-
-            console.log("💾 Policy data to insert:", policyData);
-
-            const { data: policy, error: policyError } = await supabase
-                .from("policies")
-                .insert(policyData)
-                .select()
-                .single();
-
-            if (policyError) {
-                console.error("❌ Policy creation error:", policyError);
-                return NextResponse.json(
-                    {
-                        error: `Error al crear la póliza: ${policyError.message}`,
-                    },
-                    { status: 500 }
-                );
-            }
-
-            console.log("✅ Policy created successfully:", policy.id);
-
-            // Create policy coverages if selected_coverages exist
-            if (
-                existingQuote.selected_coverages &&
-                existingQuote.selected_coverages.length > 0
-            ) {
-                const coveragesToInsert = existingQuote.selected_coverages.map(
-                    (coverage: any) => ({
-                        policy_id: policy.id,
-                        coverage_type_id: coverage.coverage_type_id,
-                        coverage_limit: coverage.coverage_limit,
-                        deductible: coverage.deductible,
-                        premium: coverage.premium,
-                    })
-                );
-
-                const { error: coverageError } = await supabase
-                    .from("policy_coverages")
-                    .insert(coveragesToInsert);
-
-                if (coverageError) {
-                    console.error(
-                        "Error creating policy coverages:",
-                        coverageError
-                    );
-                    // Don't fail the whole operation for coverage errors
-                }
-            }
-
-            // Update quote status to approved and converted
-            const { data: updatedQuote, error: updateError } = await supabase
-                .from("quotes")
-                .update({
-                    status: "converted",
-                    agent_id: user.id,
-                    agent_notes: notes,
-                    reviewed_at: new Date().toISOString(),
-                })
-                .eq("id", params.id)
-                .select()
-                .single();
-
-            if (updateError) {
-                return NextResponse.json(
-                    { error: updateError.message },
-                    { status: 500 }
-                );
-            }
-
-            return NextResponse.json({
-                quote: updatedQuote,
-                policy,
-                message: "Cotización aprobada y póliza creada exitosamente",
-            });
-        } else {
-            // Reject the quote
-            const { data: updatedQuote, error: updateError } = await supabase
-                .from("quotes")
-                .update({
-                    status: "rejected",
-                    agent_id: user.id,
-                    agent_notes: notes,
-                    rejected_reason,
-                    reviewed_at: new Date().toISOString(),
-                })
-                .eq("id", params.id)
-                .select()
-                .single();
-
-            if (updateError) {
-                return NextResponse.json(
-                    { error: updateError.message },
-                    { status: 500 }
-                );
-            }
-
-            return NextResponse.json({
-                quote: updatedQuote,
-                message: "Cotización rechazada exitosamente",
-            });
-        }
-    } catch (error) {
-        console.error("Error processing quote:", error);
-        return NextResponse.json(
-            { error: "Error interno del servidor" },
-            { status: 500 }
+      // Calculate total coverage limit from selected coverages
+      let totalCoverageLimit = 0;
+      if (existingQuote.selected_coverages && Array.isArray(existingQuote.selected_coverages)) {
+        totalCoverageLimit = existingQuote.selected_coverages.reduce(
+          (sum: number, coverage: any) => sum + (coverage.coverage_limit || 0),
+          0
         );
+      }
+
+      // Create policy with active status (cuando el agente aprueba la cotización)
+      const policyData = {
+        policy_number: policyNumber,
+        customer_id: existingQuote.customer_id,
+        vehicle_id: existingQuote.vehicle_id,
+        agent_id: user.id,
+        policy_type: existingQuote.policy_type,
+        status: 'active', // Póliza activa inmediatamente cuando es aprobada por agente
+        start_date: existingQuote.start_date,
+        end_date: existingQuote.end_date,
+        premium_amount: existingQuote.premium_amount,
+        payment_frequency: existingQuote.payment_frequency || 'monthly',
+        auto_renewal: existingQuote.auto_renewal || false,
+        risk_assessment: existingQuote.risk_assessment,
+        total_coverage_limit: totalCoverageLimit > 0 ? totalCoverageLimit : null,
+      };
+
+      console.log('💾 Policy data to insert:', policyData);
+
+      const { data: policy, error: policyError } = await supabase
+        .from('policies')
+        .insert(policyData)
+        .select()
+        .single();
+
+      if (policyError) {
+        console.error('❌ Policy creation error:', policyError);
+        return NextResponse.json(
+          {
+            error: `Error al crear la póliza: ${policyError.message}`,
+          },
+          { status: 500 }
+        );
+      }
+
+      console.log('✅ Policy created successfully:', policy.id);
+
+      // Create policy coverages if selected_coverages exist
+      if (existingQuote.selected_coverages && existingQuote.selected_coverages.length > 0) {
+        const coveragesToInsert = existingQuote.selected_coverages.map((coverage: any) => ({
+          policy_id: policy.id,
+          coverage_type_id: coverage.coverage_type_id,
+          coverage_limit: coverage.coverage_limit,
+          deductible: coverage.deductible,
+          premium: coverage.premium,
+        }));
+
+        const { error: coverageError } = await supabase
+          .from('policy_coverages')
+          .insert(coveragesToInsert);
+
+        if (coverageError) {
+          console.error('Error creating policy coverages:', coverageError);
+          // Don't fail the whole operation for coverage errors
+        }
+      }
+
+      // Update quote status to approved and converted
+      const { data: updatedQuote, error: updateError } = await supabase
+        .from('quotes')
+        .update({
+          status: 'converted',
+          agent_id: user.id,
+          agent_notes: notes,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', params.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        quote: updatedQuote,
+        policy,
+        message: 'Cotización aprobada y póliza creada exitosamente',
+      });
+    } else {
+      // Reject the quote
+      const { data: updatedQuote, error: updateError } = await supabase
+        .from('quotes')
+        .update({
+          status: 'rejected',
+          agent_id: user.id,
+          agent_notes: notes,
+          rejected_reason,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq('id', params.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        quote: updatedQuote,
+        message: 'Cotización rechazada exitosamente',
+      });
     }
+  } catch (error) {
+    console.error('Error processing quote:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
 }

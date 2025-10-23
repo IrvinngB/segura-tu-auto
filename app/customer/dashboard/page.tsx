@@ -8,7 +8,11 @@ import { ProtectedRoute } from '@/components/auth/protected-route';
 import { useAuth } from '@/components/auth/auth-provider';
 import { LogoutButton } from '@/components/auth/logout-button';
 import { createClient } from '@/lib/supabase/client';
-import { simpleUpdateExpiredPolicies, debugPolicyStatuses } from '@/lib/simple-update-policies';
+import {
+  simpleUpdateExpiredPolicies,
+  debugPolicyStatuses,
+  activateDraftPolicies,
+} from '@/lib/simple-update-policies';
 import { forceUpdateExpiredPolicies, checkPolicyStatuses } from '@/lib/force-update-policies';
 import type { Policy, Claim, Payment } from '@/lib/types/database';
 import {
@@ -46,6 +50,11 @@ export default function CustomerDashboard() {
       // First, show current status for debugging
       console.log('🔍 DEBUG: Verificando estado actual...');
       await debugPolicyStatuses();
+
+      // Then activate draft policies that were approved by agents
+      console.log('🔄 Activando pólizas aprobadas por agentes...');
+      const activateResult = await activateDraftPolicies();
+      console.log('📊 Resultado de activación:', activateResult);
 
       // Then update expired policies
       console.log('🔄 Actualizando pólizas vencidas...');
