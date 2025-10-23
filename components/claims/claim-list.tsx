@@ -23,16 +23,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/auth-provider';
 import type { Claim } from '@/lib/types/database';
-import {
-  Search,
-  Eye,
-  Edit,
-  FileText,
-  Calendar,
-  AlertTriangle,
-  Clock,
-  Settings,
-} from 'lucide-react';
+import { Search, Eye, FileText, Calendar, AlertTriangle, Clock, Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -406,15 +397,6 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                               <Settings className="h-4 w-4" />
                             </Button>
                           )}
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEditClaim?.(claim)}
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
