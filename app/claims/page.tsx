@@ -1,17 +1,29 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { ClaimList } from "@/components/claims/claim-list"
-import { ClaimForm } from "@/components/claims/claim-form"
-import { ProtectedRoute } from "@/components/auth/protected-route"
-import { Plus } from "lucide-react"
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { ClaimList } from '@/components/claims/claim-list';
+import { ClaimForm } from '@/components/claims/claim-form';
+import { ProtectedRoute } from '@/components/auth/protected-route';
+import { Plus } from 'lucide-react';
+import type { Claim } from '@/lib/types/database';
 
 export default function ClaimsPage() {
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(false);
+  const router = useRouter();
+
+  const handleViewClaim = (claim: Claim) => {
+    router.push(`/claims/${claim.id}`);
+  };
+
+  const handleEditClaim = (claim: Claim) => {
+    // Si el usuario puede procesar reclamaciones, ir a la tab de procesamiento
+    router.push(`/claims/${claim.id}?tab=processing`);
+  };
 
   return (
-    <ProtectedRoute allowedRoles={["admin", "agent", "adjuster"]}>
+    <ProtectedRoute allowedRoles={['admin', 'agent', 'adjuster']}>
       <div className="container mx-auto py-8 px-4">
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -27,9 +39,9 @@ export default function ClaimsPage() {
         {showForm ? (
           <ClaimForm onSuccess={() => setShowForm(false)} onCancel={() => setShowForm(false)} />
         ) : (
-          <ClaimList />
+          <ClaimList onViewClaim={handleViewClaim} onEditClaim={handleEditClaim} />
         )}
       </div>
     </ProtectedRoute>
-  )
+  );
 }
