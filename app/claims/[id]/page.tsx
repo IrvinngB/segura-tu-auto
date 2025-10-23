@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DamageAssessmentForm } from '@/components/claims/damage-assessment-form';
 import { ClaimProcessing } from '@/components/claims/claim-processing';
-import { Sidebar } from '@/components/navigation/sidebar';
+import { ProtectedRoute } from '@/components/auth/protected-route';
 import { createBrowserClient } from '@supabase/ssr';
 import { useAuth } from '@/components/auth/auth-provider';
 import type { Claim, DamageAssessment, ClaimDocument } from '@/lib/types/database';
@@ -198,39 +198,32 @@ export default function ClaimDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <div className="flex-1 lg:ml-64">
+      <ProtectedRoute allowedRoles={['admin', 'agent', 'adjuster']}>
+        <div className="container mx-auto py-8 px-4">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
           </div>
         </div>
-      </div>
+      </ProtectedRoute>
     );
   }
 
   if (!claim) {
     return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <div className="flex-1 lg:ml-64">
-          <div className="max-w-6xl mx-auto p-6">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold mb-4">Reclamación no encontrada</h1>
-              <Button onClick={() => router.push('/claims')}>Volver a Reclamaciones</Button>
-            </div>
+      <ProtectedRoute allowedRoles={['admin', 'agent', 'adjuster']}>
+        <div className="container mx-auto py-8 px-4">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Reclamación no encontrada</h1>
+            <Button onClick={() => router.push('/claims')}>Volver a Reclamaciones</Button>
           </div>
         </div>
-      </div>
+      </ProtectedRoute>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <div className="flex-1 lg:ml-64">
-        <div className="max-w-6xl mx-auto p-6">
+    <ProtectedRoute allowedRoles={['admin', 'agent', 'adjuster']}>
+      <div className="container mx-auto py-8 px-4">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
             <Button variant="ghost" onClick={() => router.push('/claims')}>
@@ -721,7 +714,6 @@ export default function ClaimDetailPage() {
             </TabsContent>
           </Tabs>
         </div>
-      </div>
-    </div>
-  );
-}
+      </ProtectedRoute>
+    );
+  }
