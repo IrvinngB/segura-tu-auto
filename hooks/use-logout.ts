@@ -20,15 +20,13 @@ export function useLogout() {
 
         try {
             await signOut();
-            setShowConfirmationModal(false);
-            setShowSuccessModal(true);
+            // Redirigir inmediatamente después del logout
+            console.log("🔄 Redirigiendo a página principal después de logout...");
+            window.location.href = "/";
         } catch (error) {
             console.error("❌ Error signing out:", error);
-            // Aún así mostrar el modal de éxito y redirigir
-            setShowConfirmationModal(false);
-            setShowSuccessModal(true);
-        } finally {
-            setIsSigningOut(false);
+            // En caso de error, aún redirigir
+            window.location.href = "/";
         }
     };
 

@@ -2,7 +2,12 @@
 
 import { useMemo, memo, Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
-import { RoleBasedSidebar } from "@/components/navigation/role-based-sidebar";
+import {
+    AdminSidebar,
+    AgentSidebar,
+    CustomerSidebar,
+    AdjusterSidebar
+} from "@/components/navigation/role-specific-sidebars";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
@@ -13,7 +18,7 @@ interface AppLayoutProps {
 }
 
 export const AppLayout = memo(function AppLayout({ children }: AppLayoutProps) {
-    const { user, loading } = useAuth();
+    const { user, userProfile, loading } = useAuth();
     const pathname = usePathname();
     const [showInitialLoader, setShowInitialLoader] = useState(true);
 
@@ -48,6 +53,23 @@ export const AppLayout = memo(function AppLayout({ children }: AppLayoutProps) {
         return !!user;
     }, [user, pathname, isPublicPage]);
 
+    const renderSidebar = () => {
+        if (!userProfile?.role) return null;
+
+        switch (userProfile.role) {
+            case 'admin':
+                return <AdminSidebar userProfile={userProfile} />;
+            case 'agent':
+                return <AgentSidebar userProfile={userProfile} />;
+            case 'customer':
+                return <CustomerSidebar userProfile={userProfile} />;
+            case 'adjuster':
+                return <AdjusterSidebar userProfile={userProfile} />;
+            default:
+                return null;
+        }
+    };
+
     // Mostrar loading screen solo al inicio y en páginas privadas
     if (loading && showInitialLoader && !isPublicPage) {
         return <LoadingScreen message="Cargando..." />;
@@ -55,7 +77,7 @@ export const AppLayout = memo(function AppLayout({ children }: AppLayoutProps) {
 
     return (
         <div className="min-h-screen bg-background">
-            {shouldShowSidebar && <RoleBasedSidebar />}
+            {shouldShowSidebar && renderSidebar()}
 
             <div
                 className={cn(

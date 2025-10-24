@@ -1,6 +1,7 @@
 import type React from "react";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { IdleTimer } from "@/components/auth/idle-timer";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppLayout } from "@/components/layout/app-layout";
 import "./globals.css";
@@ -56,6 +57,7 @@ export default function RootLayout({
                     disableTransitionOnChange
                 >
                     <AuthProvider>
+                        <IdleTimer />
                         <AppLayout>{children}</AppLayout>
                     </AuthProvider>
                 </ThemeProvider>
