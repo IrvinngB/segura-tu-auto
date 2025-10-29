@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/auth-provider';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRecentClaims } from '@/hooks/use-recent-claims';
+import { AgentDashboard } from '@/components/dashboard/agent-dashboard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -231,6 +232,11 @@ export default function HomePage() {
         </div>
       </div>
     );
+  }
+
+  // If user is an agent, show the specialized agent dashboard
+  if (userProfile?.role === 'agent') {
+    return <AgentDashboard />;
   }
 
   return (

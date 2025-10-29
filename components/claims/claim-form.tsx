@@ -224,6 +224,32 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
     return `CLM-${year}-${random}`;
   };
 
+  // Determinar prioridad automáticamente basado en los datos del siniestro
+  const determinePriority = (data: any) => {
+    let priorityScore = 0;
+
+    // Aumentar prioridad si hay lesiones
+    if (data.injuryInvolved) priorityScore += 3;
+
+    // Aumentar prioridad si hay terceros involucrados
+    if (data.thirdPartyInvolved) priorityScore += 2;
+
+    // Tipos de siniestro que requieren alta prioridad
+    const highPriorityTypes = ['Incendio', 'Robo'];
+    if (highPriorityTypes.includes(data.claimType)) priorityScore += 2;
+
+    // Costo estimado alto
+    const estimatedCost = parseFloat(data.estimatedDamageCost || '0');
+    if (estimatedCost > 100000) priorityScore += 2;
+    else if (estimatedCost > 50000) priorityScore += 1;
+
+    // Determinar prioridad final
+    if (priorityScore >= 5) return 'urgent';
+    if (priorityScore >= 3) return 'high';
+    if (priorityScore >= 1) return 'medium';
+    return 'low';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -278,7 +304,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
           estimated_damage_cost: claimData.estimatedDamageCost
             ? Number.parseFloat(claimData.estimatedDamageCost)
             : null,
-          priority: claimData.priority,
+          priority: determinePriority(claimData),
         })
         .select()
         .single();

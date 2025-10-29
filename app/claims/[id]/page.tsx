@@ -11,6 +11,10 @@ import { ClaimProcessing } from '@/components/claims/claim-processing';
 import { ClaimStatusHistory } from '@/components/claims/claim-status-history';
 import { ClaimCommunications } from '@/components/claims/claim-communications';
 import { PaymentStatus } from '@/components/claims/payment-status';
+import { ClaimWorkflow } from '@/components/claims/claim-workflow';
+import { ClaimCommunication } from '@/components/claims/claim-communication';
+import { DocumentRequirementSystem } from '@/components/claims/document-requirement-system';
+import { ClaimEvidenceSystem } from '@/components/claims/claim-evidence-system';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { createBrowserClient } from '@supabase/ssr';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -821,6 +825,7 @@ export default function ClaimDetailPage() {
             )}
             <TabsTrigger value="assessments">Evaluaciones ({assessments.length})</TabsTrigger>
             <TabsTrigger value="documents">Documentos ({documents.length})</TabsTrigger>
+            <TabsTrigger value="evidence">Evidencia</TabsTrigger>
             <TabsTrigger value="communications">Comunicaciones</TabsTrigger>
             <TabsTrigger value="history">Historial</TabsTrigger>
           </TabsList>
@@ -1030,13 +1035,27 @@ export default function ClaimDetailPage() {
           </TabsContent>
 
           <TabsContent value="processing">
-            <ClaimProcessing
-              claim={claim}
-              onClaimUpdated={updatedClaim => {
-                setClaim(updatedClaim);
-                fetchClaimDetails();
-              }}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Workflow Management */}
+              <ClaimWorkflow
+                claimId={claim.id}
+                currentStatus={claim.status}
+                priority={claim.priority}
+                onStatusUpdate={newStatus => {
+                  setClaim(prev => (prev ? { ...prev, status: newStatus } : null));
+                  fetchClaimDetails();
+                }}
+              />
+
+              {/* Original Claim Processing */}
+              <ClaimProcessing
+                claim={claim}
+                onClaimUpdated={updatedClaim => {
+                  setClaim(updatedClaim);
+                  fetchClaimDetails();
+                }}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="assessments">
@@ -1210,60 +1229,91 @@ export default function ClaimDetailPage() {
           </TabsContent>
 
           <TabsContent value="documents">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Documentos de la Reclamación
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {documents.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">No hay documentos adjuntos</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {documents.map(doc => (
-                      <div
-                        key={doc.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          {doc.document_type === 'photo' ? (
-                            <Camera className="h-5 w-5 text-muted-foreground" />
-                          ) : (
-                            <FileText className="h-5 w-5 text-muted-foreground" />
-                          )}
-                          <div>
-                            <p className="font-medium">{doc.file_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {doc.document_type === 'photo' ? 'Fotografía' : 'Documento'} •
-                              {doc.file_size &&
-                                ` ${(doc.file_size / 1024 / 1024).toFixed(2)} MB • `}
-                              {format(new Date(doc.created_at), 'dd/MM/yyyy', {
-                                locale: es,
-                              })}
-                            </p>
+            <div className="space-y-6">
+              {/* Document Requirement System */}
+              <DocumentRequirementSystem
+                claimId={claim.id}
+                claimType={claim.claim_type}
+                hasInjuries={claim.injury_involved}
+                hasThirdParty={claim.third_party_involved}
+              />
+
+              {/* Original Documents List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Documentos Enviados
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {documents.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground">No hay documentos adjuntos</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {documents.map(doc => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            {doc.document_type === 'photo' ? (
+                              <Camera className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                              <FileText className="h-5 w-5 text-muted-foreground" />
+                            )}
+                            <div>
+                              <p className="font-medium">{doc.file_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {doc.document_type === 'photo' ? 'Fotografía' : 'Documento'} •
+                                {doc.file_size &&
+                                  ` ${(doc.file_size / 1024 / 1024).toFixed(2)} MB • `}
+                                {format(new Date(doc.created_at), 'dd/MM/yyyy', {
+                                  locale: es,
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {doc.is_verified && <Badge variant="secondary">Verificado</Badge>}
+                            <Button variant="outline" size="sm">
+                              Ver
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {doc.is_verified && <Badge variant="secondary">Verificado</Badge>}
-                          <Button variant="outline" size="sm">
-                            Ver
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="evidence">
+            <ClaimEvidenceSystem
+              claimId={claim.id}
+              claimNumber={claim.claim_number}
+              currentUserRole={userProfile?.role || 'customer'}
+              customerId={claim.customer_id}
+            />
           </TabsContent>
 
           <TabsContent value="communications">
-            <ClaimCommunications claim={claim} />
+            <div className="space-y-6">
+              {/* New Communication System */}
+              <ClaimCommunication
+                claimId={claim.id}
+                customerId={claim.customer_id}
+                claimNumber={claim.claim_number}
+                currentUserRole={userProfile?.role}
+              />
+
+              {/* Original Communications */}
+              <ClaimCommunications claim={claim} />
+            </div>
           </TabsContent>
 
           <TabsContent value="history">
