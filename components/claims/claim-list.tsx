@@ -43,6 +43,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -52,6 +53,51 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   useEffect(() => {
     filterClaims();
   }, [claims, searchTerm, statusFilter, typeFilter, priorityFilter]);
+
+  // Auto-refresh cada 5 segundos (tiempo real)
+  useEffect(() => {
+    if (!userProfile) return;
+
+    console.log('⚡ Configurando auto-refresh en tiempo real cada 5 segundos...');
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refresh tiempo real de reclamaciones...');
+      fetchClaims();
+    }, 5000); // 5 segundos para sensación de tiempo real
+
+    return () => {
+      console.log('🔌 Desconectando auto-refresh');
+      clearInterval(interval);
+    };
+  }, [customerId, policyId, userProfile]);
+
+  // Suscripción en tiempo real a cambios en reclamaciones
+  useEffect(() => {
+    if (!userProfile) return;
+
+    console.log('🔔 Configurando suscripción en tiempo real para ClaimList...');
+
+    const subscription = supabase
+      .channel('claim-list-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escuchar INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'claims',
+        },
+        payload => {
+          console.log('🔔 Cambio detectado en reclamaciones (ClaimList):', payload);
+          // Actualizar datos cuando hay cambios
+          fetchClaims();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Desconectando suscripción ClaimList');
+      subscription.unsubscribe();
+    };
+  }, [customerId, policyId, userProfile]);
 
   const fetchClaims = async () => {
     try {
@@ -81,21 +127,16 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         // Los agentes ven reclamaciones que pueden procesar (estados administrativos)
         query = query.in('status', [
           'submitted',
-          'under_review', 
+          'under_review',
           'pending_documentation',
           'approved',
           'processing_payment',
           'paid',
-          'denied'
+          'denied',
         ]);
       } else if (userProfile?.role === 'adjuster') {
         // Los ajustadores ven reclamaciones que requieren evaluación técnica
-        query = query.in('status', [
-          'investigating',
-          'waiting_approval',
-          'approved',
-          'denied'
-        ]);
+        query = query.in('status', ['investigating', 'waiting_approval', 'approved', 'denied']);
       }
       // Los administradores ven todas las reclamaciones (sin filtro adicional)
 
@@ -109,6 +150,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
       if (data) {
         setClaims(data);
         setFilteredClaims(data);
+        setLastUpdated(new Date());
+        console.log('✅ Reclamaciones actualizadas:', data.length);
       }
     } catch (error) {
       console.error('Error fetching claims:', error);
@@ -219,20 +262,20 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const getClaimTypeLabel = (type: string) => {
     // Los tipos en la base de datos ya están en español
     const types = {
-      'Colisión': 'Colisión',
-      'Robo': 'Robo',
-      'Vandalismo': 'Vandalismo',
-      'Incendio': 'Incendio',
+      Colisión: 'Colisión',
+      Robo: 'Robo',
+      Vandalismo: 'Vandalismo',
+      Incendio: 'Incendio',
       'Daño por clima': 'Daño por clima',
       'Daño por granizo': 'Daño por granizo',
-      'Otros': 'Otros',
+      Otros: 'Otros',
       // Compatibilidad con valores antiguos en inglés (si existen)
       collision: 'Colisión',
       theft: 'Robo',
       vandalism: 'Vandalismo',
       fire: 'Incendio',
       flood: 'Daño por clima',
-      hail: 'Daño por granizo', 
+      hail: 'Daño por granizo',
       glass: 'Otros',
       other: 'Otros',
     };
@@ -260,23 +303,32 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Reclamaciones
-        </CardTitle>
-        <CardDescription>
-          {customerId 
-            ? "Reclamaciones del cliente" 
-            : userProfile?.role === 'agent'
-              ? "Reclamaciones para gestión administrativa y documentación"
-              : userProfile?.role === 'adjuster'
-                ? "Reclamaciones para evaluación técnica y aprobación"
-                : "Gestión completa de reclamaciones"}
-        </CardDescription>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Reclamaciones
+            </CardTitle>
+            <CardDescription>
+              {customerId
+                ? 'Reclamaciones del cliente'
+                : userProfile?.role === 'agent'
+                  ? 'Reclamaciones para gestión administrativa y documentación'
+                  : userProfile?.role === 'adjuster'
+                    ? 'Reclamaciones para evaluación técnica y aprobación'
+                    : 'Gestión completa de reclamaciones'}
+              {lastUpdated && (
+                <span className="block text-xs text-muted-foreground mt-1">
+                  Última actualización: {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {/* Filters */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4 mb-6 mt-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
@@ -433,11 +485,19 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                         </Button>
 
                         {/* Botones específicos por rol */}
-                        
+
                         {/* AGENTE: Solo puede procesar estados administrativos */}
-                        {userProfile?.role === 'agent' && 
-                          ['submitted', 'under_review', 'pending_documentation', 'approved', 'processing_payment', 'denied'].includes(claim.status) &&
-                          claim.status !== 'paid' && claim.status !== 'closed' && (
+                        {userProfile?.role === 'agent' &&
+                          [
+                            'submitted',
+                            'under_review',
+                            'pending_documentation',
+                            'approved',
+                            'processing_payment',
+                            'denied',
+                          ].includes(claim.status) &&
+                          claim.status !== 'paid' &&
+                          claim.status !== 'closed' && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -450,7 +510,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                           )}
 
                         {/* AJUSTADOR: Solo puede procesar evaluaciones técnicas */}
-                        {userProfile?.role === 'adjuster' && 
+                        {userProfile?.role === 'adjuster' &&
                           ['investigating', 'waiting_approval'].includes(claim.status) && (
                             <Button
                               variant="outline"
@@ -464,18 +524,17 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                           )}
 
                         {/* ADMINISTRADOR: Acceso completo */}
-                        {userProfile?.role === 'admin' && 
-                          claim.status !== 'closed' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => onEditClaim?.(claim)}
-                              title="Control Total"
-                              className="bg-purple-50 hover:bg-purple-100 text-purple-600 border-purple-200"
-                            >
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                          )}
+                        {userProfile?.role === 'admin' && claim.status !== 'closed' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEditClaim?.(claim)}
+                            title="Control Total"
+                            className="bg-purple-50 hover:bg-purple-100 text-purple-600 border-purple-200"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -598,8 +657,9 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                 <CardContent className="p-4">
                   <div className="text-2xl font-bold text-yellow-600">
                     {
-                      filteredClaims.filter(c => ['under_review', 'investigating'].includes(c.status))
-                        .length
+                      filteredClaims.filter(c =>
+                        ['under_review', 'investigating'].includes(c.status)
+                      ).length
                     }
                   </div>
                   <div className="text-sm text-muted-foreground">En proceso</div>
@@ -653,8 +713,9 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                 <CardContent className="p-4">
                   <div className="text-2xl font-bold text-yellow-600">
                     {
-                      filteredClaims.filter(c => ['under_review', 'investigating'].includes(c.status))
-                        .length
+                      filteredClaims.filter(c =>
+                        ['under_review', 'investigating'].includes(c.status)
+                      ).length
                     }
                   </div>
                   <div className="text-sm text-muted-foreground">En proceso</div>

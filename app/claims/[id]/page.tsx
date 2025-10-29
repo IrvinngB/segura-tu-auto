@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { DocumentRequestModal } from '@/components/claims/document-request-modal';
 
 export default function ClaimDetailPage() {
   const params = useParams();
@@ -459,12 +460,10 @@ export default function ClaimDetailPage() {
                           <FileText className="h-4 w-4 mr-2" />
                           Iniciar Revisión Documental
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => updateClaimStatus('pending_documentation')}
-                        >
-                          📄 Solicitar Más Documentos
-                        </Button>
+                        <DocumentRequestModal
+                          claimId={Array.isArray(params.id) ? params.id[0] : params.id}
+                          onDocumentRequested={fetchClaimDetails}
+                        />
                       </>
                     )}
 
@@ -477,12 +476,10 @@ export default function ClaimDetailPage() {
                           <User className="h-4 w-4 mr-2" />
                           🔍 Asignar a Evaluador Técnico
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => updateClaimStatus('pending_documentation')}
-                        >
-                          📄 Solicitar Más Documentos
-                        </Button>
+                        <DocumentRequestModal
+                          claimId={Array.isArray(params.id) ? params.id[0] : params.id}
+                          onDocumentRequested={fetchClaimDetails}
+                        />
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
                           ❌ Rechazar por Documentación Insuficiente
                         </Button>
@@ -700,12 +697,10 @@ export default function ClaimDetailPage() {
                         >
                           Enviar a Aprobación
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => updateClaimStatus('pending_documentation')}
-                        >
-                          Solicitar Más Documentos
-                        </Button>
+                        <DocumentRequestModal
+                          claimId={Array.isArray(params.id) ? params.id[0] : params.id}
+                          onDocumentRequested={fetchClaimDetails}
+                        />
                       </>
                     )}
 
