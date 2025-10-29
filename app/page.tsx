@@ -123,8 +123,95 @@ export default function HomePage() {
 
                         setRecentClaims(claimsResult.data || []);
                     }
+                } else if (userProfile.role === "agent") {
+                    // Agent dashboard - show claims they can process
+                    const [
+                        policiesResult,
+                        claimsResult,
+                        customersResult,
+                        assessmentsResult,
+                    ] = await Promise.all([
+                        supabase.from("policies").select("id"),
+                        supabase
+                            .from("claims")
+                            .select(
+                                "id, claim_number, claim_type, priority, status"
+                            )
+                            .in("status", [
+                                "submitted",
+                                "under_review", 
+                                "pending_documentation",
+                                "approved",
+                                "processing_payment",
+                                "paid",
+                                "denied"
+                            ])
+                            .order("created_at", { ascending: false })
+                            .limit(3),
+                        supabase.from("customers").select("id"),
+                        supabase
+                            .from("damage_assessments")
+                            .select("id")
+                            .eq("is_final", false),
+                    ]);
+
+                    setStats({
+                        totalPolicies: policiesResult.data?.length || 0,
+                        activeClaims:
+                            claimsResult.data?.filter(
+                                (c) => c.status !== "closed" && c.status !== "paid"
+                            ).length || 0,
+                        totalClients: customersResult.data?.length || 0,
+                        pendingAssessments: claimsResult.data?.filter(
+                            (c) => c.status === "submitted"
+                        ).length || 0,
+                    });
+
+                    setRecentClaims(claimsResult.data || []);
+                } else if (userProfile.role === "adjuster") {
+                    // Adjuster dashboard - show claims they can evaluate
+                    const [
+                        policiesResult,
+                        claimsResult,
+                        customersResult,
+                        assessmentsResult,
+                    ] = await Promise.all([
+                        supabase.from("policies").select("id"),
+                        supabase
+                            .from("claims")
+                            .select(
+                                "id, claim_number, claim_type, priority, status"
+                            )
+                            .in("status", [
+                                "investigating",
+                                "waiting_approval",
+                                "approved",
+                                "denied"
+                            ])
+                            .order("created_at", { ascending: false })
+                            .limit(3),
+                        supabase.from("customers").select("id"),
+                        supabase
+                            .from("damage_assessments")
+                            .select("id")
+                            .eq("is_final", false),
+                    ]);
+
+                    setStats({
+                        totalPolicies: policiesResult.data?.length || 0,
+                        activeClaims:
+                            claimsResult.data?.filter(
+                                (c) => ["investigating", "waiting_approval"].includes(c.status)
+                            ).length || 0,
+                        totalClients: customersResult.data?.length || 0,
+                        pendingAssessments: claimsResult.data?.filter(
+                            (c) => c.status === "investigating"
+                        ).length || 0,
+                    });
+
+                    setRecentClaims(claimsResult.data || []);
                 } else {
-                    // Agent/Adjuster/Admin dashboard - show all data
+                    // Admin dashboard - show all data
                     const [
                         policiesResult,
                         claimsResult,

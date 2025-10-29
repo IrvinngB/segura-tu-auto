@@ -377,10 +377,9 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
     { value: 'Robo', label: 'Robo' },
     { value: 'Vandalismo', label: 'Vandalismo' },
     { value: 'Incendio', label: 'Incendio' },
-    { value: 'Daño por clima', label: 'Inundación' },
-    { value: 'Daño por granizo', label: 'Granizo' },
-    { value: 'Otros', label: 'Cristales' },
-    { value: 'Otros', label: 'Otro' },
+    { value: 'Daño por clima', label: 'Daño por clima (Inundación)' },
+    { value: 'Daño por granizo', label: 'Daño por granizo' },
+    { value: 'Otros', label: 'Otros (Cristales, etc.)' },
   ];
 
   return (
