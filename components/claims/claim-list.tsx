@@ -138,6 +138,14 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         label: 'En Revisión',
         classes: 'status-badge status-under-review',
       },
+      pending_documentation: {
+        label: 'Pendiente Docs',
+        classes: 'status-badge status-pending',
+      },
+      waiting_approval: {
+        label: 'Esperando Aprobación',
+        classes: 'status-badge status-waiting',
+      },
       investigating: {
         label: 'Investigando',
         classes: 'status-badge status-investigating',
@@ -145,6 +153,10 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
       approved: {
         label: 'Aprobada',
         classes: 'status-badge status-approved',
+      },
+      processing_payment: {
+        label: 'Procesando Pago',
+        classes: 'status-badge status-processing',
       },
       denied: {
         label: 'Denegada',
@@ -245,8 +257,11 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               <SelectItem value="all">Todos los estados</SelectItem>
               <SelectItem value="submitted">Enviada</SelectItem>
               <SelectItem value="under_review">En Revisión</SelectItem>
+              <SelectItem value="pending_documentation">Pendiente Documentos</SelectItem>
+              <SelectItem value="waiting_approval">Esperando Aprobación</SelectItem>
               <SelectItem value="investigating">Investigando</SelectItem>
               <SelectItem value="approved">Aprobada</SelectItem>
+              <SelectItem value="processing_payment">Procesando Pago</SelectItem>
               <SelectItem value="denied">Denegada</SelectItem>
               <SelectItem value="closed">Cerrada</SelectItem>
               <SelectItem value="paid">Pagada</SelectItem>

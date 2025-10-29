@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ClaimList } from '@/components/claims/claim-list';
 import { ClaimForm } from '@/components/claims/claim-form';
+import { ClaimAlerts } from '@/components/claims/claim-alerts';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { Plus } from 'lucide-react';
 import type { Claim } from '@/lib/types/database';
@@ -35,6 +36,8 @@ export default function ClaimsPage() {
             Nueva Reclamación
           </Button>
         </div>
+
+        <ClaimAlerts />
 
         {showForm ? (
           <ClaimForm onSuccess={() => setShowForm(false)} onCancel={() => setShowForm(false)} />
