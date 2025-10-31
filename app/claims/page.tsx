@@ -20,8 +20,8 @@ export default function ClaimsPage() {
   };
 
   const handleEditClaim = (claim: Claim) => {
-    // Si el usuario puede procesar reclamaciones, ir a la tab de procesamiento
-    router.push(`/claims/${claim.id}?tab=processing`);
+    // Ir directamente a los detalles de la reclamación donde están las acciones de estado
+    router.push(`/claims/${claim.id}`);
   };
 
   return (

@@ -16,6 +16,8 @@ import { ClaimCommunication } from '@/components/claims/claim-communication';
 import { DocumentRequirementSystem } from '@/components/claims/document-requirement-system';
 import { ClaimEvidenceSystem } from '@/components/claims/claim-evidence-system';
 import { ProtectedRoute } from '@/components/auth/protected-route';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { InputModal, MessageModal } from '@/components/ui/input-modal';
 import { createBrowserClient } from '@supabase/ssr';
 import { useAuth } from '@/components/auth/auth-provider';
 import type { Claim, DamageAssessment, ClaimDocument } from '@/lib/types/database';
@@ -45,6 +47,55 @@ export default function ClaimDetailPage() {
   const [documents, setDocuments] = useState<ClaimDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
+
+  // Estados para modales
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+    type?: 'success' | 'warning' | 'error' | 'info';
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {},
+  });
+
+  const [inputModal, setInputModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    inputLabel: string;
+    inputPlaceholder?: string;
+    inputDefaultValue?: string;
+    inputType?: string;
+    onConfirm: (value: string) => void;
+    onCancel: () => void;
+    type?: 'success' | 'warning' | 'error' | 'info' | 'money';
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    inputLabel: '',
+    onConfirm: () => {},
+    onCancel: () => {},
+  });
+
+  const [messageModal, setMessageModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onClose: () => void;
+    type?: 'success' | 'warning' | 'error' | 'info';
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    onClose: () => {},
+  });
 
   // Determinar la tab inicial basado en el parámetro de query
   const initialTab = searchParams.get('tab') || 'details';
@@ -155,10 +206,22 @@ export default function ClaimDetailPage() {
       await fetchClaimDetails();
       console.log('Claim data refreshed');
 
-      alert(`Estado actualizado correctamente a: ${newStatus}`);
+      setMessageModal({
+        show: true,
+        title: 'Estado Actualizado',
+        message: `Estado actualizado correctamente a: ${newStatus}`,
+        type: 'success',
+        onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+      });
     } catch (error) {
       console.error('Error updating claim status:', error);
-      alert('Error al actualizar el estado de la reclamación: ' + (error as Error).message);
+      setMessageModal({
+        show: true,
+        title: 'Error',
+        message: 'Error al actualizar el estado de la reclamación: ' + (error as Error).message,
+        type: 'error',
+        onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+      });
     }
   };
 
@@ -166,64 +229,105 @@ export default function ClaimDetailPage() {
     if (!claim || !userProfile) return;
 
     // Mostrar modal para ingresar monto aprobado
-    const approvedAmount = prompt(
-      'Ingrese el monto aprobado para esta reclamación:',
-      claim.estimated_damage_cost?.toString() || '0'
-    );
+    setInputModal({
+      show: true,
+      title: 'Aprobar Reclamación',
+      message: 'Ingrese el monto aprobado para esta reclamación:',
+      inputLabel: 'Monto Aprobado',
+      inputPlaceholder: 'Ej: 5000',
+      inputDefaultValue: claim.estimated_damage_cost?.toString() || '0',
+      inputType: 'number',
+      type: 'money',
+      onConfirm: async (approvedAmount: string) => {
+        if (!approvedAmount || isNaN(Number(approvedAmount))) {
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Debe ingresar un monto válido',
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+          return;
+        }
 
-    if (!approvedAmount || isNaN(Number(approvedAmount))) {
-      alert('Debe ingresar un monto válido');
-      return;
-    }
+        try {
+          // Actualizar reclamación con monto aprobado
+          const { error } = await supabase
+            .from('claims')
+            .update({
+              status: 'approved',
+              approved_amount: Number(approvedAmount),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', params.id);
 
-    try {
-      // Actualizar reclamación con monto aprobado
-      const { error } = await supabase
-        .from('claims')
-        .update({
-          status: 'approved',
-          approved_amount: Number(approvedAmount),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
+          if (error) throw error;
 
-      if (error) throw error;
-
-      await fetchClaimDetails();
-      alert(`Reclamación aprobada por $${Number(approvedAmount).toLocaleString()}`);
-    } catch (error) {
-      console.error('Error approving claim:', error);
-      alert('Error al aprobar la reclamación: ' + (error as Error).message);
-    }
+          await fetchClaimDetails();
+          setMessageModal({
+            show: true,
+            title: 'Reclamación Aprobada',
+            message: `Reclamación aprobada por $${Number(approvedAmount).toLocaleString()}`,
+            type: 'success',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+        } catch (error) {
+          console.error('Error approving claim:', error);
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Error al aprobar la reclamación: ' + (error as Error).message,
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+        }
+      },
+      onCancel: () => setInputModal(prev => ({ ...prev, show: false }))
+    });
   };
 
   const processPayment = async () => {
     if (!claim || !userProfile) return;
 
-    const confirmed = confirm(
-      `¿Está seguro de iniciar el proceso de pago por $${claim.approved_amount?.toLocaleString() || '0'}?`
-    );
+    setConfirmModal({
+      show: true,
+      title: 'Confirmar Proceso de Pago',
+      message: `¿Está seguro de iniciar el proceso de pago por $${claim.approved_amount?.toLocaleString() || '0'}?`,
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          // Actualizar estado a processing_payment
+          const { error } = await supabase
+            .from('claims')
+            .update({
+              status: 'processing_payment',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', params.id);
 
-    if (!confirmed) return;
+          if (error) throw error;
 
-    try {
-      // Actualizar estado a processing_payment
-      const { error } = await supabase
-        .from('claims')
-        .update({
-          status: 'processing_payment',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
-
-      if (error) throw error;
-
-      await fetchClaimDetails();
-      alert('Proceso de pago iniciado. Se enviará notificación al cliente.');
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      alert('Error al procesar el pago: ' + (error as Error).message);
-    }
+          await fetchClaimDetails();
+          setMessageModal({
+            show: true,
+            title: 'Proceso Iniciado',
+            message: 'Proceso de pago iniciado. Se enviará notificación al cliente.',
+            type: 'success',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+        } catch (error) {
+          console.error('Error processing payment:', error);
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Error al procesar el pago: ' + (error as Error).message,
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+        }
+      },
+      onCancel: () => setConfirmModal(prev => ({ ...prev, show: false }))
+    });
   };
 
   const confirmPayment = async () => {
@@ -818,11 +922,6 @@ export default function ClaimDetailPage() {
         <Tabs defaultValue={initialTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="details">Detalles</TabsTrigger>
-            {(userProfile?.role === 'agent' ||
-              userProfile?.role === 'adjuster' ||
-              userProfile?.role === 'admin') && (
-              <TabsTrigger value="processing">Procesamiento</TabsTrigger>
-            )}
             <TabsTrigger value="assessments">Evaluaciones ({assessments.length})</TabsTrigger>
             <TabsTrigger value="documents">Documentos ({documents.length})</TabsTrigger>
             <TabsTrigger value="evidence">Evidencia</TabsTrigger>
@@ -1323,6 +1422,11 @@ export default function ClaimDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modales */}
+      <ConfirmationModal {...confirmModal} />
+      <InputModal {...inputModal} />
+      <MessageModal {...messageModal} />
     </ProtectedRoute>
   );
 }
