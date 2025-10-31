@@ -12,6 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Customer } from "@/lib/types/database";
 import {
@@ -42,6 +49,7 @@ export default function EditClientPage() {
         phone: "",
         date_of_birth: "",
         country: "Panamá",
+        role: "customer" as 'customer' | 'agent' | 'adjuster' | 'admin',
     });
 
     const supabase = createBrowserClient(
@@ -78,6 +86,7 @@ export default function EditClientPage() {
                         ? format(new Date(customerData.date_of_birth), "yyyy-MM-dd")
                         : "",
                     country: customerData.country || "Panamá",
+                    role: customerData.user?.role || "customer",
                 });
             }
         } catch (error) {
@@ -112,6 +121,7 @@ export default function EditClientPage() {
                     last_name: formData.last_name,
                     email: formData.email,
                     phone: formData.phone,
+                    role: formData.role,
                 })
                 .eq("id", customer?.user_id);
 
@@ -297,6 +307,26 @@ export default function EditClientPage() {
                                             />
                                         </div>
                                     </div>
+
+                                    {/* Role */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="role">Rol</Label>
+                                        <Select
+                                            value={formData.role}
+                                            onValueChange={(value) => handleInputChange("role", value)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Seleccione un rol" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="customer">Cliente</SelectItem>
+                                                <SelectItem value="agent">Agente</SelectItem>
+                                                <SelectItem value="adjuster">Ajustador</SelectItem>
+                                                <SelectItem value="admin">Administrador</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                 </div>
 
                                 {/* Actions */}
