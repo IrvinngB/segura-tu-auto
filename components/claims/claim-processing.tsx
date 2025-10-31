@@ -51,8 +51,11 @@ export function ClaimProcessing({ claim, onClaimUpdated }: ClaimProcessingProps)
     status:
       | 'submitted'
       | 'under_review'
+      | 'pending_documentation'
+      | 'waiting_approval'
       | 'investigating'
       | 'approved'
+      | 'processing_payment'
       | 'denied'
       | 'closed'
       | 'paid';
@@ -78,8 +81,23 @@ export function ClaimProcessing({ claim, onClaimUpdated }: ClaimProcessingProps)
     const statusConfig = {
       submitted: { label: 'Enviada', variant: 'outline' as const, icon: Clock },
       under_review: { label: 'En Revisión', variant: 'secondary' as const, icon: Eye },
+      pending_documentation: {
+        label: 'Pendiente Documentos',
+        variant: 'outline' as const,
+        icon: FileText,
+      },
+      waiting_approval: {
+        label: 'Esperando Aprobación',
+        variant: 'secondary' as const,
+        icon: Clock,
+      },
       investigating: { label: 'Investigando', variant: 'default' as const, icon: AlertTriangle },
       approved: { label: 'Aprobada', variant: 'default' as const, icon: CheckCircle },
+      processing_payment: {
+        label: 'Procesando Pago',
+        variant: 'secondary' as const,
+        icon: DollarSign,
+      },
       denied: { label: 'Denegada', variant: 'destructive' as const, icon: XCircle },
       closed: { label: 'Cerrada', variant: 'secondary' as const, icon: FileText },
       paid: { label: 'Pagada', variant: 'default' as const, icon: DollarSign },
@@ -203,10 +221,13 @@ export function ClaimProcessing({ claim, onClaimUpdated }: ClaimProcessingProps)
 
   const getNextPossibleStatuses = (currentStatus: string) => {
     const transitions = {
-      submitted: ['under_review', 'investigating', 'denied'],
-      under_review: ['investigating', 'approved', 'denied', 'submitted'],
-      investigating: ['approved', 'denied', 'under_review', 'closed'],
-      approved: ['paid', 'closed', 'investigating'],
+      submitted: ['under_review', 'pending_documentation', 'denied'],
+      under_review: ['investigating', 'waiting_approval', 'pending_documentation', 'denied'],
+      pending_documentation: ['under_review', 'denied'],
+      waiting_approval: ['approved', 'denied', 'under_review'],
+      investigating: ['waiting_approval', 'approved', 'denied', 'under_review'],
+      approved: ['processing_payment', 'investigating'],
+      processing_payment: ['paid', 'approved'],
       denied: ['closed', 'under_review'],
       paid: ['closed'],
       closed: ['under_review'],
@@ -384,8 +405,11 @@ export function ClaimProcessing({ claim, onClaimUpdated }: ClaimProcessingProps)
                   value:
                     | 'submitted'
                     | 'under_review'
+                    | 'pending_documentation'
+                    | 'waiting_approval'
                     | 'investigating'
                     | 'approved'
+                    | 'processing_payment'
                     | 'denied'
                     | 'closed'
                     | 'paid'

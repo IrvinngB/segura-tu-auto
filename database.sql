@@ -21,7 +21,7 @@ CREATE TABLE public.claims (
   adjuster_id uuid,
   incident_date timestamp with time zone NOT NULL,
   claim_type character varying NOT NULL CHECK (claim_type::text = ANY (ARRAY['Colisión'::character varying, 'Robo'::character varying, 'Vandalismo'::character varying, 'Daño por clima'::character varying, 'Daño por granizo'::character varying, 'Incendio'::character varying, 'Otros'::character varying]::text[])),
-  status character varying NOT NULL DEFAULT 'submitted'::character varying CHECK (status::text = ANY (ARRAY['submitted'::character varying, 'under_review'::character varying, 'approved'::character varying, 'denied'::character varying, 'closed'::character varying, 'paid'::character varying]::text[])),
+  status character varying NOT NULL DEFAULT 'submitted'::character varying CHECK (status::text = ANY (ARRAY['submitted'::character varying, 'under_review'::character varying, 'pending_documentation'::character varying, 'waiting_approval'::character varying, 'investigating'::character varying, 'approved'::character varying, 'processing_payment'::character varying, 'denied'::character varying, 'closed'::character varying, 'paid'::character varying]::text[])),
   incident_description text NOT NULL,
   incident_location text,
   estimated_damage_cost numeric,
@@ -249,4 +249,18 @@ CREATE TABLE public.vehicles (
   usage_type character varying CHECK (usage_type::text = ANY (ARRAY['personal'::character varying, 'commercial'::character varying, 'taxi'::character varying, 'delivery'::character varying, 'other'::character varying]::text[])),
   CONSTRAINT vehicles_pkey PRIMARY KEY (id),
   CONSTRAINT vehicles_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id)
+);
+
+-- Tabla para el historial de cambios de estado de reclamaciones
+CREATE TABLE public.claim_status_history (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  claim_id uuid NOT NULL,
+  previous_status character varying NOT NULL,
+  new_status character varying NOT NULL,
+  changed_by uuid NOT NULL,
+  change_reason text,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT claim_status_history_pkey PRIMARY KEY (id),
+  CONSTRAINT claim_status_history_claim_id_fkey FOREIGN KEY (claim_id) REFERENCES public.claims(id) ON DELETE CASCADE,
+  CONSTRAINT claim_status_history_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.users(id)
 );

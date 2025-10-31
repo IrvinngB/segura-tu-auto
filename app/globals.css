@@ -332,12 +332,24 @@
   @apply bg-yellow-500 text-white dark:bg-yellow-600 dark:text-black;
 }
 
+.status-badge.status-pending {
+  @apply bg-orange-500 text-white dark:bg-orange-600 dark:text-white;
+}
+
+.status-badge.status-waiting {
+  @apply bg-purple-500 text-white dark:bg-purple-600 dark:text-white;
+}
+
 .status-badge.status-investigating {
   @apply bg-blue-600 text-white dark:bg-blue-700 dark:text-white;
 }
 
 .status-badge.status-approved {
   @apply bg-green-500 text-white dark:bg-green-600 dark:text-white;
+}
+
+.status-badge.status-processing {
+  @apply bg-cyan-500 text-white dark:bg-cyan-600 dark:text-white;
 }
 
 .status-badge.status-denied {

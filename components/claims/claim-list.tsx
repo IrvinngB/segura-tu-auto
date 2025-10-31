@@ -43,6 +43,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -52,6 +53,51 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   useEffect(() => {
     filterClaims();
   }, [claims, searchTerm, statusFilter, typeFilter, priorityFilter]);
+
+  // Auto-refresh cada 5 segundos (tiempo real)
+  useEffect(() => {
+    if (!userProfile) return;
+
+    console.log('⚡ Configurando auto-refresh en tiempo real cada 5 segundos...');
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refresh tiempo real de reclamaciones...');
+      fetchClaims();
+    }, 5000); // 5 segundos para sensación de tiempo real
+
+    return () => {
+      console.log('🔌 Desconectando auto-refresh');
+      clearInterval(interval);
+    };
+  }, [customerId, policyId, userProfile]);
+
+  // Suscripción en tiempo real a cambios en reclamaciones
+  useEffect(() => {
+    if (!userProfile) return;
+
+    console.log('🔔 Configurando suscripción en tiempo real para ClaimList...');
+
+    const subscription = supabase
+      .channel('claim-list-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escuchar INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'claims',
+        },
+        payload => {
+          console.log('🔔 Cambio detectado en reclamaciones (ClaimList):', payload);
+          // Actualizar datos cuando hay cambios
+          fetchClaims();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Desconectando suscripción ClaimList');
+      subscription.unsubscribe();
+    };
+  }, [customerId, policyId, userProfile]);
 
   const fetchClaims = async () => {
     try {
@@ -73,9 +119,26 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         )
         .order('created_at', { ascending: false });
 
+      // Filtrar según el rol del usuario
       if (customerId) {
+        // Para clientes específicos
         query = query.eq('customer_id', customerId);
+      } else if (userProfile?.role === 'agent') {
+        // Los agentes ven reclamaciones que pueden procesar (estados administrativos)
+        query = query.in('status', [
+          'submitted',
+          'under_review',
+          'pending_documentation',
+          'approved',
+          'processing_payment',
+          'paid',
+          'denied',
+        ]);
+      } else if (userProfile?.role === 'adjuster') {
+        // Los ajustadores ven reclamaciones que requieren evaluación técnica
+        query = query.in('status', ['investigating', 'waiting_approval', 'approved', 'denied']);
       }
+      // Los administradores ven todas las reclamaciones (sin filtro adicional)
 
       if (policyId) {
         query = query.eq('policy_id', policyId);
@@ -87,6 +150,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
       if (data) {
         setClaims(data);
         setFilteredClaims(data);
+        setLastUpdated(new Date());
+        console.log('✅ Reclamaciones actualizadas:', data.length);
       }
     } catch (error) {
       console.error('Error fetching claims:', error);
@@ -138,6 +203,14 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         label: 'En Revisión',
         classes: 'status-badge status-under-review',
       },
+      pending_documentation: {
+        label: 'Pendiente Docs',
+        classes: 'status-badge status-pending',
+      },
+      waiting_approval: {
+        label: 'Esperando Aprobación',
+        classes: 'status-badge status-waiting',
+      },
       investigating: {
         label: 'Investigando',
         classes: 'status-badge status-investigating',
@@ -145,6 +218,10 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
       approved: {
         label: 'Aprobada',
         classes: 'status-badge status-approved',
+      },
+      processing_payment: {
+        label: 'Procesando Pago',
+        classes: 'status-badge status-processing',
       },
       denied: {
         label: 'Denegada',
@@ -183,15 +260,24 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   };
 
   const getClaimTypeLabel = (type: string) => {
+    // Los tipos en la base de datos ya están en español
     const types = {
+      Colisión: 'Colisión',
+      Robo: 'Robo',
+      Vandalismo: 'Vandalismo',
+      Incendio: 'Incendio',
+      'Daño por clima': 'Daño por clima',
+      'Daño por granizo': 'Daño por granizo',
+      Otros: 'Otros',
+      // Compatibilidad con valores antiguos en inglés (si existen)
       collision: 'Colisión',
       theft: 'Robo',
       vandalism: 'Vandalismo',
       fire: 'Incendio',
-      flood: 'Inundación',
-      hail: 'Granizo',
-      glass: 'Cristales',
-      other: 'Otro',
+      flood: 'Daño por clima',
+      hail: 'Daño por granizo',
+      glass: 'Otros',
+      other: 'Otros',
     };
     return types[type as keyof typeof types] || type;
   };
@@ -217,17 +303,32 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Reclamaciones
-        </CardTitle>
-        <CardDescription>
-          {customerId ? 'Reclamaciones del cliente' : 'Gestión de todas las reclamaciones'}
-        </CardDescription>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Reclamaciones
+            </CardTitle>
+            <CardDescription>
+              {customerId
+                ? 'Reclamaciones del cliente'
+                : userProfile?.role === 'agent'
+                  ? 'Reclamaciones para gestión administrativa y documentación'
+                  : userProfile?.role === 'adjuster'
+                    ? 'Reclamaciones para evaluación técnica y aprobación'
+                    : 'Gestión completa de reclamaciones'}
+              {lastUpdated && (
+                <span className="block text-xs text-muted-foreground mt-1">
+                  Última actualización: {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {/* Filters */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4 mb-6 mt-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
@@ -245,8 +346,11 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               <SelectItem value="all">Todos los estados</SelectItem>
               <SelectItem value="submitted">Enviada</SelectItem>
               <SelectItem value="under_review">En Revisión</SelectItem>
+              <SelectItem value="pending_documentation">Pendiente Documentos</SelectItem>
+              <SelectItem value="waiting_approval">Esperando Aprobación</SelectItem>
               <SelectItem value="investigating">Investigando</SelectItem>
               <SelectItem value="approved">Aprobada</SelectItem>
+              <SelectItem value="processing_payment">Procesando Pago</SelectItem>
               <SelectItem value="denied">Denegada</SelectItem>
               <SelectItem value="closed">Cerrada</SelectItem>
               <SelectItem value="paid">Pagada</SelectItem>
@@ -258,14 +362,13 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los tipos</SelectItem>
-              <SelectItem value="collision">Colisión</SelectItem>
-              <SelectItem value="theft">Robo</SelectItem>
-              <SelectItem value="vandalism">Vandalismo</SelectItem>
-              <SelectItem value="fire">Incendio</SelectItem>
-              <SelectItem value="flood">Inundación</SelectItem>
-              <SelectItem value="hail">Granizo</SelectItem>
-              <SelectItem value="glass">Cristales</SelectItem>
-              <SelectItem value="other">Otro</SelectItem>
+              <SelectItem value="Colisión">Colisión</SelectItem>
+              <SelectItem value="Robo">Robo</SelectItem>
+              <SelectItem value="Vandalismo">Vandalismo</SelectItem>
+              <SelectItem value="Incendio">Incendio</SelectItem>
+              <SelectItem value="Daño por clima">Daño por clima</SelectItem>
+              <SelectItem value="Daño por granizo">Daño por granizo</SelectItem>
+              <SelectItem value="Otros">Otros</SelectItem>
             </SelectContent>
           </Select>
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -381,22 +484,57 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                           <Eye className="h-4 w-4" />
                         </Button>
 
-                        {/* Botón Procesar - Solo para agentes, adjusters y admins */}
-                        {(userProfile?.role === 'agent' ||
-                          userProfile?.role === 'adjuster' ||
-                          userProfile?.role === 'admin') &&
-                          claim.status !== 'closed' &&
-                          claim.status !== 'paid' && (
+                        {/* Botones específicos por rol */}
+
+                        {/* AGENTE: Solo puede procesar estados administrativos */}
+                        {userProfile?.role === 'agent' &&
+                          [
+                            'submitted',
+                            'under_review',
+                            'pending_documentation',
+                            'approved',
+                            'processing_payment',
+                            'denied',
+                          ].includes(claim.status) &&
+                          claim.status !== 'paid' &&
+                          claim.status !== 'closed' && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => onEditClaim?.(claim)}
-                              title="Procesar reclamación"
+                              title="Gestión Administrativa"
                               className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200"
                             >
                               <Settings className="h-4 w-4" />
                             </Button>
                           )}
+
+                        {/* AJUSTADOR: Solo puede procesar evaluaciones técnicas */}
+                        {userProfile?.role === 'adjuster' &&
+                          ['investigating', 'waiting_approval'].includes(claim.status) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onEditClaim?.(claim)}
+                              title="Evaluación Técnica"
+                              className="bg-green-50 hover:bg-green-100 text-green-600 border-green-200"
+                            >
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          )}
+
+                        {/* ADMINISTRADOR: Acceso completo */}
+                        {userProfile?.role === 'admin' && claim.status !== 'closed' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEditClaim?.(claim)}
+                            title="Control Total"
+                            className="bg-purple-50 hover:bg-purple-100 text-purple-600 border-purple-200"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -406,54 +544,201 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
           </Table>
         </div>
 
-        {/* Summary */}
+        {/* Summary - Métricas específicas por rol */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-blue-600">
-                {filteredClaims.filter(c => c.status === 'submitted').length}
-              </div>
-              <div className="text-sm text-muted-foreground">Enviadas</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-yellow-600">
-                {
-                  filteredClaims.filter(c => ['under_review', 'investigating'].includes(c.status))
-                    .length
-                }
-              </div>
-              <div className="text-sm text-muted-foreground">En proceso</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-green-600">
-                {filteredClaims.filter(c => c.status === 'approved').length}
-              </div>
-              <div className="text-sm text-muted-foreground">Aprobadas</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-red-600">
-                {filteredClaims.filter(c => c.priority === 'urgent').length}
-              </div>
-              <div className="text-sm text-muted-foreground">Urgentes</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-primary">
-                $
-                {filteredClaims
-                  .reduce((sum, c) => sum + (c.approved_amount || c.estimated_damage_cost || 0), 0)
-                  .toLocaleString()}
-              </div>
-              <div className="text-sm text-muted-foreground">Monto total</div>
-            </CardContent>
-          </Card>
+          {/* Métricas para AGENTES */}
+          {userProfile?.role === 'agent' && (
+            <>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {filteredClaims.filter(c => c.status === 'submitted').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Por revisar</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {filteredClaims.filter(c => c.status === 'under_review').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">En revisión</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {filteredClaims.filter(c => c.status === 'pending_documentation').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Pend. docs</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-600">
+                    {filteredClaims.filter(c => c.status === 'approved').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Para pago</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {filteredClaims.filter(c => c.status === 'paid').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Pagadas</div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* Métricas para AJUSTADORES */}
+          {userProfile?.role === 'adjuster' && (
+            <>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {filteredClaims.filter(c => c.status === 'investigating').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Investigando</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {filteredClaims.filter(c => c.status === 'waiting_approval').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Pend. aprobación</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-600">
+                    {filteredClaims.filter(c => c.status === 'approved').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Aprobadas</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-red-600">
+                    {filteredClaims.filter(c => c.status === 'denied').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Denegadas</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-primary">
+                    $
+                    {filteredClaims
+                      .filter(c => c.status === 'approved')
+                      .reduce((sum, c) => sum + (c.approved_amount || 0), 0)
+                      .toLocaleString()}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Monto aprobado</div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* Métricas para ADMINISTRADORES - Vista completa */}
+          {userProfile?.role === 'admin' && (
+            <>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {filteredClaims.filter(c => c.status === 'submitted').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Enviadas</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {
+                      filteredClaims.filter(c =>
+                        ['under_review', 'investigating'].includes(c.status)
+                      ).length
+                    }
+                  </div>
+                  <div className="text-sm text-muted-foreground">En proceso</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-600">
+                    {filteredClaims.filter(c => c.status === 'approved').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Aprobadas</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-red-600">
+                    {filteredClaims.filter(c => c.priority === 'urgent').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Urgentes</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-primary">
+                    $
+                    {filteredClaims
+                      .reduce(
+                        (sum, c) => sum + (c.approved_amount || c.estimated_damage_cost || 0),
+                        0
+                      )
+                      .toLocaleString()}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Monto total</div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* Métricas para CLIENTES - Vista simplificada */}
+          {(!userProfile?.role || userProfile?.role === 'customer') && (
+            <>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {filteredClaims.filter(c => c.status === 'submitted').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Enviadas</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {
+                      filteredClaims.filter(c =>
+                        ['under_review', 'investigating'].includes(c.status)
+                      ).length
+                    }
+                  </div>
+                  <div className="text-sm text-muted-foreground">En proceso</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-600">
+                    {filteredClaims.filter(c => c.status === 'approved').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Aprobadas</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {filteredClaims.filter(c => c.status === 'paid').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Pagadas</div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
