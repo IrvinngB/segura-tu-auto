@@ -54,9 +54,11 @@ interface ClaimDocument {
 
 interface ClaimEvidenceSystemProps {
   claimId: string;
-  claimType: string;
+  claimType?: string;
   canUpload?: boolean;
   canVerify?: boolean;
+  currentUserRole?: string;
+  customerId?: string;
 }
 
 const DOCUMENT_TYPES = {
@@ -309,7 +311,7 @@ export function ClaimEvidenceSystem({
     }
   };
 
-  const requiredDocs = getRequiredDocuments(claimType);
+  const requiredDocs = getRequiredDocuments(claimType || 'collision');
   const uploadedTypes = documents.map(doc => doc.document_type);
   const missingDocs = requiredDocs.filter(type => !uploadedTypes.includes(type));
 

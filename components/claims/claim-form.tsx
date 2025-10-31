@@ -487,15 +487,15 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                         <SelectItem
                           key={customer.id}
                           value={customer.id}
-                          className="py-3 px-4 cursor-pointer hover:bg-accent/80 focus:bg-accent data-[highlighted]:bg-accent/60 transition-colors border-b border-border/20 last:border-0 group"
+                          className="py-3 px-4 cursor-pointer hover:bg-accent/80 focus:bg-accent data-highlighted:bg-accent/60 transition-colors border-b border-border/20 last:border-0 group"
                         >
                           <div className="flex items-center gap-3">
-                            <Users className="h-4 w-4 text-muted-foreground group-hover:text-white group-focus:text-white group-data-[highlighted]:text-white" />
+                            <Users className="h-4 w-4 text-muted-foreground group-hover:text-white group-focus:text-white group-data-highlighted:text-white" />
                             <div className="flex flex-col gap-1">
-                              <span className="font-medium text-sm text-foreground group-hover:text-white group-focus:text-white group-data-[highlighted]:text-white">
+                              <span className="font-medium text-sm text-foreground group-hover:text-white group-focus:text-white group-data-highlighted:text-white">
                                 {customer.user?.first_name} {customer.user?.last_name}
                               </span>
-                              <span className="text-xs text-muted-foreground/80 group-hover:text-white/90 group-focus:text-white/90 group-data-[highlighted]:text-white/90">
+                              <span className="text-xs text-muted-foreground/80 group-hover:text-white/90 group-focus:text-white/90 group-data-highlighted:text-white/90">
                                 {customer.user?.email}
                               </span>
                             </div>
@@ -573,11 +573,11 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                       <SelectItem
                         key={policy.id}
                         value={policy.id}
-                        className="py-3 px-4 hover:bg-accent/80 focus:bg-accent data-[highlighted]:bg-accent/60 cursor-pointer border-b border-border/20 last:border-0 transition-colors group"
+                        className="py-3 px-4 hover:bg-accent/80 focus:bg-accent data-highlighted:bg-accent/60 cursor-pointer border-b border-border/20 last:border-0 transition-colors group"
                       >
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-foreground group-hover:text-white group-focus:text-white group-data-[highlighted]:text-white">
+                            <span className="font-medium text-sm text-foreground group-hover:text-white group-focus:text-white group-data-highlighted:text-white">
                               {policy.policy_number}
                             </span>
                             <span
@@ -600,7 +600,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                                     : policy.status}
                             </span>
                           </div>
-                          <span className="text-xs text-muted-foreground/80 group-hover:text-white/90 group-focus:text-white/90 group-data-[highlighted]:text-white/90">
+                          <span className="text-xs text-muted-foreground/80 group-hover:text-white/90 group-focus:text-white/90 group-data-highlighted:text-white/90">
                             {policy.vehicle?.year} {policy.vehicle?.make} {policy.vehicle?.model} -{' '}
                             {policy.vehicle?.license_plate}
                           </span>

@@ -1041,8 +1041,10 @@ export default function ClaimDetailPage() {
                 claimId={claim.id}
                 currentStatus={claim.status}
                 priority={claim.priority}
-                onStatusUpdate={newStatus => {
-                  setClaim(prev => (prev ? { ...prev, status: newStatus } : null));
+                onStatusUpdate={(newStatus: string) => {
+                  setClaim(prev =>
+                    prev ? { ...prev, status: newStatus as Claim['status'] } : null
+                  );
                   fetchClaimDetails();
                 }}
               />
@@ -1295,7 +1297,7 @@ export default function ClaimDetailPage() {
           <TabsContent value="evidence">
             <ClaimEvidenceSystem
               claimId={claim.id}
-              claimNumber={claim.claim_number}
+              claimType={claim.claim_type}
               currentUserRole={userProfile?.role || 'customer'}
               customerId={claim.customer_id}
             />
