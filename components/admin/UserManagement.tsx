@@ -24,7 +24,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { UserPlus, Users, Eye, Edit, Trash2, Phone, Mail, Calendar, Shield, User, Lock, EyeOff, Home, Car } from 'lucide-react';
+import {
+  UserPlus,
+  Users,
+  Eye,
+  Edit,
+  Trash2,
+  Phone,
+  Mail,
+  Calendar,
+  Shield,
+  User,
+  Lock,
+  EyeOff,
+  Home,
+  Car,
+} from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -75,18 +90,20 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       // Obtener token de sesión actual
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session?.access_token) {
         throw new Error('No hay sesión activa');
       }
 
       const response = await fetch('/api/admin/list-users', {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
-      
+
       const result = await response.json();
 
       if (!response.ok) {
@@ -171,8 +188,10 @@ const UserManagement = () => {
       }
 
       // Obtener token de sesión actual
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session?.access_token) {
         throw new Error('No hay sesión activa');
       }
@@ -182,7 +201,7 @@ const UserManagement = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           email: formData.email,
@@ -224,7 +243,6 @@ const UserManagement = () => {
         licenseYear: '',
       });
       fetchUsers();
-
     } catch (error: any) {
       console.error('Error creating user:', error);
 
@@ -376,7 +394,9 @@ const UserManagement = () => {
                           id="firstName"
                           placeholder="Juan"
                           value={formData.firstName}
-                          onChange={e => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                          onChange={e =>
+                            setFormData(prev => ({ ...prev, firstName: e.target.value }))
+                          }
                           className="pl-10"
                           required
                         />
@@ -438,9 +458,15 @@ const UserManagement = () => {
                             <SelectValue placeholder="Selecciona un rol" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="customer">👤 Cliente - Usuarios finales que compran seguros</SelectItem>
-                            <SelectItem value="agent">🧑‍💼 Agente - Gestiona pólizas y clientes</SelectItem>
-                            <SelectItem value="evaluator">🔍 Evaluador/Adjuster - Procesa reclamaciones</SelectItem>
+                            <SelectItem value="customer">
+                              👤 Cliente - Usuarios finales que compran seguros
+                            </SelectItem>
+                            <SelectItem value="agent">
+                              🧑‍💼 Agente - Gestiona pólizas y clientes
+                            </SelectItem>
+                            <SelectItem value="evaluator">
+                              🔍 Evaluador/Adjuster - Procesa reclamaciones
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -452,7 +478,9 @@ const UserManagement = () => {
                         <Home className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
                         <Select
                           value={formData.country}
-                          onValueChange={value => setFormData(prev => ({ ...prev, country: value }))}
+                          onValueChange={value =>
+                            setFormData(prev => ({ ...prev, country: value }))
+                          }
                         >
                           <SelectTrigger className="pl-10">
                             <SelectValue placeholder="Selecciona el país" />
@@ -525,7 +553,7 @@ const UserManagement = () => {
                     <Lock className="h-5 w-5" />
                     Credenciales de Acceso
                   </h3>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="password">Contraseña *</Label>
                     <div className="text-xs space-y-1 mb-2">
@@ -582,7 +610,11 @@ const UserManagement = () => {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
                       >
-                        {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        {showPassword ? (
+                          <Eye className="h-4 w-4" />
+                        ) : (
+                          <EyeOff className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -607,7 +639,11 @@ const UserManagement = () => {
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
                       >
-                        {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        {showConfirmPassword ? (
+                          <Eye className="h-4 w-4" />
+                        ) : (
+                          <EyeOff className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                     {formData.password !== formData.confirmPassword && formData.confirmPassword && (
@@ -689,9 +725,7 @@ const UserManagement = () => {
                           {user.email}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {getRoleBadge(user.user_metadata?.role || 'customer')}
-                      </TableCell>
+                      <TableCell>{getRoleBadge(user.user_metadata?.role || 'customer')}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />

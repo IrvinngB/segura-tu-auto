@@ -8,10 +8,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Shield, Users, UserPlus, Mail, Phone, User, Lock, AlertCircle, CheckCircle, Car, Settings, FileText, TrendingUp, BarChart3 } from 'lucide-react';
+import {
+  Shield,
+  Users,
+  UserPlus,
+  Mail,
+  Phone,
+  User,
+  Lock,
+  AlertCircle,
+  CheckCircle,
+  Car,
+  Settings,
+  FileText,
+  TrendingUp,
+  BarChart3,
+} from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { PolicyExpirationManager } from '@/components/policies/policy-expiration-manager';
 
@@ -37,7 +65,13 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('users');
   const [activeUserTab, setActiveUserTab] = useState('create');
   const [users, setUsers] = useState<User[]>([]);
-  const [userStats, setUserStats] = useState<UserStats>({ total: 0, agents: 0, evaluators: 0, customers: 0, admins: 0 });
+  const [userStats, setUserStats] = useState<UserStats>({
+    total: 0,
+    agents: 0,
+    evaluators: 0,
+    customers: 0,
+    admins: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -55,29 +89,34 @@ export default function AdminDashboard() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      console.log('Cargando usuarios...');
+      
       const response = await fetch('/api/admin/list-users', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
         },
       });
-      
+
+      const data = await response.json();
+      console.log('Respuesta de lista de usuarios:', data);
+
       if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users);
-        setUserStats(data.stats);
+        setUsers(data.users || []);
+        setUserStats(data.stats || { total: 0, agents: 0, evaluators: 0, customers: 0, admins: 0 });
       } else {
         toast({
-          title: "Error",
-          description: "No se pudieron cargar los usuarios",
-          variant: "destructive",
+          title: 'Error',
+          description: data.error || 'No se pudieron cargar los usuarios',
+          variant: 'destructive',
         });
       }
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
-        title: "Error",
-        description: "Error de conexión",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Error de conexión',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -96,29 +135,36 @@ export default function AdminDashboard() {
     // Validations
     if (formData.password !== formData.confirmPassword) {
       toast({
-        title: "Error de validación",
-        description: "Las contraseñas no coinciden",
-        variant: "destructive",
+        title: 'Error de validación',
+        description: 'Las contraseñas no coinciden',
+        variant: 'destructive',
       });
       return;
     }
 
     if (formData.password.length < 6) {
       toast({
-        title: "Error de validación",
-        description: "La contraseña debe tener al menos 6 caracteres",
-        variant: "destructive",
+        title: 'Error de validación',
+        description: 'La contraseña debe tener al menos 6 caracteres',
+        variant: 'destructive',
       });
       return;
     }
 
     try {
       setLoading(true);
+      console.log('Enviando datos:', {
+        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        role: formData.role,
+      });
+
       const response = await fetch('/api/admin/create-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY}`,
         },
         body: JSON.stringify({
           email: formData.email,
@@ -131,11 +177,12 @@ export default function AdminDashboard() {
       });
 
       const result = await response.json();
+      console.log('Respuesta del servidor:', result);
 
       if (response.ok) {
         toast({
-          title: "¡Éxito!",
-          description: "Usuario creado correctamente",
+          title: '¡Éxito!',
+          description: 'Usuario creado correctamente',
         });
         // Reset form
         setFormData({
@@ -153,17 +200,17 @@ export default function AdminDashboard() {
         }
       } else {
         toast({
-          title: "Error",
-          description: result.error || "No se pudo crear el usuario",
-          variant: "destructive",
+          title: 'Error',
+          description: result.error || 'No se pudo crear el usuario',
+          variant: 'destructive',
         });
       }
     } catch (error) {
       console.error('Error creating user:', error);
       toast({
-        title: "Error",
-        description: "Error de conexión",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Error de conexión',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -280,7 +327,9 @@ export default function AdminDashboard() {
                             id="firstName"
                             type="text"
                             value={formData.firstName}
-                            onChange={e => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                            onChange={e =>
+                              setFormData(prev => ({ ...prev, firstName: e.target.value }))
+                            }
                             placeholder="Juan"
                             required
                           />
@@ -292,7 +341,9 @@ export default function AdminDashboard() {
                             id="lastName"
                             type="text"
                             value={formData.lastName}
-                            onChange={e => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                            onChange={e =>
+                              setFormData(prev => ({ ...prev, lastName: e.target.value }))
+                            }
                             placeholder="Pérez"
                             required
                           />
@@ -304,7 +355,9 @@ export default function AdminDashboard() {
                             id="email"
                             type="email"
                             value={formData.email}
-                            onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                            onChange={e =>
+                              setFormData(prev => ({ ...prev, email: e.target.value }))
+                            }
                             placeholder="usuario@email.com"
                             required
                           />
@@ -316,14 +369,19 @@ export default function AdminDashboard() {
                             id="phone"
                             type="tel"
                             value={formData.phone}
-                            onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                            onChange={e =>
+                              setFormData(prev => ({ ...prev, phone: e.target.value }))
+                            }
                             placeholder="+506 8888 8888"
                           />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="role">Tipo de Usuario *</Label>
-                          <Select value={formData.role} onValueChange={value => setFormData(prev => ({ ...prev, role: value }))}>
+                          <Select
+                            value={formData.role}
+                            onValueChange={value => setFormData(prev => ({ ...prev, role: value }))}
+                          >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
@@ -335,14 +393,19 @@ export default function AdminDashboard() {
                             </SelectContent>
                           </Select>
                         </div>
+                      </div>
 
+                      {/* Password fields in their own row */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="password">Contraseña *</Label>
                           <Input
                             id="password"
                             type="password"
                             value={formData.password}
-                            onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                            onChange={e =>
+                              setFormData(prev => ({ ...prev, password: e.target.value }))
+                            }
                             placeholder="••••••••"
                             required
                           />
@@ -354,7 +417,9 @@ export default function AdminDashboard() {
                             id="confirmPassword"
                             type="password"
                             value={formData.confirmPassword}
-                            onChange={e => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                            onChange={e =>
+                              setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))
+                            }
                             placeholder="••••••••"
                             required
                           />
@@ -362,18 +427,20 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="flex justify-end gap-4 pt-4">
-                        <Button 
+                        <Button
                           type="button"
                           variant="outline"
-                          onClick={() => setFormData({
-                            email: '',
-                            password: '',
-                            confirmPassword: '',
-                            firstName: '',
-                            lastName: '',
-                            phone: '',
-                            role: 'customer',
-                          })}
+                          onClick={() =>
+                            setFormData({
+                              email: '',
+                              password: '',
+                              confirmPassword: '',
+                              firstName: '',
+                              lastName: '',
+                              phone: '',
+                              role: 'customer',
+                            })
+                          }
                           disabled={loading}
                         >
                           Limpiar
@@ -395,9 +462,7 @@ export default function AdminDashboard() {
                       <Users className="h-5 w-5" />
                       <span>Lista de Usuarios</span>
                     </CardTitle>
-                    <CardDescription>
-                      Administra todos los usuarios del sistema
-                    </CardDescription>
+                    <CardDescription>Administra todos los usuarios del sistema</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {loading ? (
@@ -417,7 +482,7 @@ export default function AdminDashboard() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {users.map((user) => (
+                          {users.map(user => (
                             <TableRow key={user.id}>
                               <TableCell className="font-medium">
                                 {user.first_name} {user.last_name}
@@ -425,15 +490,24 @@ export default function AdminDashboard() {
                               <TableCell>{user.email}</TableCell>
                               <TableCell>{user.phone || 'N/A'}</TableCell>
                               <TableCell>
-                                <Badge variant={
-                                  user.role === 'admin' ? 'default' :
-                                  user.role === 'agent' ? 'secondary' :
-                                  user.role === 'evaluator' ? 'outline' : 
-                                  'secondary'
-                                }>
-                                  {user.role === 'admin' ? 'Administrador' :
-                                   user.role === 'agent' ? 'Agente' :
-                                   user.role === 'evaluator' ? 'Evaluador' : 'Cliente'}
+                                <Badge
+                                  variant={
+                                    user.role === 'admin'
+                                      ? 'default'
+                                      : user.role === 'agent'
+                                        ? 'secondary'
+                                        : user.role === 'evaluator'
+                                          ? 'outline'
+                                          : 'secondary'
+                                  }
+                                >
+                                  {user.role === 'admin'
+                                    ? 'Administrador'
+                                    : user.role === 'agent'
+                                      ? 'Agente'
+                                      : user.role === 'evaluator'
+                                        ? 'Evaluador'
+                                        : 'Cliente'}
                                 </Badge>
                               </TableCell>
                               <TableCell>

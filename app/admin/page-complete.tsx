@@ -7,10 +7,36 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Shield, Users, UserPlus, Mail, Phone, User, Lock, AlertCircle, CheckCircle, Car, Settings, FileText } from 'lucide-react';
+import {
+  Shield,
+  Users,
+  UserPlus,
+  Mail,
+  Phone,
+  User,
+  Lock,
+  AlertCircle,
+  CheckCircle,
+  Car,
+  Settings,
+  FileText,
+} from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 
 interface User {
@@ -40,7 +66,7 @@ export default function AdminDashboard() {
     agents: 0,
     evaluators: 0,
     customers: 0,
-    admins: 0
+    admins: 0,
   });
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -68,16 +94,16 @@ export default function AdminDashboard() {
       const token = localStorage.getItem('sb-sztuxibgvlwbykaopnqg-auth-token');
       if (!token) {
         toast({
-          title: "Error",
-          description: "Token de autenticación no encontrado",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Token de autenticación no encontrado',
+          variant: 'destructive',
         });
         return;
       }
 
       const response = await fetch('/api/admin/list-users', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -88,34 +114,37 @@ export default function AdminDashboard() {
 
       const data = await response.json();
       setUsers(data.users);
-      
+
       // Calculate stats
-      const stats = data.users.reduce((acc: UserStats, user: User) => {
-        acc.total++;
-        switch (user.role) {
-          case 'agent':
-            acc.agents++;
-            break;
-          case 'evaluator':
-            acc.evaluators++;
-            break;
-          case 'customer':
-            acc.customers++;
-            break;
-          case 'admin':
-            acc.admins++;
-            break;
-        }
-        return acc;
-      }, { total: 0, agents: 0, evaluators: 0, customers: 0, admins: 0 });
-      
+      const stats = data.users.reduce(
+        (acc: UserStats, user: User) => {
+          acc.total++;
+          switch (user.role) {
+            case 'agent':
+              acc.agents++;
+              break;
+            case 'evaluator':
+              acc.evaluators++;
+              break;
+            case 'customer':
+              acc.customers++;
+              break;
+            case 'admin':
+              acc.admins++;
+              break;
+          }
+          return acc;
+        },
+        { total: 0, agents: 0, evaluators: 0, customers: 0, admins: 0 }
+      );
+
       setUserStats(stats);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
-        title: "Error",
-        description: "No se pudieron cargar los usuarios",
-        variant: "destructive",
+        title: 'Error',
+        description: 'No se pudieron cargar los usuarios',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -130,9 +159,9 @@ export default function AdminDashboard() {
       const token = localStorage.getItem('sb-sztuxibgvlwbykaopnqg-auth-token');
       if (!token) {
         toast({
-          title: "Error",
-          description: "Token de autenticación no encontrado",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Token de autenticación no encontrado',
+          variant: 'destructive',
         });
         return;
       }
@@ -140,7 +169,7 @@ export default function AdminDashboard() {
       const response = await fetch('/api/admin/create-user', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -160,7 +189,7 @@ export default function AdminDashboard() {
       }
 
       toast({
-        title: "Usuario creado exitosamente",
+        title: 'Usuario creado exitosamente',
         description: `${formData.firstName} ${formData.lastName} ha sido agregado como ${formData.role}`,
       });
 
@@ -178,13 +207,12 @@ export default function AdminDashboard() {
       if (activeUserTab === 'list') {
         fetchUsers();
       }
-
     } catch (error: any) {
       console.error('Error creating user:', error);
       toast({
-        title: "Error al crear usuario",
-        description: error.message || "Ocurrió un error inesperado",
-        variant: "destructive",
+        title: 'Error al crear usuario',
+        description: error.message || 'Ocurrió un error inesperado',
+        variant: 'destructive',
       });
     } finally {
       setCreating(false);
@@ -193,10 +221,10 @@ export default function AdminDashboard() {
 
   const getRoleDisplayName = (role: string) => {
     const roleNames = {
-      admin: "Administrador",
-      agent: "Agente",
-      evaluator: "Evaluador",
-      customer: "Cliente"
+      admin: 'Administrador',
+      agent: 'Agente',
+      evaluator: 'Evaluador',
+      customer: 'Cliente',
     };
     return roleNames[role as keyof typeof roleNames] || role;
   };
@@ -222,9 +250,7 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto p-6">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Panel de Administración
-            </h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Panel de Administración</h1>
             <p className="text-muted-foreground">
               Gestiona usuarios, pólizas y configuraciones del sistema
             </p>
@@ -341,7 +367,9 @@ export default function AdminDashboard() {
                               id="firstName"
                               type="text"
                               value={formData.firstName}
-                              onChange={e => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, firstName: e.target.value }))
+                              }
                               placeholder="Juan"
                               required
                             />
@@ -353,7 +381,9 @@ export default function AdminDashboard() {
                               id="lastName"
                               type="text"
                               value={formData.lastName}
-                              onChange={e => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, lastName: e.target.value }))
+                              }
                               placeholder="Pérez"
                               required
                             />
@@ -368,7 +398,9 @@ export default function AdminDashboard() {
                               id="email"
                               type="email"
                               value={formData.email}
-                              onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, email: e.target.value }))
+                              }
                               placeholder="usuario@email.com"
                               required
                             />
@@ -383,7 +415,9 @@ export default function AdminDashboard() {
                               id="phone"
                               type="tel"
                               value={formData.phone}
-                              onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, phone: e.target.value }))
+                              }
                               placeholder="+507 6123 4567"
                               required
                             />
@@ -393,7 +427,9 @@ export default function AdminDashboard() {
                             <Label htmlFor="role">Tipo de Usuario *</Label>
                             <Select
                               value={formData.role}
-                              onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
+                              onValueChange={value =>
+                                setFormData(prev => ({ ...prev, role: value }))
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un rol" />
@@ -416,7 +452,9 @@ export default function AdminDashboard() {
                               id="password"
                               type="password"
                               value={formData.password}
-                              onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, password: e.target.value }))
+                              }
                               placeholder="••••••••"
                               required
                               minLength={6}
@@ -428,14 +466,16 @@ export default function AdminDashboard() {
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => setFormData({
-                              email: '',
-                              password: '',
-                              firstName: '',
-                              lastName: '',
-                              phone: '',
-                              role: 'customer',
-                            })}
+                            onClick={() =>
+                              setFormData({
+                                email: '',
+                                password: '',
+                                firstName: '',
+                                lastName: '',
+                                phone: '',
+                                role: 'customer',
+                              })
+                            }
                           >
                             Limpiar
                           </Button>
@@ -466,9 +506,7 @@ export default function AdminDashboard() {
                         <Users className="h-5 w-5" />
                         Lista de Usuarios
                       </CardTitle>
-                      <CardDescription>
-                        Gestiona todos los usuarios del sistema
-                      </CardDescription>
+                      <CardDescription>Gestiona todos los usuarios del sistema</CardDescription>
                     </CardHeader>
                     <CardContent>
                       {loading ? (
@@ -495,7 +533,7 @@ export default function AdminDashboard() {
                                   </TableCell>
                                 </TableRow>
                               ) : (
-                                users.map((user) => (
+                                users.map(user => (
                                   <TableRow key={user.id}>
                                     <TableCell>
                                       <div>
@@ -567,7 +605,9 @@ export default function AdminDashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle>Gestión de Reclamaciones</CardTitle>
-                  <CardDescription>Administra y procesa las reclamaciones de seguros</CardDescription>
+                  <CardDescription>
+                    Administra y procesa las reclamaciones de seguros
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-8 text-muted-foreground">

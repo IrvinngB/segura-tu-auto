@@ -68,9 +68,7 @@ export default function SimpleUserManagement() {
           <TabsTrigger value="create" className="text-lg font-semibold">
             ➕ Crear Nuevo Usuario
           </TabsTrigger>
-          <TabsTrigger value="list">
-            📋 Lista de Usuarios
-          </TabsTrigger>
+          <TabsTrigger value="list">📋 Lista de Usuarios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="create" className="space-y-4">
@@ -97,7 +95,9 @@ export default function SimpleUserManagement() {
                         id="firstName"
                         placeholder="Juan"
                         value={formData.firstName}
-                        onChange={e => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                        onChange={e =>
+                          setFormData(prev => ({ ...prev, firstName: e.target.value }))
+                        }
                         className="pl-10 border-2"
                         required
                       />
@@ -190,25 +190,24 @@ export default function SimpleUserManagement() {
                 </div>
 
                 <div className="flex justify-center gap-4 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     className="px-8"
-                    onClick={() => setFormData({
-                      email: '',
-                      password: '',
-                      firstName: '',
-                      lastName: '',
-                      phone: '',
-                      role: 'customer',
-                    })}
+                    onClick={() =>
+                      setFormData({
+                        email: '',
+                        password: '',
+                        firstName: '',
+                        lastName: '',
+                        phone: '',
+                        role: 'customer',
+                      })
+                    }
                   >
                     🧹 Limpiar
                   </Button>
-                  <Button 
-                    type="submit" 
-                    className="px-8 bg-primary hover:bg-primary/90"
-                  >
+                  <Button type="submit" className="px-8 bg-primary hover:bg-primary/90">
                     ✨ Crear Usuario
                   </Button>
                 </div>
