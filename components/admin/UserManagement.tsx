@@ -11,10 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
   Table,
@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { UserPlus, Users, Eye, Edit, Trash2, Phone, Mail, Calendar, Shield } from 'lucide-react';
+import { UserPlus, Users, Eye, Edit, Trash2, Phone, Mail, Calendar, Shield, User, Lock, EyeOff, Home, Car } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -36,19 +36,20 @@ import {
 
 interface User {
   id: string;
-  email: string;
-  role: string;
+  email?: string;
   created_at: string;
-  raw_user_meta_data: {
-    firstName?: string;
-    lastName?: string;
+  user_metadata?: {
+    first_name?: string;
+    last_name?: string;
     phone?: string;
+    role?: string;
   };
 }
 
 const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const supabase = createClient();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -63,6 +64,8 @@ const UserManagement = () => {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -71,23 +74,26 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const {
-        data: { users },
-        error,
-      } = await supabase.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
+      // Obtener token de sesión actual
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('No hay sesión activa');
+      }
+
+      const response = await fetch('/api/admin/list-users', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
       });
+      
+      const result = await response.json();
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al cargar usuarios');
+      }
 
-      // Filtrar usuarios para excluir administradores
-      const filteredUsers = (users || []).filter(user => {
-        const userRole = user.raw_user_meta_data?.role || 'customer';
-        return userRole !== 'admin';
-      });
-
-      setUsers(filteredUsers);
+      setUsers(result.users || []);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -103,8 +109,40 @@ const UserManagement = () => {
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
     const hasUpperCase = /[A-Z]/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
     return minLength && hasUpperCase && hasSpecialChar;
+  };
+
+  // Funciones para validar cada requisito individualmente
+  const hasMinLength = (password: string) => password.length >= 8;
+  const hasUppercase = (password: string) => /[A-Z]/.test(password);
+  const hasSpecialChar = (password: string) =>
+    /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+  // Función para verificar si todos los campos requeridos están completos
+  const isFormValid = () => {
+    const basicFieldsComplete =
+      formData.firstName.trim() !== '' &&
+      formData.lastName.trim() !== '' &&
+      formData.email.trim() !== '' &&
+      formData.phone.trim() !== '' &&
+      formData.password.trim() !== '' &&
+      formData.confirmPassword.trim() !== '' &&
+      formData.role.trim() !== '' &&
+      formData.password === formData.confirmPassword &&
+      validatePassword(formData.password);
+
+    // Si es customer, verificar campos adicionales requeridos
+    if (formData.role === 'customer') {
+      const customerFieldsComplete =
+        formData.country.trim() !== '' &&
+        formData.birthDate.trim() !== '' &&
+        formData.licenseYear.trim() !== '';
+
+      return basicFieldsComplete && customerFieldsComplete;
+    }
+
+    return basicFieldsComplete;
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -132,11 +170,23 @@ const UserManagement = () => {
         throw new Error('No tienes permisos para crear usuarios administradores');
       }
 
-      // Create user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        user_metadata: {
+      // Obtener token de sesión actual
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('No hay sesión activa');
+      }
+
+      // Crear usuario a través de API
+      const response = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
           firstName: formData.firstName,
           lastName: formData.lastName,
           phone: formData.phone,
@@ -144,29 +194,16 @@ const UserManagement = () => {
           country: formData.country,
           birthDate: formData.birthDate,
           licenseYear: formData.licenseYear,
-        },
+        }),
       });
 
-      if (authError) throw authError;
+      const result = await response.json();
 
-      // If role is customer, also create customer record
-      if (formData.role === 'customer' && authData.user) {
-        const { error: customerError } = await supabase.from('customers').insert({
-          id: authData.user.id,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          country: formData.country,
-          birth_date: formData.birthDate || null,
-          license_year: formData.licenseYear ? parseInt(formData.licenseYear) : null,
-        });
-
-        if (customerError) {
-          console.error('Error creating customer record:', customerError);
-          // Note: Don't throw here as the user was created successfully
-        }
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al crear usuario');
       }
+
+      console.log('Usuario creado exitosamente:', result.user);
 
       toast({
         title: 'Usuario creado exitosamente',
@@ -186,8 +223,8 @@ const UserManagement = () => {
         birthDate: '',
         licenseYear: '',
       });
-      setShowCreateForm(false);
       fetchUsers();
+
     } catch (error: any) {
       console.error('Error creating user:', error);
 
@@ -198,6 +235,8 @@ const UserManagement = () => {
           errorMessage = 'Este correo electrónico ya está registrado';
         } else if (error.message.includes('weak password')) {
           errorMessage = 'La contraseña es demasiado débil';
+        } else if (error.message.includes('duplicate key value violates unique constraint')) {
+          errorMessage = 'Este correo electrónico ya está registrado';
         } else {
           errorMessage = error.message;
         }
@@ -238,7 +277,7 @@ const UserManagement = () => {
   const getRoleStats = () => {
     const stats = users.reduce(
       (acc, user) => {
-        const role = user.raw_user_meta_data?.role || user.role || 'unknown';
+        const role = user.user_metadata?.role || 'customer';
         acc[role] = (acc[role] || 0) + 1;
         return acc;
       },
@@ -303,11 +342,311 @@ const UserManagement = () => {
         })}
       </div>
 
-      <Tabs defaultValue="list" className="w-full">
+      <Tabs defaultValue="create" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="list">Lista de Usuarios</TabsTrigger>
           <TabsTrigger value="create">Crear Usuario</TabsTrigger>
+          <TabsTrigger value="list">Lista de Usuarios</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="create" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Crear Nuevo Usuario
+              </CardTitle>
+              <CardDescription>
+                Crea usuarios para agentes, evaluadores o clientes del sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateUser} className="space-y-6">
+                {/* Información Personal */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Información Personal
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">Nombre *</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="firstName"
+                          placeholder="Juan"
+                          value={formData.firstName}
+                          onChange={e => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Apellido *</Label>
+                      <Input
+                        id="lastName"
+                        placeholder="Pérez"
+                        value={formData.lastName}
+                        onChange={e => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Correo Electrónico *</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="usuario@email.com"
+                          value={formData.email}
+                          onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Teléfono *</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="phone"
+                          type="tel"
+                          placeholder="+506 8888 8888"
+                          value={formData.phone}
+                          onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Tipo de Usuario *</Label>
+                      <div className="relative">
+                        <Shield className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                        <Select
+                          value={formData.role}
+                          onValueChange={value => setFormData(prev => ({ ...prev, role: value }))}
+                        >
+                          <SelectTrigger className="pl-10">
+                            <SelectValue placeholder="Selecciona un rol" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="customer">👤 Cliente - Usuarios finales que compran seguros</SelectItem>
+                            <SelectItem value="agent">🧑‍💼 Agente - Gestiona pólizas y clientes</SelectItem>
+                            <SelectItem value="evaluator">🔍 Evaluador/Adjuster - Procesa reclamaciones</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="country">País</Label>
+                      <div className="relative">
+                        <Home className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                        <Select
+                          value={formData.country}
+                          onValueChange={value => setFormData(prev => ({ ...prev, country: value }))}
+                        >
+                          <SelectTrigger className="pl-10">
+                            <SelectValue placeholder="Selecciona el país" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Costa Rica">Costa Rica</SelectItem>
+                            <SelectItem value="Guatemala">Guatemala</SelectItem>
+                            <SelectItem value="Honduras">Honduras</SelectItem>
+                            <SelectItem value="El Salvador">El Salvador</SelectItem>
+                            <SelectItem value="Nicaragua">Nicaragua</SelectItem>
+                            <SelectItem value="Panamá">Panamá</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Información Adicional para Clientes */}
+                {formData.role === 'customer' && (
+                  <div className="space-y-4 pt-4 border-t border-border">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Car className="h-5 w-5" />
+                      Información del Conductor
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Esta información es necesaria para clientes que cotizarán seguros
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="birthDate">Fecha de Nacimiento *</Label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="birthDate"
+                            type="date"
+                            value={formData.birthDate}
+                            onChange={e =>
+                              setFormData(prev => ({ ...prev, birthDate: e.target.value }))
+                            }
+                            className="pl-10"
+                            max={new Date().toISOString().split('T')[0]}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="licenseYear">Año que Obtuvo la Licencia *</Label>
+                        <Input
+                          id="licenseYear"
+                          type="number"
+                          placeholder="2010"
+                          value={formData.licenseYear}
+                          onChange={e =>
+                            setFormData(prev => ({ ...prev, licenseYear: e.target.value }))
+                          }
+                          min="1970"
+                          max={new Date().getFullYear()}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Credenciales */}
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Lock className="h-5 w-5" />
+                    Credenciales de Acceso
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Contraseña *</Label>
+                    <div className="text-xs space-y-1 mb-2">
+                      <div
+                        className={`flex items-center gap-2 ${
+                          hasMinLength(formData.password) ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            hasMinLength(formData.password) ? 'bg-green-600' : 'bg-red-600'
+                          }`}
+                        ></span>
+                        Mínimo 8 caracteres
+                      </div>
+                      <div
+                        className={`flex items-center gap-2 ${
+                          hasUppercase(formData.password) ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            hasUppercase(formData.password) ? 'bg-green-600' : 'bg-red-600'
+                          }`}
+                        ></span>
+                        Al menos 1 mayúscula
+                      </div>
+                      <div
+                        className={`flex items-center gap-2 ${
+                          hasSpecialChar(formData.password) ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            hasSpecialChar(formData.password) ? 'bg-green-600' : 'bg-red-600'
+                          }`}
+                        ></span>
+                        Al menos 1 carácter especial
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={formData.password}
+                        onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                        className="pl-10 pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={formData.confirmPassword}
+                        onChange={e =>
+                          setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))
+                        }
+                        className="pl-10 pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                      >
+                        {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {formData.password !== formData.confirmPassword && formData.confirmPassword && (
+                      <p className="text-xs text-red-600">Las contraseñas no coinciden</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setFormData({
+                        email: '',
+                        password: '',
+                        confirmPassword: '',
+                        firstName: '',
+                        lastName: '',
+                        phone: '',
+                        role: '',
+                        country: 'Costa Rica',
+                        birthDate: '',
+                        licenseYear: '',
+                      });
+                      setShowPassword(false);
+                      setShowConfirmPassword(false);
+                    }}
+                  >
+                    Limpiar
+                  </Button>
+                  <Button type="submit" disabled={formLoading || !isFormValid()}>
+                    {formLoading ? 'Creando...' : 'Crear Usuario'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="list" className="space-y-4">
           <Card>
@@ -334,12 +673,12 @@ const UserManagement = () => {
                       <TableCell>
                         <div>
                           <p className="font-medium">
-                            {user.raw_user_meta_data?.firstName} {user.raw_user_meta_data?.lastName}
+                            {user.user_metadata?.first_name} {user.user_metadata?.last_name}
                           </p>
-                          {user.raw_user_meta_data?.phone && (
+                          {user.user_metadata?.phone && (
                             <p className="text-sm text-gray-500 flex items-center gap-1">
                               <Phone className="h-3 w-3" />
-                              {user.raw_user_meta_data.phone}
+                              {user.user_metadata.phone}
                             </p>
                           )}
                         </div>
@@ -351,7 +690,7 @@ const UserManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getRoleBadge(user.raw_user_meta_data?.role || 'customer')}
+                        {getRoleBadge(user.user_metadata?.role || 'customer')}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -373,175 +712,6 @@ const UserManagement = () => {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="create" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5" />
-                Crear Nuevo Usuario
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateUser} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">Nombre *</Label>
-                    <Input
-                      id="firstName"
-                      type="text"
-                      value={formData.firstName}
-                      onChange={e => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Apellido *</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      value={formData.lastName}
-                      onChange={e => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Correo Electrónico *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Teléfono</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Rol *</Label>
-                    <Select
-                      value={formData.role}
-                      onValueChange={value => setFormData(prev => ({ ...prev, role: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un rol" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="customer">Cliente</SelectItem>
-                        <SelectItem value="agent">Agente</SelectItem>
-                        <SelectItem value="evaluator">Evaluador</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="country">País</Label>
-                    <Input
-                      id="country"
-                      type="text"
-                      value={formData.country}
-                      onChange={e => setFormData(prev => ({ ...prev, country: e.target.value }))}
-                    />
-                  </div>
-
-                  {formData.role === 'customer' && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-                        <Input
-                          id="birthDate"
-                          type="date"
-                          value={formData.birthDate}
-                          onChange={e =>
-                            setFormData(prev => ({ ...prev, birthDate: e.target.value }))
-                          }
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="licenseYear">Año de Obtención de Licencia</Label>
-                        <Input
-                          id="licenseYear"
-                          type="number"
-                          min="1950"
-                          max={new Date().getFullYear()}
-                          value={formData.licenseYear}
-                          onChange={e =>
-                            setFormData(prev => ({ ...prev, licenseYear: e.target.value }))
-                          }
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Contraseña *</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                      required
-                    />
-                    <p className="text-xs text-gray-500">
-                      Mínimo 8 caracteres, una mayúscula y un carácter especial
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={e =>
-                        setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      setFormData({
-                        email: '',
-                        password: '',
-                        confirmPassword: '',
-                        firstName: '',
-                        lastName: '',
-                        phone: '',
-                        role: '',
-                        country: 'Costa Rica',
-                        birthDate: '',
-                        licenseYear: '',
-                      })
-                    }
-                  >
-                    Limpiar
-                  </Button>
-                  <Button type="submit" disabled={formLoading}>
-                    {formLoading ? 'Creando...' : 'Crear Usuario'}
-                  </Button>
-                </div>
-              </form>
             </CardContent>
           </Card>
         </TabsContent>

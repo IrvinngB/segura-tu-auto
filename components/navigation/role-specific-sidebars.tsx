@@ -35,6 +35,7 @@ interface NavigationItem {
 
 const adminNavigation: NavigationItem[] = [
     { name: "Dashboard", href: "/", icon: Home, description: "Panel principal" },
+    { name: "Panel Admin", href: "/admin", icon: Shield, description: "Panel de administración - Crear usuarios" },
     { name: "Clientes", href: "/clients", icon: Users, description: "Gestión de clientes" },
     { name: "Evaluación de Riesgo", href: "/risk-assessment", icon: TrendingUp, description: "Evaluación de riesgos" },
     { name: "Análisis", href: "/analytics", icon: BarChart3, description: "Reportes y análisis" },
@@ -83,7 +84,7 @@ const SidebarContent = memo(function SidebarContent({ navigation, userProfile }:
 
     const groupedNavigation = useMemo(() => {
         const main = navigation.filter((item) =>
-            ["Dashboard", "Mis Pólizas", "Pólizas", "Mis Cotizaciones", "Cotizaciones", "Mis Reclamaciones", "Reclamaciones"].includes(item.name)
+            ["Dashboard", "Panel Admin", "Mis Pólizas", "Pólizas", "Mis Cotizaciones", "Cotizaciones", "Mis Reclamaciones", "Reclamaciones"].includes(item.name)
         );
         const management = navigation.filter((item) =>
             ["Clientes", "Mis Vehículos", "Evaluación de Riesgo", "Evaluaciones", "Mis Casos"].includes(item.name)
