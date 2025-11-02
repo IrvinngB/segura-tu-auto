@@ -82,6 +82,9 @@ export default function AdminDashboard() {
     lastName: '',
     phone: '',
     role: 'customer',
+    country: 'Costa Rica',
+    birthDate: '',
+    licenseYear: '',
   });
   const [successModal, setSuccessModal] = useState({
     show: false,
@@ -216,6 +219,9 @@ export default function AdminDashboard() {
         lastName: formData.lastName,
         phone: formData.phone,
         role: formData.role,
+        country: formData.country,
+        birthDate: formData.birthDate,
+        licenseYear: formData.licenseYear,
       });
 
       const response = await fetch('/api/admin/create-user', {
@@ -230,6 +236,9 @@ export default function AdminDashboard() {
           lastName: formData.lastName,
           phone: formData.phone,
           role: formData.role,
+          country: formData.country,
+          birthDate: formData.birthDate,
+          licenseYear: formData.licenseYear,
         }),
       });
 
@@ -246,6 +255,9 @@ export default function AdminDashboard() {
           lastName: '',
           phone: '',
           role: 'customer',
+          country: 'Costa Rica',
+          birthDate: '',
+          licenseYear: '',
         });
 
         // Mostrar modal de éxito
@@ -386,174 +398,292 @@ export default function AdminDashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="firstName">Nombre *</Label>
-                          <Input
-                            id="firstName"
-                            type="text"
-                            value={formData.firstName}
-                            onChange={e =>
-                              setFormData(prev => ({ ...prev, firstName: e.target.value }))
-                            }
-                            placeholder="Juan"
-                            required
-                          />
-                        </div>
+                    <form onSubmit={handleSubmit} className="space-y-8">
+                      {/* Información Básica */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-medium text-foreground border-b pb-2">
+                          Información Básica
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="firstName"
+                              className="text-sm font-medium text-foreground"
+                            >
+                              Nombre *
+                            </Label>
+                            <Input
+                              id="firstName"
+                              type="text"
+                              value={formData.firstName}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, firstName: e.target.value }))
+                              }
+                              placeholder="Juan"
+                              required
+                            />
+                          </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="lastName">Apellido *</Label>
-                          <Input
-                            id="lastName"
-                            type="text"
-                            value={formData.lastName}
-                            onChange={e =>
-                              setFormData(prev => ({ ...prev, lastName: e.target.value }))
-                            }
-                            placeholder="Pérez"
-                            required
-                          />
-                        </div>
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="lastName"
+                              className="text-sm font-medium text-foreground"
+                            >
+                              Apellido *
+                            </Label>
+                            <Input
+                              id="lastName"
+                              type="text"
+                              value={formData.lastName}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, lastName: e.target.value }))
+                              }
+                              placeholder="Pérez"
+                              required
+                            />
+                          </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="email">Correo Electrónico *</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={e =>
-                              setFormData(prev => ({ ...prev, email: e.target.value }))
-                            }
-                            placeholder="usuario@email.com"
-                            required
-                          />
-                        </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                              Correo Electrónico *
+                            </Label>
+                            <Input
+                              id="email"
+                              type="email"
+                              value={formData.email}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, email: e.target.value }))
+                              }
+                              placeholder="usuario@email.com"
+                              required
+                            />
+                          </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="phone">Teléfono</Label>
-                          <Input
-                            id="phone"
-                            type="tel"
-                            value={formData.phone}
-                            onChange={e =>
-                              setFormData(prev => ({ ...prev, phone: e.target.value }))
-                            }
-                            placeholder="+506 8888 8888"
-                          />
-                        </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="phone" className="text-sm font-medium text-foreground">
+                              Teléfono
+                            </Label>
+                            <Input
+                              id="phone"
+                              type="tel"
+                              value={formData.phone}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, phone: e.target.value }))
+                              }
+                              placeholder="+506 8888 8888"
+                            />
+                          </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="role">Tipo de Usuario *</Label>
-                          <Select
-                            value={formData.role}
-                            onValueChange={value => setFormData(prev => ({ ...prev, role: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="customer">Cliente</SelectItem>
-                              <SelectItem value="agent">Agente</SelectItem>
-                              <SelectItem value="evaluator">Evaluador</SelectItem>
-                              <SelectItem value="admin">Administrador</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="space-y-2">
+                            <Label htmlFor="role" className="text-sm font-medium text-foreground">
+                              Tipo de Usuario *
+                            </Label>
+                            <Select
+                              value={formData.role}
+                              onValueChange={value =>
+                                setFormData(prev => ({ ...prev, role: value }))
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="customer">Cliente</SelectItem>
+                                <SelectItem value="agent">Agente</SelectItem>
+                                <SelectItem value="evaluator">Evaluador</SelectItem>
+                                <SelectItem value="admin">Administrador</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Password fields in their own row */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="password">Contraseña *</Label>
-                          <div className="text-xs space-y-1">
-                            <div
-                              className={`flex items-center gap-2 ${
-                                hasMinLength(formData.password) ? 'text-green-600' : 'text-red-600'
-                              }`}
+                      {/* Información Personal Adicional */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-medium text-foreground border-b pb-2">
+                          Información Personal Adicional
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="country" className="text-sm font-medium">
+                              País de Residencia *
+                            </Label>
+                            <Select
+                              value={formData.country}
+                              onValueChange={value =>
+                                setFormData(prev => ({ ...prev, country: value }))
+                              }
                             >
-                              <span
-                                className={`w-2 h-2 rounded-full ${
-                                  hasMinLength(formData.password) ? 'bg-green-600' : 'bg-red-600'
-                                }`}
-                              ></span>
-                              Mínimo 8 caracteres
-                            </div>
-                            <div
-                              className={`flex items-center gap-2 ${
-                                hasUppercase(formData.password) ? 'text-green-600' : 'text-red-600'
-                              }`}
-                            >
-                              <span
-                                className={`w-2 h-2 rounded-full ${
-                                  hasUppercase(formData.password) ? 'bg-green-600' : 'bg-red-600'
-                                }`}
-                              ></span>
-                              Al menos 1 mayúscula
-                            </div>
-                            <div
-                              className={`flex items-center gap-2 ${
-                                hasSpecialChar(formData.password)
-                                  ? 'text-green-600'
-                                  : 'text-red-600'
-                              }`}
-                            >
-                              <span
-                                className={`w-2 h-2 rounded-full ${
-                                  hasSpecialChar(formData.password) ? 'bg-green-600' : 'bg-red-600'
-                                }`}
-                              ></span>
-                              Al menos 1 carácter especial
-                            </div>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Selecciona un país" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Costa Rica">🇨🇷 Costa Rica</SelectItem>
+                                <SelectItem value="Guatemala">🇬🇹 Guatemala</SelectItem>
+                                <SelectItem value="El Salvador">🇸🇻 El Salvador</SelectItem>
+                                <SelectItem value="Honduras">🇭🇳 Honduras</SelectItem>
+                                <SelectItem value="Nicaragua">🇳🇮 Nicaragua</SelectItem>
+                                <SelectItem value="Panamá">🇵🇦 Panamá</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
-                          <Input
-                            id="password"
-                            type="password"
-                            value={formData.password}
-                            onChange={e =>
-                              setFormData(prev => ({ ...prev, password: e.target.value }))
-                            }
-                            placeholder="••••••••"
-                            required
-                          />
-                        </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
-                          <div className="text-xs space-y-1">
-                            <div
-                              className={`flex items-center gap-2 ${
-                                formData.confirmPassword &&
-                                formData.password === formData.confirmPassword
-                                  ? 'text-green-600'
-                                  : 'text-red-600'
-                              }`}
+                          <div className="space-y-2">
+                            <Label htmlFor="birthDate" className="text-sm font-medium">
+                              Fecha de Nacimiento *
+                            </Label>
+                            <Input
+                              id="birthDate"
+                              type="date"
+                              value={formData.birthDate}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, birthDate: e.target.value }))
+                              }
+                              className="w-full"
+                              required
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Debe ser mayor de 18 años
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="licenseYear" className="text-sm font-medium">
+                              Año que se Obtuvo la Licencia *
+                            </Label>
+                            <Input
+                              id="licenseYear"
+                              type="number"
+                              min="1950"
+                              max={new Date().getFullYear()}
+                              value={formData.licenseYear}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, licenseYear: e.target.value }))
+                              }
+                              placeholder={`Ej: ${new Date().getFullYear() - 10}`}
+                              className="w-full"
+                              required
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Entre 1950 y {new Date().getFullYear()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Seguridad y Contraseña */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-medium text-foreground border-b pb-2">
+                          Seguridad y Contraseña
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="password"
+                              className="text-sm font-medium text-foreground"
                             >
-                              <span
-                                className={`w-2 h-2 rounded-full ${
+                              Contraseña *
+                            </Label>
+                            <div className="text-xs space-y-1">
+                              <div
+                                className={`flex items-center gap-2 ${
+                                  hasMinLength(formData.password)
+                                    ? 'text-green-600'
+                                    : 'text-red-600'
+                                }`}
+                              >
+                                <span
+                                  className={`w-2 h-2 rounded-full ${
+                                    hasMinLength(formData.password) ? 'bg-green-600' : 'bg-red-600'
+                                  }`}
+                                ></span>
+                                Mínimo 8 caracteres
+                              </div>
+                              <div
+                                className={`flex items-center gap-2 ${
+                                  hasUppercase(formData.password)
+                                    ? 'text-green-600'
+                                    : 'text-red-600'
+                                }`}
+                              >
+                                <span
+                                  className={`w-2 h-2 rounded-full ${
+                                    hasUppercase(formData.password) ? 'bg-green-600' : 'bg-red-600'
+                                  }`}
+                                ></span>
+                                Al menos 1 mayúscula
+                              </div>
+                              <div
+                                className={`flex items-center gap-2 ${
+                                  hasSpecialChar(formData.password)
+                                    ? 'text-green-600'
+                                    : 'text-red-600'
+                                }`}
+                              >
+                                <span
+                                  className={`w-2 h-2 rounded-full ${
+                                    hasSpecialChar(formData.password)
+                                      ? 'bg-green-600'
+                                      : 'bg-red-600'
+                                  }`}
+                                ></span>
+                                Al menos 1 carácter especial
+                              </div>
+                            </div>
+                            <Input
+                              id="password"
+                              type="password"
+                              value={formData.password}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, password: e.target.value }))
+                              }
+                              placeholder="••••••••"
+                              required
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="confirmPassword"
+                              className="text-sm font-medium text-foreground"
+                            >
+                              Confirmar Contraseña *
+                            </Label>
+                            <div className="text-xs space-y-1">
+                              <div
+                                className={`flex items-center gap-2 ${
                                   formData.confirmPassword &&
                                   formData.password === formData.confirmPassword
-                                    ? 'bg-green-600'
-                                    : 'bg-red-600'
+                                    ? 'text-green-600'
+                                    : 'text-red-600'
                                 }`}
-                              ></span>
-                              {formData.confirmPassword
-                                ? formData.password === formData.confirmPassword
-                                  ? 'Las contraseñas coinciden'
-                                  : 'Las contraseñas no coinciden'
-                                : 'Confirma tu contraseña'}
+                              >
+                                <span
+                                  className={`w-2 h-2 rounded-full ${
+                                    formData.confirmPassword &&
+                                    formData.password === formData.confirmPassword
+                                      ? 'bg-green-600'
+                                      : 'bg-red-600'
+                                  }`}
+                                ></span>
+                                {formData.confirmPassword
+                                  ? formData.password === formData.confirmPassword
+                                    ? 'Las contraseñas coinciden'
+                                    : 'Las contraseñas no coinciden'
+                                  : 'Confirma tu contraseña'}
+                              </div>
                             </div>
+                            <Input
+                              id="confirmPassword"
+                              type="password"
+                              value={formData.confirmPassword}
+                              onChange={e =>
+                                setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))
+                              }
+                              placeholder="••••••••"
+                              required
+                            />
                           </div>
-                          <Input
-                            id="confirmPassword"
-                            type="password"
-                            value={formData.confirmPassword}
-                            onChange={e =>
-                              setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))
-                            }
-                            placeholder="••••••••"
-                            required
-                          />
                         </div>
                       </div>
 
@@ -570,6 +700,9 @@ export default function AdminDashboard() {
                               lastName: '',
                               phone: '',
                               role: 'customer',
+                              country: 'Costa Rica',
+                              birthDate: '',
+                              licenseYear: '',
                             })
                           }
                           disabled={loading}
