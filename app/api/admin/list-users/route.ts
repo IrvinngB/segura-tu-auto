@@ -3,8 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 
 // Crear cliente con permisos de administrador
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sztuxibgvlwbykaopnqg.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6dHV4aWJndmx3YnlrYW9wbnFnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODEyMjA5MCwiZXhwIjoyMDczNjk4MDkwfQ.ptW2xg0PvIr3MwaHIGdv1IQn7-Yickcg_vy4RoCUpB0',
   {
     auth: {
       autoRefreshToken: false,
@@ -16,7 +17,7 @@ const supabaseAdmin = createClient(
 export async function GET(request: NextRequest) {
   try {
     console.log('📋 Iniciando listado de usuarios...');
-    
+
     // Para desarrollo, omitir verificación de auth temporalmente
     // TODO: Reactivar autenticación en producción
 

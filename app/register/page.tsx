@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -42,8 +42,14 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isFormValidState, setIsFormValidState] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  // UseEffect para actualizar la validez del formulario en tiempo real
+  useEffect(() => {
+    setIsFormValidState(isFormValid());
+  }, [formData]);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -134,18 +140,23 @@ export default function RegisterPage() {
 
       if (error) {
         handleError(error.message);
+        setLoading(false);
         return;
       }
 
       if (data.user) {
-        console.log('Usuario creado en auth:', data.user.id);
-        console.log('Email confirmado:', data.user.email_confirmed_at !== null);
+        console.log('✅ Usuario creado en auth:', data.user.id);
+        console.log('📧 Email confirmado:', data.user.email_confirmed_at !== null);
 
         // Si el email no está confirmado, mostrar mensaje de confirmación
         if (!data.user.email_confirmed_at) {
+          console.log('📬 Email no confirmado, mostrando modal de confirmación');
           setShowSuccessModal(true);
+          setLoading(false); // ¡Importante! Resetear loading state
           return; // No crear registros adicionales hasta confirmar email
         }
+
+        console.log('📝 Procediendo a insertar usuario en tabla users...');
 
         // Insert user data into users table
         const { data: userData, error: insertError } = await supabase
@@ -164,6 +175,7 @@ export default function RegisterPage() {
         if (insertError) {
           console.error('Error insertando usuario:', insertError);
           handleError(insertError.message);
+          setLoading(false);
           return;
         }
 
@@ -191,6 +203,7 @@ export default function RegisterPage() {
           if (customerError) {
             console.error('Error creando perfil de cliente:', customerError);
             handleError(customerError.message);
+            setLoading(false);
             return;
           }
 
@@ -202,6 +215,7 @@ export default function RegisterPage() {
         }
 
         // Mostrar modal de éxito
+        console.log('🎉 Registro completado exitosamente!');
         setShowSuccessModal(true);
       }
     } catch (err) {
@@ -234,28 +248,65 @@ export default function RegisterPage() {
 
   // Función para verificar si todos los campos requeridos están completos
   const isFormValid = () => {
+    // Validación básica de email
+    const isValidEmail = (email: string) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    };
+
+    // Validaciones individuales para debugging
+    const validations = {
+      firstName: formData.firstName.trim() !== '',
+      lastName: formData.lastName.trim() !== '',
+      email: formData.email.trim() !== '',
+      emailFormat: isValidEmail(formData.email.trim()),
+      phone: formData.phone.trim() !== '',
+      password: formData.password.trim() !== '',
+      confirmPassword: formData.confirmPassword.trim() !== '',
+      passwordsMatch: formData.password === formData.confirmPassword,
+      passwordValid: validatePassword(formData.password),
+    };
+
     // Campos básicos requeridos para todos los roles
-    const basicFieldsComplete =
-      formData.firstName.trim() !== '' &&
-      formData.lastName.trim() !== '' &&
-      formData.email.trim() !== '' &&
-      formData.phone.trim() !== '' &&
-      formData.password.trim() !== '' &&
-      formData.confirmPassword.trim() !== '' &&
-      formData.password === formData.confirmPassword &&
-      validatePassword(formData.password);
+    const basicFieldsComplete = Object.values(validations).every(v => v === true);
 
     // Si es customer, verificar campos adicionales requeridos
     if (formData.role === 'customer') {
-      const customerFieldsComplete =
-        formData.country.trim() !== '' &&
-        formData.birthDate.trim() !== '' &&
-        formData.licenseYear.trim() !== '';
+      const customerValidations = {
+        country: formData.country.trim() !== '',
+        birthDate: formData.birthDate.trim() !== '',
+        licenseYear: formData.licenseYear.trim() !== '',
+        licenseYearLength: formData.licenseYear.trim().length >= 4,
+      };
 
-      return basicFieldsComplete && customerFieldsComplete;
+      const customerFieldsComplete = Object.values(customerValidations).every(v => v === true);
+      const finalResult = basicFieldsComplete && customerFieldsComplete;
+
+      // Debug logs (temporal)
+      console.log('🔍 Form Validation Debug:', {
+        basic: validations,
+        customer: customerValidations,
+        basicComplete: basicFieldsComplete,
+        customerComplete: customerFieldsComplete,
+        finale: finalResult,
+        formData: {
+          firstName: `"${formData.firstName}"`,
+          lastName: `"${formData.lastName}"`,
+          email: `"${formData.email}"`,
+          phone: `"${formData.phone}"`,
+          password: `"${formData.password}"`,
+          confirmPassword: `"${formData.confirmPassword}"`,
+          country: `"${formData.country}"`,
+          birthDate: `"${formData.birthDate}"`,
+          licenseYear: `"${formData.licenseYear}"`,
+        },
+      });
+
+      return finalResult;
     }
 
-    // Para agent, solo campos básicos
+    // Para otros roles, solo campos básicos
+    console.log('🔍 Form Validation (Basic):', validations, basicFieldsComplete);
     return basicFieldsComplete;
   };
 
@@ -541,7 +592,7 @@ export default function RegisterPage() {
                 </>
               )}
 
-              <Button type="submit" className="w-full" disabled={loading || !isFormValid()}>
+              <Button type="submit" className="w-full" disabled={loading || !isFormValidState}>
                 {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
               </Button>
             </form>

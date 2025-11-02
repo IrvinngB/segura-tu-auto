@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { PolicyExpirationManager } from '@/components/policies/policy-expiration-manager';
+import { MessageModal } from '@/components/ui/input-modal';
 
 interface User {
   id: string;
@@ -82,6 +83,15 @@ export default function AdminDashboard() {
     phone: '',
     role: 'customer',
   });
+  const [successModal, setSuccessModal] = useState({
+    show: false,
+    title: '',
+    message: '',
+  });
+  const [systemStats, setSystemStats] = useState({
+    vehicles: { total: 247, insured: 189, uninsured: 58 },
+    claims: { total: 156, pending: 23, approved: 98, rejected: 35 },
+  });
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -90,7 +100,7 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       console.log('Cargando usuarios...');
-      
+
       const response = await fetch('/api/admin/list-users', {
         method: 'GET',
         headers: {
@@ -129,10 +139,56 @@ export default function AdminDashboard() {
     }
   }, [activeUserTab]);
 
+  // Cargar estadísticas al inicio
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Función para validar la contraseña
+  const validatePassword = (password: string) => {
+    if (password.length < 8) return false;
+    if (!/[A-Z]/.test(password)) return false; // Al menos una mayúscula
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) return false; // Al menos un carácter especial
+    return true;
+  };
+
+  // Funciones para validar cada requisito individualmente
+  const hasMinLength = (password: string) => password.length >= 8;
+  const hasUppercase = (password: string) => /[A-Z]/.test(password);
+  const hasSpecialChar = (password: string) =>
+    /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+  // Función para validar email
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validations
+    // Validación de email
+    if (!validateEmail(formData.email)) {
+      toast({
+        title: 'Error de validación',
+        description: 'Por favor ingresa un email válido',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validación de contraseña
+    if (!validatePassword(formData.password)) {
+      toast({
+        title: 'Error de validación',
+        description:
+          'La contraseña debe tener al menos 8 caracteres, una mayúscula y un carácter especial',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validación de confirmación de contraseña
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: 'Error de validación',
@@ -142,10 +198,11 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (formData.password.length < 6) {
+    // Validación de campos requeridos
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
       toast({
         title: 'Error de validación',
-        description: 'La contraseña debe tener al menos 6 caracteres',
+        description: 'El nombre y apellido son requeridos',
         variant: 'destructive',
       });
       return;
@@ -180,10 +237,6 @@ export default function AdminDashboard() {
       console.log('Respuesta del servidor:', result);
 
       if (response.ok) {
-        toast({
-          title: '¡Éxito!',
-          description: 'Usuario creado correctamente',
-        });
         // Reset form
         setFormData({
           email: '',
@@ -194,10 +247,24 @@ export default function AdminDashboard() {
           phone: '',
           role: 'customer',
         });
-        // Refresh users list if we're on that tab
-        if (activeUserTab === 'list') {
-          fetchUsers();
-        }
+
+        // Mostrar modal de éxito
+        setSuccessModal({
+          show: true,
+          title: '¡Usuario Creado Exitosamente!',
+          message: `El usuario ${formData.firstName} ${formData.lastName} ha sido creado correctamente con el rol de ${
+            formData.role === 'customer'
+              ? 'Cliente'
+              : formData.role === 'agent'
+                ? 'Agente'
+                : formData.role === 'evaluator'
+                  ? 'Evaluador'
+                  : 'Administrador'
+          }.`,
+        });
+
+        // Refresh statistics
+        fetchUsers();
       } else {
         toast({
           title: 'Error',
@@ -399,6 +466,46 @@ export default function AdminDashboard() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="password">Contraseña *</Label>
+                          <div className="text-xs space-y-1">
+                            <div
+                              className={`flex items-center gap-2 ${
+                                hasMinLength(formData.password) ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  hasMinLength(formData.password) ? 'bg-green-600' : 'bg-red-600'
+                                }`}
+                              ></span>
+                              Mínimo 8 caracteres
+                            </div>
+                            <div
+                              className={`flex items-center gap-2 ${
+                                hasUppercase(formData.password) ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  hasUppercase(formData.password) ? 'bg-green-600' : 'bg-red-600'
+                                }`}
+                              ></span>
+                              Al menos 1 mayúscula
+                            </div>
+                            <div
+                              className={`flex items-center gap-2 ${
+                                hasSpecialChar(formData.password)
+                                  ? 'text-green-600'
+                                  : 'text-red-600'
+                              }`}
+                            >
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  hasSpecialChar(formData.password) ? 'bg-green-600' : 'bg-red-600'
+                                }`}
+                              ></span>
+                              Al menos 1 carácter especial
+                            </div>
+                          </div>
                           <Input
                             id="password"
                             type="password"
@@ -413,6 +520,30 @@ export default function AdminDashboard() {
 
                         <div className="space-y-2">
                           <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
+                          <div className="text-xs space-y-1">
+                            <div
+                              className={`flex items-center gap-2 ${
+                                formData.confirmPassword &&
+                                formData.password === formData.confirmPassword
+                                  ? 'text-green-600'
+                                  : 'text-red-600'
+                              }`}
+                            >
+                              <span
+                                className={`w-2 h-2 rounded-full ${
+                                  formData.confirmPassword &&
+                                  formData.password === formData.confirmPassword
+                                    ? 'bg-green-600'
+                                    : 'bg-red-600'
+                                }`}
+                              ></span>
+                              {formData.confirmPassword
+                                ? formData.password === formData.confirmPassword
+                                  ? 'Las contraseñas coinciden'
+                                  : 'Las contraseñas no coinciden'
+                                : 'Confirma tu contraseña'}
+                            </div>
+                          </div>
                           <Input
                             id="confirmPassword"
                             type="password"
@@ -445,7 +576,17 @@ export default function AdminDashboard() {
                         >
                           Limpiar
                         </Button>
-                        <Button type="submit" disabled={loading}>
+                        <Button
+                          type="submit"
+                          disabled={
+                            loading ||
+                            !formData.firstName.trim() ||
+                            !formData.lastName.trim() ||
+                            !validateEmail(formData.email) ||
+                            !validatePassword(formData.password) ||
+                            formData.password !== formData.confirmPassword
+                          }
+                        >
                           {loading ? 'Creando...' : 'Crear Usuario'}
                         </Button>
                       </div>
@@ -544,42 +685,378 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="vehicles">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestión de Vehículos</CardTitle>
-                <CardDescription>Administra los vehículos registrados</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p>Funcionalidad de vehículos próximamente...</p>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              {/* Vehicle Statistics */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Vehículos</CardTitle>
+                    <Car className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.vehicles.total}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Asegurados</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.vehicles.insured}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Sin Seguro</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.vehicles.uninsured}</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Vehicle Management */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Car className="h-5 w-5" />
+                    <span>Vehículos Registrados</span>
+                  </CardTitle>
+                  <CardDescription>Lista de todos los vehículos en el sistema</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Placa</TableHead>
+                        <TableHead>Marca/Modelo</TableHead>
+                        <TableHead>Año</TableHead>
+                        <TableHead>Propietario</TableHead>
+                        <TableHead>Estado Seguro</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium">ABC-123</TableCell>
+                        <TableCell>Toyota Corolla</TableCell>
+                        <TableCell>2020</TableCell>
+                        <TableCell>Juan Pérez</TableCell>
+                        <TableCell>
+                          <Badge className="text-green-600">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Asegurado
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm">
+                            Ver Detalles
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">XYZ-789</TableCell>
+                        <TableCell>Honda Civic</TableCell>
+                        <TableCell>2019</TableCell>
+                        <TableCell>María González</TableCell>
+                        <TableCell>
+                          <Badge variant="destructive">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Sin Seguro
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm">
+                            Ver Detalles
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="claims">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestión de Reclamaciones</CardTitle>
-                <CardDescription>Administra las reclamaciones de seguros</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p>Funcionalidad de reclamaciones próximamente...</p>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              {/* Claims Statistics */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Reclamaciones</CardTitle>
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.claims.total}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.claims.pending}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Aprobadas</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.claims.approved}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Rechazadas</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.claims.rejected}</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Claims Management */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="h-5 w-5" />
+                    <span>Reclamaciones Recientes</span>
+                  </CardTitle>
+                  <CardDescription>Administra todas las reclamaciones de seguros</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Vehículo</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium">#12345</TableCell>
+                        <TableCell>Juan Pérez</TableCell>
+                        <TableCell>ABC-123</TableCell>
+                        <TableCell>Colisión</TableCell>
+                        <TableCell>$2,500</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-yellow-600">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Pendiente
+                          </Badge>
+                        </TableCell>
+                        <TableCell>2024-10-28</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm">
+                              Ver
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              Procesar
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">#12344</TableCell>
+                        <TableCell>María González</TableCell>
+                        <TableCell>XYZ-789</TableCell>
+                        <TableCell>Robo</TableCell>
+                        <TableCell>$15,000</TableCell>
+                        <TableCell>
+                          <Badge className="text-green-600">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Aprobada
+                          </Badge>
+                        </TableCell>
+                        <TableCell>2024-10-25</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm">
+                              Ver
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              Pagar
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuración del Sistema</CardTitle>
-                <CardDescription>Ajustes generales de la aplicación</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p>Configuraciones próximamente...</p>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              {/* System Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Settings className="h-5 w-5" />
+                    <span>Configuración General</span>
+                  </CardTitle>
+                  <CardDescription>Ajustes generales de la aplicación</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName">Nombre de la Empresa</Label>
+                      <Input id="companyName" defaultValue="SeguraTuAuto" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="currency">Moneda</Label>
+                      <Select defaultValue="CRC">
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CRC">Colones (₡)</SelectItem>
+                          <SelectItem value="USD">Dólares ($)</SelectItem>
+                          <SelectItem value="EUR">Euros (€)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="language">Idioma</Label>
+                      <Select defaultValue="es">
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="es">Español</SelectItem>
+                          <SelectItem value="en">English</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="timezone">Zona Horaria</Label>
+                      <Select defaultValue="America/Costa_Rica">
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="America/Costa_Rica">Costa Rica</SelectItem>
+                          <SelectItem value="America/New_York">New York</SelectItem>
+                          <SelectItem value="Europe/Madrid">Madrid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button>Guardar Configuración</Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Security Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Lock className="h-5 w-5" />
+                    <span>Configuración de Seguridad</span>
+                  </CardTitle>
+                  <CardDescription>Ajustes de seguridad y autenticación</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="sessionTimeout">Tiempo de Sesión (minutos)</Label>
+                      <Input id="sessionTimeout" type="number" defaultValue="30" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="passwordLength">Longitud Mínima de Contraseña</Label>
+                      <Input id="passwordLength" type="number" defaultValue="8" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maxLoginAttempts">Intentos Máximos de Login</Label>
+                      <Input id="maxLoginAttempts" type="number" defaultValue="3" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="twoFactorAuth">Autenticación de Dos Factores</Label>
+                      <Select defaultValue="optional">
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="required">Obligatorio</SelectItem>
+                          <SelectItem value="optional">Opcional</SelectItem>
+                          <SelectItem value="disabled">Deshabilitado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button>Actualizar Seguridad</Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Notification Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Mail className="h-5 w-5" />
+                    <span>Configuración de Notificaciones</span>
+                  </CardTitle>
+                  <CardDescription>Ajustes de notificaciones y correos</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpServer">Servidor SMTP</Label>
+                      <Input id="smtpServer" defaultValue="smtp.gmail.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpPort">Puerto SMTP</Label>
+                      <Input id="smtpPort" type="number" defaultValue="587" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="fromEmail">Email Remitente</Label>
+                      <Input id="fromEmail" type="email" defaultValue="admin@seguratuauto.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="replyToEmail">Email de Respuesta</Label>
+                      <Input
+                        id="replyToEmail"
+                        type="email"
+                        defaultValue="support@seguratuauto.com"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button>Guardar Notificaciones</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal de éxito */}
+      <MessageModal
+        show={successModal.show}
+        title={successModal.title}
+        message={successModal.message}
+        type="success"
+        onClose={() => setSuccessModal(prev => ({ ...prev, show: false }))}
+        buttonText="¡Excelente!"
+      />
     </div>
   );
 }
