@@ -1,0 +1,135 @@
+name: Auto Sync to Production
+
+# Se ejecuta cuando hay push a la rama actualizada
+on:
+  push:
+    branches:
+      - actualizada
+
+jobs:
+  sync-to-prod:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout del repositorio
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Traer todo el historial
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Configurar Git
+      - name: ⚙️ Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+
+      # 3. Fetch todas las ramas
+      - name: 🔄 Fetch all branches
+        run: |
+          git fetch origin actualizada:actualizada
+          git fetch origin prod:prod || git fetch origin main:prod || echo "Rama prod no existe aún"
+
+      # 4. Verificar si prod existe, si no, crearla
+      - name: 🌿 Create prod branch if not exists
+        run: |
+          if ! git show-ref --verify --quiet refs/heads/prod; then
+            echo "✨ Creando rama prod por primera vez..."
+            git checkout -b prod
+            git push origin prod
+          fi
+
+      # 5. Cambiar a rama prod
+      - name: 🔀 Switch to prod branch
+        run: |
+          git checkout prod
+
+      # 6. Intentar merge de actualizada a prod
+      - name: 🔄 Merge actualizada into prod
+        id: merge
+        continue-on-error: true
+        run: |
+          echo "🔍 Intentando merge de actualizada a prod..."
+          git merge origin/actualizada --no-ff -m "🚀 Auto-sync from actualizada to prod"
+
+      # 7. Verificar si hay conflictos
+      - name: ⚠️ Check for merge conflicts
+        if: steps.merge.outcome == 'failure'
+        run: |
+          echo "❌ CONFLICTOS DETECTADOS ❌"
+          echo ""
+          echo "📋 Archivos con conflictos:"
+          git diff --name-only --diff-filter=U || true
+          echo ""
+          echo "⚠️  No se puede hacer merge automático."
+          echo "🔧 Por favor, resuelve los conflictos manualmente:"
+          echo "   1. git checkout prod"
+          echo "   2. git merge actualizada"
+          echo "   3. Resolver conflictos"
+          echo "   4. git commit"
+          echo "   5. git push origin prod"
+          exit 1
+
+      # 8. Si no hay conflictos, hacer push a prod
+      - name: 🚀 Push to prod
+        if: steps.merge.outcome == 'success'
+        run: |
+          echo "✅ Merge exitoso, subiendo cambios a prod..."
+          git push origin prod
+          echo "🎉 Cambios sincronizados correctamente de actualizada → prod"
+
+      # 9. Crear tag de versión automático (opcional)
+      - name: 🏷️ Create version tag
+        if: steps.merge.outcome == 'success'
+        run: |
+          VERSION_TAG="v$(date +'%Y.%m.%d-%H%M')"
+          git tag -a "$VERSION_TAG" -m "Auto-sync from actualizada to prod"
+          git push origin "$VERSION_TAG"
+          echo "🏷️  Tag creado: $VERSION_TAG"
+
+      # 10. Comentar en el último commit si fue exitoso
+      - name: 💬 Success notification
+        if: steps.merge.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commit_sha = context.sha;
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: commit_sha,
+              body: '✅ **Auto-sync exitoso**\n\nLos cambios de `actualizada` fueron sincronizados automáticamente a `prod` 🚀'
+            });
+
+      # 11. Crear issue si hay conflictos
+      - name: 🐛 Create issue on conflict
+        if: steps.merge.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueBody = `## ⚠️ Conflictos detectados en auto-sync
+            
+            **Rama origen:** actualizada
+            **Rama destino:** prod
+            **Commit:** ${context.sha}
+            
+            ### 🔧 Cómo resolver:
+            1. git checkout prod
+            2. git merge actualizada
+            3. Resolver conflictos manualmente
+            4. git add .
+            5. git commit -m "Resolver conflictos"
+            6. git push origin prod
+            
+            ### 🔗 Commit:
+            ${context.payload.head_commit.message}
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Conflictos en auto-sync actualizada a prod',
+              body: issueBody,
+              labels: ['merge-conflict', 'auto-sync', 'urgent']
+            });
+
