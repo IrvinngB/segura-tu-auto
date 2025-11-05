@@ -244,3 +244,24 @@ export interface Notification {
   expires_at?: string;
   created_at: string;
 }
+
+export interface ClaimCustomerDocument {
+  id: string;
+  claim_id: string;
+  customer_id: string;
+  document_type: 'license' | 'id' | 'proof_of_address' | 'invoice' | 'police_report' | 'photos' | 'other';
+  file_name: string;
+  file_url: string;
+  file_size: number;
+  mime_type?: string;
+  upload_date: string;
+  status: 'pending' | 'approved' | 'rejected';
+  notes?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at: string;
+  customer?: Customer;
+  claim?: Claim;
+  reviewer?: User;
+}

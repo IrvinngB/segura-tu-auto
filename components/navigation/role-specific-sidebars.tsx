@@ -119,16 +119,10 @@ const adjusterNavigation: NavigationItem[] = [
     description: 'Gestión de reclamos',
   },
   {
-    name: 'Evaluaciones',
-    href: '/adjuster/assessments',
-    icon: ClipboardList,
-    description: 'Evaluaciones de daños',
-  },
-  {
     name: 'Mis Casos',
     href: '/adjuster/cases',
-    icon: AlertTriangle,
-    description: 'Casos asignados',
+    icon: ClipboardList,
+    description: 'Casos activos e histórico',
   },
 ];
 
@@ -158,12 +152,11 @@ const SidebarContent = memo(function SidebarContent({ navigation, userProfile }:
         'Cotizaciones',
         'Mis Reclamaciones',
         'Reclamaciones',
+        'Mis Casos',
       ].includes(item.name)
     );
     const management = navigation.filter(item =>
-      ['Clientes', 'Mis Vehículos', 'Evaluación de Riesgo', 'Evaluaciones', 'Mis Casos'].includes(
-        item.name
-      )
+      ['Clientes', 'Mis Vehículos', 'Evaluación de Riesgo'].includes(item.name)
     );
     const tools = navigation.filter(item =>
       ['Nueva Cotización', 'Documentos', 'Pagos', 'Comunicaciones'].includes(item.name)

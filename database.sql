@@ -13,6 +13,46 @@ CREATE TABLE public.audit_logs (
   CONSTRAINT audit_logs_pkey PRIMARY KEY (id),
   CONSTRAINT audit_logs_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.users(id)
 );
+CREATE TABLE public.claim_customer_documents (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  claim_id uuid NOT NULL,
+  customer_id uuid NOT NULL,
+  document_type character varying NOT NULL CHECK (document_type::text = ANY (ARRAY['license'::character varying, 'id'::character varying, 'proof_of_address'::character varying, 'invoice'::character varying, 'police_report'::character varying, 'photos'::character varying, 'other'::character varying]::text[])),
+  file_name character varying NOT NULL,
+  file_url text NOT NULL,
+  file_size integer NOT NULL,
+  mime_type character varying,
+  upload_date timestamp with time zone DEFAULT now(),
+  status character varying NOT NULL DEFAULT 'pending'::character varying CHECK (status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying]::text[])),
+  notes text,
+  reviewed_by uuid,
+  reviewed_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT claim_customer_documents_pkey PRIMARY KEY (id),
+  CONSTRAINT claim_customer_documents_claim_id_fkey FOREIGN KEY (claim_id) REFERENCES public.claims(id),
+  CONSTRAINT claim_customer_documents_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id),
+  CONSTRAINT claim_customer_documents_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.claim_documents (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  claim_id uuid NOT NULL,
+  document_type character varying NOT NULL DEFAULT 'evidence'::character varying,
+  file_name character varying NOT NULL,
+  file_url text NOT NULL,
+  file_type character varying NOT NULL,
+  file_size integer,
+  uploaded_by uuid,
+  upload_source character varying DEFAULT 'web'::character varying,
+  description text,
+  is_verified boolean DEFAULT false,
+  verification_notes text,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT claim_documents_pkey PRIMARY KEY (id),
+  CONSTRAINT claim_documents_claim_id_fkey FOREIGN KEY (claim_id) REFERENCES public.claims(id),
+  CONSTRAINT claim_documents_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.users(id)
+);
 CREATE TABLE public.claims (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   claim_number character varying NOT NULL UNIQUE,
@@ -120,6 +160,23 @@ CREATE TABLE public.documents (
   CONSTRAINT documents_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.policies(id),
   CONSTRAINT documents_claim_id_fkey FOREIGN KEY (claim_id) REFERENCES public.claims(id),
   CONSTRAINT documents_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.payment_methods (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  customer_id uuid NOT NULL,
+  type character varying NOT NULL CHECK (type::text = ANY (ARRAY['credit_card'::character varying::text, 'debit_card'::character varying::text, 'bank_account'::character varying::text, 'digital_wallet'::character varying::text])),
+  name character varying NOT NULL,
+  last_four character varying NOT NULL,
+  expiry_date character varying,
+  brand character varying,
+  bank_name character varying,
+  is_primary boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  encrypted_data jsonb,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT payment_methods_pkey PRIMARY KEY (id),
+  CONSTRAINT payment_methods_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id)
 );
 CREATE TABLE public.payments (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -249,18 +306,4 @@ CREATE TABLE public.vehicles (
   usage_type character varying CHECK (usage_type::text = ANY (ARRAY['personal'::character varying, 'commercial'::character varying, 'taxi'::character varying, 'delivery'::character varying, 'other'::character varying]::text[])),
   CONSTRAINT vehicles_pkey PRIMARY KEY (id),
   CONSTRAINT vehicles_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id)
-);
-
--- Tabla para el historial de cambios de estado de reclamaciones
-CREATE TABLE public.claim_status_history (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  claim_id uuid NOT NULL,
-  previous_status character varying NOT NULL,
-  new_status character varying NOT NULL,
-  changed_by uuid NOT NULL,
-  change_reason text,
-  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT claim_status_history_pkey PRIMARY KEY (id),
-  CONSTRAINT claim_status_history_claim_id_fkey FOREIGN KEY (claim_id) REFERENCES public.claims(id) ON DELETE CASCADE,
-  CONSTRAINT claim_status_history_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.users(id)
 );
