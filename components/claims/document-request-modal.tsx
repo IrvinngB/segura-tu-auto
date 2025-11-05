@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Plus, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 interface DocumentRequestModalProps {
   claimId: string;
@@ -114,10 +115,11 @@ ${notes ? `Notas adicionales: ${notes}` : ''}`,
       setRequestedDocs([]);
       setNotes('');
 
-      alert('✅ Solicitud de documentos enviada correctamente');
+      toast.success('Solicitud de documentos enviada correctamente');
     } catch (error) {
       console.error('❌ Error en solicitud de documentos:', error);
       setError(error instanceof Error ? error.message : 'Error desconocido');
+      toast.error('Error al enviar la solicitud de documentos');
     } finally {
       setLoading(false);
     }

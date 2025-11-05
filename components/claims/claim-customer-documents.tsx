@@ -6,9 +6,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Upload, FileText, Download, Trash2, Eye, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface ClaimCustomerDocument {
   id: string;
@@ -47,6 +58,8 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [selectedDocumentType, setSelectedDocumentType] = useState<ClaimCustomerDocument['document_type']>('other');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<{ id: string; fileUrl: string } | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -77,14 +90,14 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
     // Validar tamaño (10MB)
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      alert('El archivo no debe superar los 10MB');
+      toast.error('El archivo no debe superar los 10MB');
       return;
     }
 
     // Validar tipo
     const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Solo se permiten archivos JPG, PNG o PDF');
+      toast.error('Solo se permiten archivos JPG, PNG o PDF');
       return;
     }
 
@@ -166,7 +179,7 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
 
       console.log('✅ Documento guardado en BD:', dbData);
 
-      alert('✅ Documento subido exitosamente');
+      toast.success('Documento subido exitosamente');
       fetchDocuments();
     } catch (error) {
       console.error('❌ Error completo:', error);
@@ -174,11 +187,14 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
       // Mensaje más amigable según el tipo de error
       const errorMessage = (error as Error).message;
       if (errorMessage.includes('Bucket not found')) {
-        alert('❌ Error: El bucket de almacenamiento no existe. Contacta al administrador.');
+        toast.error('Error: El bucket de almacenamiento no existe. Contacta al administrador.');
       } else if (errorMessage.includes('Permisos insuficientes')) {
-        alert('❌ ' + errorMessage + '\n\n💡 El administrador debe ejecutar el archivo SETUP_COMPLETE_CLAIM_DOCUMENTS.sql en Supabase.');
+        toast.error(errorMessage, {
+          description: '💡 El administrador debe ejecutar el archivo SETUP_COMPLETE_CLAIM_DOCUMENTS.sql en Supabase.',
+          duration: 6000,
+        });
       } else {
-        alert('❌ Error al subir el documento: ' + errorMessage);
+        toast.error('Error al subir el documento: ' + errorMessage);
       }
     } finally {
       setUploading(false);
@@ -188,12 +204,17 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
     }
   };
 
-  const handleDelete = async (docId: string, fileUrl: string) => {
-    if (!confirm('¿Está seguro de eliminar este documento?')) return;
+  const handleDeleteClick = (docId: string, fileUrl: string) => {
+    setDocumentToDelete({ id: docId, fileUrl });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!documentToDelete) return;
 
     try {
       // Extraer path del archivo de la URL
-      const urlParts = fileUrl.split('/');
+      const urlParts = documentToDelete.fileUrl.split('/');
       const filePath = urlParts.slice(urlParts.indexOf('clientes-adjuntos') + 1).join('/');
 
       // Eliminar de storage
@@ -207,15 +228,18 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
       const { error: dbError } = await supabase
         .from('claim_customer_documents')
         .delete()
-        .eq('id', docId);
+        .eq('id', documentToDelete.id);
 
       if (dbError) throw dbError;
 
-      alert('Documento eliminado');
+      toast.success('Documento eliminado');
       fetchDocuments();
     } catch (error) {
       console.error('Error deleting document:', error);
-      alert('Error al eliminar el documento');
+      toast.error('Error al eliminar el documento');
+    } finally {
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
     }
   };
 
@@ -232,11 +256,11 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
 
       if (error) throw error;
 
-      alert(`Documento ${newStatus === 'approved' ? 'aprobado' : 'rechazado'}`);
+      toast.success(`Documento ${newStatus === 'approved' ? 'aprobado' : 'rechazado'}`);
       fetchDocuments();
     } catch (error) {
       console.error('Error updating document status:', error);
-      alert('Error al actualizar el estado');
+      toast.error('Error al actualizar el estado');
     }
   };
 
@@ -274,6 +298,7 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <div className="space-y-4">
@@ -404,7 +429,7 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleDelete(doc.id, doc.file_url)}
+                      onClick={() => handleDeleteClick(doc.id, doc.file_url)}
                       className="text-destructive hover:text-destructive dark:hover:bg-gray-700"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -441,5 +466,23 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
         )}
       </CardContent>
     </Card>
+
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. El documento será eliminado permanentemente.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
