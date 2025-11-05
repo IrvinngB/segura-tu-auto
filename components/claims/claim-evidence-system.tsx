@@ -42,6 +42,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 
 interface ClaimDocument {
   id: string;
@@ -392,6 +393,10 @@ export function ClaimEvidenceSystem({
         <CardTitle className="flex items-center gap-2">
           <Camera className="h-5 w-5" />
           Evidencias y Documentos
+          <InfoTooltip 
+            content="Sube fotos claras del daño, reportes policiales, cotizaciones de reparación y cualquier otro documento relevante. Esto acelera el proceso de tu reclamación."
+            side="right"
+          />
         </CardTitle>
         <CardDescription>Documentos y evidencias relacionadas con esta reclamación</CardDescription>
       </CardHeader>

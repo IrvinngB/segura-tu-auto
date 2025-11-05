@@ -29,6 +29,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
 import { RenewalNotificationsPanel } from '@/components/policies/renewal-notifications-panel';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 
 export default function CustomerDashboard() {
   const { userProfile } = useAuth();
@@ -404,6 +405,7 @@ export default function CustomerDashboard() {
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
                     Mis Reclamaciones
+                    <InfoTooltip content="Resumen de tus reclamaciones activas. Haz clic en 'Ver todas' para ver el historial completo o 'Nueva' para reportar un siniestro." />
                   </CardTitle>
                   <CardDescription>Estado de tus reclamaciones recientes</CardDescription>
                 </div>

@@ -20,6 +20,7 @@ import { Upload, FileText, Download, Trash2, Eye, AlertCircle, CheckCircle, Cloc
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 
 interface ClaimCustomerDocument {
   id: string;
@@ -307,6 +308,10 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Documentos del Cliente
+                <InfoTooltip 
+                  content="Sube los documentos solicitados por tu ajustador. Los archivos permitidos son JPG, PNG y PDF (máximo 10MB). Una vez revisados, verás su estado como Aprobado o Rechazado."
+                  side="right"
+                />
               </CardTitle>
               <CardDescription>
                 Documentos adicionales subidos por el cliente para esta reclamación

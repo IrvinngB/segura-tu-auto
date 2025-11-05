@@ -28,6 +28,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import { POLICY_PLANS } from '@/lib/policy-plans';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 import {
   Dialog,
   DialogContent,
@@ -338,27 +339,45 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      active: { label: 'Activa', classes: 'status-badge status-active' },
+      active: { 
+        label: 'Activa', 
+        classes: 'status-badge status-active',
+        tooltip: 'Tu póliza está activa y te protege en este momento. Recuerda renovarla antes de que expire.'
+      },
       expired: {
         label: 'Vencida',
         classes: 'status-badge status-expired',
+        tooltip: 'Esta póliza ha expirado. Ya no estás protegido. Renuévala lo antes posible para mantener tu cobertura.'
       },
       cancelled: {
         label: 'Cancelada',
         classes: 'status-badge status-cancelled',
+        tooltip: 'Esta póliza fue cancelada y ya no proporciona cobertura.'
       },
       suspended: {
         label: 'Suspendida',
         classes: 'status-badge status-suspended',
+        tooltip: 'La póliza está suspendida por falta de pago. Contacta a tu agente para reactivarla.'
       },
-      draft: { label: 'Borrador', classes: 'status-badge status-draft' },
+      draft: { 
+        label: 'Borrador', 
+        classes: 'status-badge status-draft',
+        tooltip: 'Esta póliza aún no está activa. Debes completar el pago para activarla y obtener cobertura.'
+      },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
       label: status,
       classes: 'status-badge status-active',
+      tooltip: ''
     };
-    return <span className={config.classes}>{config.label}</span>;
+    
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className={config.classes}>{config.label}</span>
+        {config.tooltip && <InfoTooltip content={config.tooltip} side="right" />}
+      </div>
+    );
   };
 
   const getPolicyTypeLabel = (type: string) => {

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 export default function NewClaimPage() {
     const {
@@ -134,8 +135,12 @@ export default function NewClaimPage() {
                         Volver
                     </Button>
                     <div>
-                        <h1 className="text-3xl font-bold">
+                        <h1 className="text-3xl font-bold flex items-center gap-2">
                             Nueva Reclamación
+                            <InfoTooltip 
+                              content="Completa este formulario con todos los detalles del siniestro. Entre más información proporciones, más rápido procesaremos tu reclamación. Puedes agregar fotos y documentos después de crear la reclamación."
+                              side="right"
+                            />
                         </h1>
                         <p className="text-muted-foreground">
                             Reporta un siniestro para procesar tu reclamación

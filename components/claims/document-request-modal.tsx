@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, Plus, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 
 interface DocumentRequestModalProps {
   claimId: string;
@@ -140,6 +141,7 @@ ${notes ? `Notas adicionales: ${notes}` : ''}`,
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Solicitar Documentos Adicionales
+            <InfoTooltip content="Envía una solicitud al cliente para que suba documentos específicos necesarios para procesar la reclamación. El cliente recibirá una notificación y podrá subir los archivos desde su portal." />
           </DialogTitle>
           <DialogDescription>Seleccione los documentos que necesita del cliente</DialogDescription>
         </DialogHeader>
