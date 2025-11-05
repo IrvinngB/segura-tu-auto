@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, FileText, Download, Trash2, Eye, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -45,6 +46,7 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
   const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [selectedDocumentType, setSelectedDocumentType] = useState<ClaimCustomerDocument['document_type']>('other');
   const supabase = createClient();
 
   useEffect(() => {
@@ -89,18 +91,26 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
     setUploading(true);
 
     try {
-      // Generar nombre único con timestamp
-      const timestamp = Date.now();
-      const randomStr = Math.random().toString(36).substring(7);
+      // Obtener extensión del archivo original
       const fileExt = file.name.split('.').pop();
-      const fileName = `${claimId}/${timestamp}-${randomStr}.${fileExt}`;
+      
+      // Generar nombre basado en el tipo de documento seleccionado
+      const documentTypeLabel = DOCUMENT_TYPE_LABELS[selectedDocumentType]
+        .toLowerCase()
+        .replace(/\s+/g, '_') // Reemplazar espacios por guiones bajos
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, ''); // Eliminar acentos
+      
+      const timestamp = Date.now();
+      const newFileName = `${documentTypeLabel}_${timestamp}.${fileExt}`;
+      const storagePath = `${claimId}/${newFileName}`;
 
-      console.log('📤 Subiendo archivo:', fileName);
+      console.log('📤 Subiendo archivo como:', newFileName);
 
       // Subir a Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('clientes-adjuntos')
-        .upload(fileName, file, {
+        .upload(storagePath, file, {
           cacheControl: '3600',
           upsert: false,
           contentType: file.type,
@@ -116,21 +126,21 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
       // Obtener URL pública
       const { data: { publicUrl } } = supabase.storage
         .from('clientes-adjuntos')
-        .getPublicUrl(fileName);
+        .getPublicUrl(storagePath);
 
       console.log('🔗 URL pública:', publicUrl);
 
-      // Detectar tipo de documento automáticamente
-      const documentType = detectDocumentType(file.name);
+      // Usar el tipo de documento seleccionado por el usuario
+      const documentType = selectedDocumentType;
 
-      // Guardar en base de datos
+      // Guardar en base de datos con el nombre generado
       const { data: dbData, error: dbError } = await supabase
         .from('claim_customer_documents')
         .insert({
           claim_id: claimId,
           customer_id: customerId,
           document_type: documentType,
-          file_name: file.name,
+          file_name: newFileName, // Usar el nuevo nombre
           file_url: publicUrl,
           file_size: file.size,
           mime_type: file.type,
@@ -142,7 +152,7 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
       if (dbError) {
         console.error('❌ Error en base de datos:', dbError);
         // Intentar eliminar el archivo subido
-        await supabase.storage.from('clientes-adjuntos').remove([fileName]);
+        await supabase.storage.from('clientes-adjuntos').remove([storagePath]);
         
         // Mensaje de error más específico
         if (dbError.message.includes('row-level security')) {
@@ -173,18 +183,9 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
     } finally {
       setUploading(false);
       event.target.value = '';
+      // Resetear selector al valor por defecto
+      setSelectedDocumentType('other');
     }
-  };
-
-  const detectDocumentType = (fileName: string): ClaimCustomerDocument['document_type'] => {
-    const lowerName = fileName.toLowerCase();
-    if (lowerName.includes('licencia') || lowerName.includes('license')) return 'license';
-    if (lowerName.includes('identificacion') || lowerName.includes('id') || lowerName.includes('ine')) return 'id';
-    if (lowerName.includes('comprobante') || lowerName.includes('domicilio')) return 'proof_of_address';
-    if (lowerName.includes('factura') || lowerName.includes('invoice')) return 'invoice';
-    if (lowerName.includes('policia') || lowerName.includes('police')) return 'police_report';
-    if (lowerName.includes('foto') || lowerName.includes('photo') || lowerName.includes('img')) return 'photos';
-    return 'other';
   };
 
   const handleDelete = async (docId: string, fileUrl: string) => {
@@ -275,36 +276,65 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Documentos del Cliente
-            </CardTitle>
-            <CardDescription>
-              Documentos adicionales subidos por el cliente para esta reclamación
-            </CardDescription>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Documentos del Cliente
+              </CardTitle>
+              <CardDescription>
+                Documentos adicionales subidos por el cliente para esta reclamación
+              </CardDescription>
+            </div>
           </div>
-          
+
           {/* Permitir subir a: customer, agent, adjuster, admin */}
           {['customer', 'agent', 'adjuster', 'admin'].includes(currentUserRole || '') && (
-            <div>
-              <input
-                type="file"
-                id="file-upload"
-                className="hidden"
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={handleFileUpload}
-                disabled={uploading}
-              />
-              <label htmlFor="file-upload">
-                <Button asChild disabled={uploading}>
-                  <span className="cursor-pointer">
-                    <Upload className="h-4 w-4 mr-2" />
-                    {uploading ? 'Subiendo...' : 'Subir Documento'}
-                  </span>
-                </Button>
-              </label>
+            <div className="flex gap-3 items-end">
+              {/* Selector de tipo de documento */}
+              <div className="flex-1">
+                <label className="text-sm font-medium text-muted-foreground dark:text-gray-300 block mb-2">
+                  Tipo de Documento
+                </label>
+                <Select
+                  value={selectedDocumentType}
+                  onValueChange={(value) => setSelectedDocumentType(value as ClaimCustomerDocument['document_type'])}
+                >
+                  <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700">
+                    <SelectValue placeholder="Selecciona el tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="license">📄 Licencia de Conducir</SelectItem>
+                    <SelectItem value="id">🪪 Identificación Oficial</SelectItem>
+                    <SelectItem value="proof_of_address">🏠 Comprobante de Domicilio</SelectItem>
+                    <SelectItem value="invoice">🧾 Factura del Vehículo</SelectItem>
+                    <SelectItem value="police_report">👮 Reporte Policial</SelectItem>
+                    <SelectItem value="photos">📸 Fotografías del Siniestro</SelectItem>
+                    <SelectItem value="other">📎 Otro Documento</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Botón de subir */}
+              <div>
+                <input
+                  type="file"
+                  id="file-upload"
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                />
+                <label htmlFor="file-upload">
+                  <Button asChild disabled={uploading}>
+                    <span className="cursor-pointer">
+                      <Upload className="h-4 w-4 mr-2" />
+                      {uploading ? 'Subiendo...' : 'Subir Documento'}
+                    </span>
+                  </Button>
+                </label>
+              </div>
             </div>
           )}
         </div>
