@@ -15,7 +15,10 @@ import { ClaimWorkflow } from '@/components/claims/claim-workflow';
 import { ClaimCommunication } from '@/components/claims/claim-communication';
 import { DocumentRequirementSystem } from '@/components/claims/document-requirement-system';
 import { ClaimEvidenceSystem } from '@/components/claims/claim-evidence-system';
+import { ClaimCustomerDocuments } from '@/components/claims/claim-customer-documents';
 import { ProtectedRoute } from '@/components/auth/protected-route';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { InputModal, MessageModal } from '@/components/ui/input-modal';
 import { createBrowserClient } from '@supabase/ssr';
 import { useAuth } from '@/components/auth/auth-provider';
 import type { Claim, DamageAssessment, ClaimDocument } from '@/lib/types/database';
@@ -30,6 +33,16 @@ import {
   User,
   Car,
   AlertTriangle,
+  Search,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Send,
+  RefreshCw,
+  FolderOpen,
+  UserCheck,
+  Shield,
+  CreditCard,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -45,6 +58,55 @@ export default function ClaimDetailPage() {
   const [documents, setDocuments] = useState<ClaimDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
+
+  // Estados para modales
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+    type?: 'success' | 'warning' | 'error' | 'info';
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    onCancel: () => {},
+  });
+
+  const [inputModal, setInputModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    inputLabel: string;
+    inputPlaceholder?: string;
+    inputDefaultValue?: string;
+    inputType?: string;
+    onConfirm: (value: string) => void;
+    onCancel: () => void;
+    type?: 'success' | 'warning' | 'error' | 'info' | 'money';
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    inputLabel: '',
+    onConfirm: () => {},
+    onCancel: () => {},
+  });
+
+  const [messageModal, setMessageModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onClose: () => void;
+    type?: 'success' | 'warning' | 'error' | 'info';
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    onClose: () => {},
+  });
 
   // Determinar la tab inicial basado en el parámetro de query
   const initialTab = searchParams.get('tab') || 'details';
@@ -155,10 +217,22 @@ export default function ClaimDetailPage() {
       await fetchClaimDetails();
       console.log('Claim data refreshed');
 
-      alert(`Estado actualizado correctamente a: ${newStatus}`);
+      setMessageModal({
+        show: true,
+        title: 'Estado Actualizado',
+        message: `Estado actualizado correctamente a: ${newStatus}`,
+        type: 'success',
+        onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+      });
     } catch (error) {
       console.error('Error updating claim status:', error);
-      alert('Error al actualizar el estado de la reclamación: ' + (error as Error).message);
+      setMessageModal({
+        show: true,
+        title: 'Error',
+        message: 'Error al actualizar el estado de la reclamación: ' + (error as Error).message,
+        type: 'error',
+        onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+      });
     }
   };
 
@@ -166,64 +240,105 @@ export default function ClaimDetailPage() {
     if (!claim || !userProfile) return;
 
     // Mostrar modal para ingresar monto aprobado
-    const approvedAmount = prompt(
-      'Ingrese el monto aprobado para esta reclamación:',
-      claim.estimated_damage_cost?.toString() || '0'
-    );
+    setInputModal({
+      show: true,
+      title: 'Aprobar Reclamación',
+      message: 'Ingrese el monto aprobado para esta reclamación:',
+      inputLabel: 'Monto Aprobado',
+      inputPlaceholder: 'Ej: 5000',
+      inputDefaultValue: claim.estimated_damage_cost?.toString() || '0',
+      inputType: 'number',
+      type: 'money',
+      onConfirm: async (approvedAmount: string) => {
+        if (!approvedAmount || isNaN(Number(approvedAmount))) {
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Debe ingresar un monto válido',
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+          return;
+        }
 
-    if (!approvedAmount || isNaN(Number(approvedAmount))) {
-      alert('Debe ingresar un monto válido');
-      return;
-    }
+        try {
+          // Actualizar reclamación con monto aprobado
+          const { error } = await supabase
+            .from('claims')
+            .update({
+              status: 'approved',
+              approved_amount: Number(approvedAmount),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', params.id);
 
-    try {
-      // Actualizar reclamación con monto aprobado
-      const { error } = await supabase
-        .from('claims')
-        .update({
-          status: 'approved',
-          approved_amount: Number(approvedAmount),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
+          if (error) throw error;
 
-      if (error) throw error;
-
-      await fetchClaimDetails();
-      alert(`Reclamación aprobada por $${Number(approvedAmount).toLocaleString()}`);
-    } catch (error) {
-      console.error('Error approving claim:', error);
-      alert('Error al aprobar la reclamación: ' + (error as Error).message);
-    }
+          await fetchClaimDetails();
+          setMessageModal({
+            show: true,
+            title: 'Reclamación Aprobada',
+            message: `Reclamación aprobada por $${Number(approvedAmount).toLocaleString()}`,
+            type: 'success',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+        } catch (error) {
+          console.error('Error approving claim:', error);
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Error al aprobar la reclamación: ' + (error as Error).message,
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+        }
+      },
+      onCancel: () => setInputModal(prev => ({ ...prev, show: false }))
+    });
   };
 
   const processPayment = async () => {
     if (!claim || !userProfile) return;
 
-    const confirmed = confirm(
-      `¿Está seguro de iniciar el proceso de pago por $${claim.approved_amount?.toLocaleString() || '0'}?`
-    );
+    setConfirmModal({
+      show: true,
+      title: 'Confirmar Proceso de Pago',
+      message: `¿Está seguro de iniciar el proceso de pago por $${claim.approved_amount?.toLocaleString() || '0'}?`,
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          // Actualizar estado a processing_payment
+          const { error } = await supabase
+            .from('claims')
+            .update({
+              status: 'processing_payment',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', params.id);
 
-    if (!confirmed) return;
+          if (error) throw error;
 
-    try {
-      // Actualizar estado a processing_payment
-      const { error } = await supabase
-        .from('claims')
-        .update({
-          status: 'processing_payment',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
-
-      if (error) throw error;
-
-      await fetchClaimDetails();
-      alert('Proceso de pago iniciado. Se enviará notificación al cliente.');
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      alert('Error al procesar el pago: ' + (error as Error).message);
-    }
+          await fetchClaimDetails();
+          setMessageModal({
+            show: true,
+            title: 'Proceso Iniciado',
+            message: 'Proceso de pago iniciado. Se enviará notificación al cliente.',
+            type: 'success',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+        } catch (error) {
+          console.error('Error processing payment:', error);
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Error al procesar el pago: ' + (error as Error).message,
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+          });
+        }
+      },
+      onCancel: () => setConfirmModal(prev => ({ ...prev, show: false }))
+    });
   };
 
   const confirmPayment = async () => {
@@ -259,6 +374,10 @@ export default function ClaimDetailPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
+      pending: {
+        label: 'Pendiente',
+        classes: 'status-badge status-pending',
+      },
       submitted: {
         label: 'Enviada',
         classes: 'status-badge status-submitted',
@@ -268,7 +387,7 @@ export default function ClaimDetailPage() {
         classes: 'status-badge status-under-review',
       },
       pending_documentation: {
-        label: 'Pendiente Documentos',
+        label: 'Documentos Pendientes',
         classes: 'status-badge status-pending',
       },
       waiting_approval: {
@@ -276,7 +395,7 @@ export default function ClaimDetailPage() {
         classes: 'status-badge status-waiting',
       },
       investigating: {
-        label: 'Investigando',
+        label: 'En Investigación',
         classes: 'status-badge status-investigating',
       },
       approved: {
@@ -287,12 +406,22 @@ export default function ClaimDetailPage() {
         label: 'Procesando Pago',
         classes: 'status-badge status-processing',
       },
+      rejected: {
+        label: 'Rechazada',
+        classes: 'status-badge status-denied',
+      },
       denied: {
         label: 'Denegada',
         classes: 'status-badge status-denied',
       },
-      closed: { label: 'Cerrada', classes: 'status-badge status-closed' },
-      paid: { label: 'Pagada', classes: 'status-badge status-paid' },
+      closed: { 
+        label: 'Cerrada', 
+        classes: 'status-badge status-closed' 
+      },
+      paid: { 
+        label: 'Pagada', 
+        classes: 'status-badge status-paid' 
+      },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
@@ -434,9 +563,24 @@ export default function ClaimDetailPage() {
                   </CardDescription>
                 </div>
                 <Badge variant="outline" className="ml-2">
-                  {userProfile?.role === 'agent' && '📋 AGENTE'}
-                  {userProfile?.role === 'adjuster' && '🔍 AJUSTADOR'}
-                  {userProfile?.role === 'admin' && '👨‍💻 ADMIN'}
+                  {userProfile?.role === 'agent' && (
+                    <>
+                      <FileText className="h-3 w-3 mr-1" />
+                      AGENTE
+                    </>
+                  )}
+                  {userProfile?.role === 'adjuster' && (
+                    <>
+                      <Search className="h-3 w-3 mr-1" />
+                      AJUSTADOR
+                    </>
+                  )}
+                  {userProfile?.role === 'admin' && (
+                    <>
+                      <Shield className="h-3 w-3 mr-1" />
+                      ADMIN
+                    </>
+                  )}
                 </Badge>
               </div>
             </CardHeader>
@@ -444,11 +588,12 @@ export default function ClaimDetailPage() {
               {/* FUNCIONES DE AGENTE - Solo revisión documental y asignación a evaluadores */}
               {userProfile?.role === 'agent' && (
                 <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                    <h4 className="font-semibold text-blue-800 mb-2">
-                      📋 Especialización: Revisión Documental y Asignación
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Especialización: Revisión Documental y Asignación
                     </h4>
-                    <p className="text-sm text-blue-700">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
                       Como agente, tu función es revisar la documentación inicial y asignar casos a
                       evaluadores técnicos.
                     </p>
@@ -477,15 +622,16 @@ export default function ClaimDetailPage() {
                           onClick={() => updateClaimStatus('investigating')}
                           className="bg-blue-600 hover:bg-blue-700"
                         >
-                          <User className="h-4 w-4 mr-2" />
-                          🔍 Asignar a Evaluador Técnico
+                          <Search className="h-4 w-4 mr-2" />
+                          Asignar a Evaluador Técnico
                         </Button>
                         <DocumentRequestModal
                           claimId={Array.isArray(params.id) ? params.id[0] : params.id}
                           onDocumentRequested={fetchClaimDetails}
                         />
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
-                          ❌ Rechazar por Documentación Insuficiente
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Rechazar por Documentación Insuficiente
                         </Button>
                       </>
                     )}
@@ -496,10 +642,12 @@ export default function ClaimDetailPage() {
                           onClick={() => updateClaimStatus('under_review')}
                           className="bg-blue-600 hover:bg-blue-700"
                         >
-                          📋 Continuar Revisión Documental
+                          <FileText className="h-4 w-4 mr-2" />
+                          Continuar Revisión Documental
                         </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
-                          ❌ Denegar por Falta de Documentos
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Denegar por Falta de Documentos
                         </Button>
                       </>
                     )}
@@ -511,9 +659,10 @@ export default function ClaimDetailPage() {
                       'processing_payment',
                       'paid',
                     ].includes(claim.status) && (
-                      <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
-                        <p className="text-sm text-yellow-700">
-                          ⏳ <strong>Caso en proceso técnico:</strong> El ajustador está manejando
+                      <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 p-3 rounded-lg">
+                        <p className="text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          <strong>Caso en proceso técnico:</strong> El ajustador está manejando
                           la evaluación y aprobación.
                         </p>
                       </div>
@@ -526,10 +675,12 @@ export default function ClaimDetailPage() {
                           onClick={() => updateClaimStatus('under_review')}
                           className="border-blue-600 text-blue-600 hover:bg-blue-50"
                         >
-                          🔄 Reabrir para Nueva Revisión Documental
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Reabrir para Nueva Revisión Documental
                         </Button>
                         <Button onClick={() => updateClaimStatus('closed')}>
-                          📁 Cerrar Definitivamente
+                          <FolderOpen className="h-4 w-4 mr-2" />
+                          Cerrar Definitivamente
                         </Button>
                       </>
                     )}
@@ -540,11 +691,12 @@ export default function ClaimDetailPage() {
               {/* FUNCIONES DE AJUSTADOR - Solo evaluación técnica y aprobación de montos */}
               {userProfile?.role === 'adjuster' && (
                 <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                    <h4 className="font-semibold text-green-800 mb-2">
-                      🔍 Especialización: Evaluación Técnica y Aprobación de Montos
+                  <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 rounded-lg">
+                    <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2 flex items-center gap-2">
+                      <Search className="h-5 w-5" />
+                      Especialización: Evaluación Técnica y Aprobación de Montos
                     </h4>
-                    <p className="text-sm text-green-700">
+                    <p className="text-sm text-green-700 dark:text-green-300">
                       Como ajustador, tu función es realizar evaluaciones técnicas de daños y
                       aprobar montos de indemnización.
                     </p>
@@ -554,9 +706,10 @@ export default function ClaimDetailPage() {
                     {['submitted', 'under_review', 'pending_documentation'].includes(
                       claim.status
                     ) && (
-                      <div className="bg-gray-50 border border-gray-200 p-3 rounded-lg">
-                        <p className="text-sm text-gray-700">
-                          ⏳ <strong>Caso en revisión documental:</strong> El agente está revisando
+                      <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 rounded-lg">
+                        <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          <strong>Caso en revisión documental:</strong> El agente está revisando
                           la documentación antes de asignarte el caso.
                         </p>
                       </div>
@@ -569,31 +722,34 @@ export default function ClaimDetailPage() {
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <ClipboardCheck className="h-4 w-4 mr-2" />
-                          🔍 Realizar Evaluación Técnica de Daños
+                          Realizar Evaluación Técnica de Daños
                         </Button>
                         <Button
                           variant="secondary"
                           onClick={() => updateClaimStatus('waiting_approval')}
                           className="bg-green-100 text-green-700 hover:bg-green-200"
                         >
-                          📤 Enviar a Aprobación Final
+                          <Send className="h-4 w-4 mr-2" />
+                          Enviar a Aprobación Final
                         </Button>
                         <Button
                           onClick={approveClaimWithAmount}
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <DollarSign className="h-4 w-4 mr-2" />
-                          💰 Aprobar Directamente con Monto
+                          Aprobar Directamente con Monto
                         </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
-                          ❌ Denegar por Evaluación Técnica
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Denegar por Evaluación Técnica
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => updateClaimStatus('under_review')}
                           className="border-blue-600 text-blue-600"
                         >
-                          ⬅️ Devolver a Agente para Más Documentos
+                          <ArrowLeft className="h-4 w-4 mr-2" />
+                          Devolver a Agente para Más Documentos
                         </Button>
                       </>
                     )}
@@ -604,17 +760,20 @@ export default function ClaimDetailPage() {
                           onClick={approveClaimWithAmount}
                           className="bg-green-600 hover:bg-green-700"
                         >
-                          <DollarSign className="h-4 w-4 mr-2" />✅ Aprobar con Monto Final
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Aprobar con Monto Final
                         </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
-                          ❌ Denegar Reclamación
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Denegar Reclamación
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => updateClaimStatus('investigating')}
                           className="border-green-600 text-green-600"
                         >
-                          🔍 Continuar Investigación Técnica
+                          <Search className="h-4 w-4 mr-2" />
+                          Continuar Investigación Técnica
                         </Button>
                       </>
                     )}
@@ -627,11 +786,12 @@ export default function ClaimDetailPage() {
                           className="border-green-600 text-green-600 hover:bg-green-50"
                         >
                           <ClipboardCheck className="h-4 w-4 mr-2" />
-                          📝 Revisar Evaluación Técnica
+                          Revisar Evaluación Técnica
                         </Button>
-                        <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
-                          <p className="text-sm text-blue-700">
-                            ✅ <strong>Aprobación completada:</strong> El proceso de pago será
+                        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
+                          <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <strong>Aprobación completada:</strong> El proceso de pago será
                             manejado por el agente o administrador.
                           </p>
                         </div>
@@ -639,18 +799,20 @@ export default function ClaimDetailPage() {
                     )}
 
                     {['processing_payment', 'paid', 'closed'].includes(claim.status) && (
-                      <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
-                        <p className="text-sm text-blue-700">
-                          💰 <strong>Proceso completado:</strong> Tu evaluación técnica ha sido
+                      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
+                        <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          <strong>Proceso completado:</strong> Tu evaluación técnica ha sido
                           aprobada y está en proceso de pago.
                         </p>
                       </div>
                     )}
 
                     {claim.status === 'denied' && (
-                      <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
-                        <p className="text-sm text-red-700">
-                          ❌ <strong>Caso denegado:</strong> Solo un administrador puede reabrir
+                      <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-3 rounded-lg">
+                        <p className="text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
+                          <XCircle className="h-4 w-4" />
+                          <strong>Caso denegado:</strong> Solo un administrador puede reabrir
                           este caso.
                         </p>
                       </div>
@@ -662,11 +824,12 @@ export default function ClaimDetailPage() {
               {/* FUNCIONES DE ADMINISTRADOR - Control total del sistema */}
               {userProfile?.role === 'admin' && (
                 <div className="space-y-4">
-                  <div className="bg-purple-50 border border-purple-200 p-4 rounded-lg">
-                    <h4 className="font-semibold text-purple-800 mb-2">
-                      👨‍💻 Administrador: Control Total del Sistema
+                  <div className="bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 p-4 rounded-lg">
+                    <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-2 flex items-center gap-2">
+                      <Shield className="h-5 w-5" />
+                      Administrador: Control Total del Sistema
                     </h4>
-                    <p className="text-sm text-purple-700">
+                    <p className="text-sm text-purple-700 dark:text-purple-300">
                       Como administrador, tienes acceso completo a todas las funciones del sistema.
                     </p>
                   </div>
@@ -675,16 +838,18 @@ export default function ClaimDetailPage() {
                     {claim.status === 'submitted' && (
                       <>
                         <Button onClick={() => updateClaimStatus('under_review')}>
+                          <FileText className="h-4 w-4 mr-2" />
                           Iniciar Revisión
                         </Button>
                         <Button onClick={() => updateClaimStatus('investigating')}>
-                          <User className="h-4 w-4 mr-2" />
+                          <UserCheck className="h-4 w-4 mr-2" />
                           Asignar Directamente a Evaluador
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => updateClaimStatus('pending_documentation')}
                         >
+                          <FileText className="h-4 w-4 mr-2" />
                           Solicitar Más Documentos
                         </Button>
                       </>
@@ -693,12 +858,14 @@ export default function ClaimDetailPage() {
                     {claim.status === 'under_review' && (
                       <>
                         <Button onClick={() => updateClaimStatus('investigating')}>
+                          <UserCheck className="h-4 w-4 mr-2" />
                           Asignar a Evaluador
                         </Button>
                         <Button
                           variant="secondary"
                           onClick={() => updateClaimStatus('waiting_approval')}
                         >
+                          <Send className="h-4 w-4 mr-2" />
                           Enviar a Aprobación
                         </Button>
                         <DocumentRequestModal
@@ -711,9 +878,11 @@ export default function ClaimDetailPage() {
                     {claim.status === 'pending_documentation' && (
                       <>
                         <Button onClick={() => updateClaimStatus('under_review')}>
+                          <FileText className="h-4 w-4 mr-2" />
                           Continuar Revisión
                         </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
+                          <XCircle className="h-4 w-4 mr-2" />
                           Denegar por Falta de Documentos
                         </Button>
                       </>
@@ -729,13 +898,19 @@ export default function ClaimDetailPage() {
                           variant="secondary"
                           onClick={() => updateClaimStatus('waiting_approval')}
                         >
+                          <Send className="h-4 w-4 mr-2" />
                           Enviar a Aprobación
                         </Button>
-                        <Button onClick={approveClaimWithAmount}>Aprobar Directamente</Button>
+                        <Button onClick={approveClaimWithAmount}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Aprobar Directamente
+                        </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
+                          <XCircle className="h-4 w-4 mr-2" />
                           Denegar Reclamación
                         </Button>
                         <Button variant="outline" onClick={() => updateClaimStatus('under_review')}>
+                          <ArrowLeft className="h-4 w-4 mr-2" />
                           Regresar a Revisión
                         </Button>
                       </>
@@ -743,14 +918,19 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'waiting_approval' && (
                       <>
-                        <Button onClick={approveClaimWithAmount}>Aprobar con Monto</Button>
+                        <Button onClick={approveClaimWithAmount}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Aprobar con Monto
+                        </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
+                          <XCircle className="h-4 w-4 mr-2" />
                           Denegar Reclamación
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => updateClaimStatus('investigating')}
                         >
+                          <Search className="h-4 w-4 mr-2" />
                           Regresar a Investigación
                         </Button>
                       </>
@@ -758,11 +938,15 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'approved' && (
                       <>
-                        <Button onClick={processPayment}>Iniciar Proceso de Pago</Button>
+                        <Button onClick={processPayment}>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Iniciar Proceso de Pago
+                        </Button>
                         <Button
                           variant="outline"
                           onClick={() => updateClaimStatus('investigating')}
                         >
+                          <Search className="h-4 w-4 mr-2" />
                           Revisar Nuevamente
                         </Button>
                       </>
@@ -770,8 +954,12 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'processing_payment' && (
                       <>
-                        <Button onClick={confirmPayment}>Confirmar Pago Realizado</Button>
+                        <Button onClick={confirmPayment}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Confirmar Pago Realizado
+                        </Button>
                         <Button variant="outline" onClick={() => updateClaimStatus('approved')}>
+                          <XCircle className="h-4 w-4 mr-2" />
                           Cancelar Procesamiento
                         </Button>
                       </>
@@ -779,6 +967,7 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'paid' && (
                       <Button onClick={() => updateClaimStatus('closed')}>
+                        <FolderOpen className="h-4 w-4 mr-2" />
                         Cerrar Reclamación
                       </Button>
                     )}
@@ -786,9 +975,11 @@ export default function ClaimDetailPage() {
                     {claim.status === 'denied' && (
                       <>
                         <Button variant="outline" onClick={() => updateClaimStatus('under_review')}>
+                          <RefreshCw className="h-4 w-4 mr-2" />
                           Reabrir para Revisión
                         </Button>
                         <Button onClick={() => updateClaimStatus('closed')}>
+                          <FolderOpen className="h-4 w-4 mr-2" />
                           Cerrar Definitivamente
                         </Button>
                       </>
@@ -796,6 +987,7 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'closed' && (
                       <Button variant="outline" onClick={() => updateClaimStatus('under_review')}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
                         Reabrir Reclamación
                       </Button>
                     )}
@@ -818,11 +1010,7 @@ export default function ClaimDetailPage() {
         <Tabs defaultValue={initialTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="details">Detalles</TabsTrigger>
-            {(userProfile?.role === 'agent' ||
-              userProfile?.role === 'adjuster' ||
-              userProfile?.role === 'admin') && (
-              <TabsTrigger value="processing">Procesamiento</TabsTrigger>
-            )}
+            <TabsTrigger value="processing">Procesamiento</TabsTrigger>
             <TabsTrigger value="assessments">Evaluaciones ({assessments.length})</TabsTrigger>
             <TabsTrigger value="documents">Documentos ({documents.length})</TabsTrigger>
             <TabsTrigger value="evidence">Evidencia</TabsTrigger>
@@ -1041,8 +1229,10 @@ export default function ClaimDetailPage() {
                 claimId={claim.id}
                 currentStatus={claim.status}
                 priority={claim.priority}
-                onStatusUpdate={newStatus => {
-                  setClaim(prev => (prev ? { ...prev, status: newStatus } : null));
+                onStatusUpdate={(newStatus: string) => {
+                  setClaim(prev =>
+                    prev ? { ...prev, status: newStatus as Claim['status'] } : null
+                  );
                   fetchClaimDetails();
                 }}
               />
@@ -1073,27 +1263,27 @@ export default function ClaimDetailPage() {
               <div className="space-y-6">
                 {/* Sección especializada para Ajustador */}
                 {userProfile?.role === 'adjuster' && (
-                  <Card className="bg-green-50 border-green-200">
+                  <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-green-800">
+                      <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
                         <ClipboardCheck className="h-5 w-5" />
-                        🔍 Área de Evaluación Técnica
+                        Área de Evaluación Técnica
                       </CardTitle>
-                      <CardDescription className="text-green-700">
+                      <CardDescription className="text-green-700 dark:text-green-300">
                         Como <strong>Ajustador</strong>, tu especialización es realizar evaluaciones
                         técnicas de daños y determinar montos de reparación.
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="flex justify-between items-center">
-                        <div className="text-sm text-green-700">
+                        <div className="text-sm text-green-700 dark:text-green-300">
                           <p>• Evalúa daños técnicamente</p>
                           <p>• Determina costos de reparación</p>
                           <p>• Recomienda acciones técnicas</p>
                         </div>
                         <Button
                           onClick={() => setShowAssessmentForm(true)}
-                          className="bg-green-600 hover:bg-green-700"
+                          className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
                         >
                           <ClipboardCheck className="h-4 w-4 mr-2" />
                           Nueva Evaluación Técnica
@@ -1105,13 +1295,13 @@ export default function ClaimDetailPage() {
 
                 {/* Información para Agente */}
                 {userProfile?.role === 'agent' && (
-                  <Card className="bg-blue-50 border-blue-200">
+                  <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-blue-800">
+                      <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
                         <FileText className="h-5 w-5" />
-                        📋 Evaluaciones Técnicas del Caso
+                        Evaluaciones Técnicas del Caso
                       </CardTitle>
-                      <CardDescription className="text-blue-700">
+                      <CardDescription className="text-blue-700 dark:text-blue-300">
                         Como <strong>Agente</strong>, puedes ver las evaluaciones técnicas
                         realizadas por los ajustadores pero no crear nuevas.
                       </CardDescription>
@@ -1230,6 +1420,13 @@ export default function ClaimDetailPage() {
 
           <TabsContent value="documents">
             <div className="space-y-6">
+              {/* Customer Uploaded Documents - NUEVO */}
+              <ClaimCustomerDocuments
+                claimId={claim.id}
+                customerId={claim.customer_id}
+                currentUserRole={userProfile?.role}
+              />
+
               {/* Document Requirement System */}
               <DocumentRequirementSystem
                 claimId={claim.id}
@@ -1243,21 +1440,24 @@ export default function ClaimDetailPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Documentos Enviados
+                    Documentos del Sistema
                   </CardTitle>
+                  <CardDescription>
+                    Documentos generados automáticamente o solicitados por el sistema
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {documents.length === 0 ? (
                     <div className="text-center py-8">
                       <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="text-muted-foreground">No hay documentos adjuntos</p>
+                      <p className="text-muted-foreground">No hay documentos del sistema</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {documents.map(doc => (
                         <div
                           key={doc.id}
-                          className="flex items-center justify-between p-4 border rounded-lg"
+                          className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-700"
                         >
                           <div className="flex items-center gap-3">
                             {doc.document_type === 'photo' ? (
@@ -1295,7 +1495,7 @@ export default function ClaimDetailPage() {
           <TabsContent value="evidence">
             <ClaimEvidenceSystem
               claimId={claim.id}
-              claimNumber={claim.claim_number}
+              claimType={claim.claim_type}
               currentUserRole={userProfile?.role || 'customer'}
               customerId={claim.customer_id}
             />
@@ -1321,6 +1521,11 @@ export default function ClaimDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modales */}
+      <ConfirmationModal {...confirmModal} />
+      <InputModal {...inputModal} />
+      <MessageModal {...messageModal} />
     </ProtectedRoute>
   );
 }

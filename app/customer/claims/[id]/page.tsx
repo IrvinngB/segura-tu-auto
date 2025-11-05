@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/auth-provider';
 import { ClaimCommunication } from '@/components/claims/claim-communication';
 import { ClaimEvidenceSystem } from '@/components/claims/claim-evidence-system';
+import { ClaimCustomerDocuments } from '@/components/claims/claim-customer-documents';
 import type { Claim } from '@/lib/types/database';
 import {
   ArrowLeft,
@@ -216,7 +217,7 @@ export default function CustomerClaimDetailPage() {
         <Tabs defaultValue="details" className="space-y-6">
           <TabsList>
             <TabsTrigger value="details">Detalles</TabsTrigger>
-            <TabsTrigger value="evidence">Evidencia</TabsTrigger>
+            <TabsTrigger value="documents">Documentos y Evidencia</TabsTrigger>
             <TabsTrigger value="communication">Comunicación</TabsTrigger>
             <TabsTrigger value="status">Estado</TabsTrigger>
           </TabsList>
@@ -329,13 +330,22 @@ export default function CustomerClaimDetailPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="evidence">
-            <ClaimEvidenceSystem
-              claimId={claim.id}
-              claimNumber={claim.claim_number}
-              currentUserRole="customer"
-              customerId={customerId}
-            />
+          <TabsContent value="documents">
+            <div className="space-y-6">
+              {/* Documentos del Cliente */}
+              <ClaimCustomerDocuments
+                claimId={claim.id}
+                customerId={customerId}
+                currentUserRole="customer"
+              />
+
+              {/* Sistema de Evidencia */}
+              <ClaimEvidenceSystem
+                claimId={claim.id}
+                currentUserRole="customer"
+                customerId={customerId}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="communication">

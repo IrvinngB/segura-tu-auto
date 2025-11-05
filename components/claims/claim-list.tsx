@@ -195,6 +195,10 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
+      pending: {
+        label: 'Pendiente',
+        classes: 'status-badge status-pending',
+      },
       submitted: {
         label: 'Enviada',
         classes: 'status-badge status-submitted',
@@ -204,7 +208,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         classes: 'status-badge status-under-review',
       },
       pending_documentation: {
-        label: 'Pendiente Docs',
+        label: 'Documentos Pendientes',
         classes: 'status-badge status-pending',
       },
       waiting_approval: {
@@ -212,7 +216,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         classes: 'status-badge status-waiting',
       },
       investigating: {
-        label: 'Investigando',
+        label: 'En Investigación',
         classes: 'status-badge status-investigating',
       },
       approved: {
@@ -223,12 +227,22 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         label: 'Procesando Pago',
         classes: 'status-badge status-processing',
       },
+      rejected: {
+        label: 'Rechazada',
+        classes: 'status-badge status-denied',
+      },
       denied: {
         label: 'Denegada',
         classes: 'status-badge status-denied',
       },
-      closed: { label: 'Cerrada', classes: 'status-badge status-closed' },
-      paid: { label: 'Pagada', classes: 'status-badge status-paid' },
+      closed: { 
+        label: 'Cerrada', 
+        classes: 'status-badge status-closed' 
+      },
+      paid: { 
+        label: 'Pagada', 
+        classes: 'status-badge status-paid' 
+      },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {

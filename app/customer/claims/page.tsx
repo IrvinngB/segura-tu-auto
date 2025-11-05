@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { ClaimList } from "@/components/claims/claim-list"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useAuth } from "@/components/auth/auth-provider"
@@ -8,9 +9,11 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Plus } from "lucide-react"
+import type { Claim } from "@/lib/types/database"
 
 export default function CustomerClaimsPage() {
   const { userProfile } = useAuth()
+  const router = useRouter()
   const [customerId, setCustomerId] = useState<string>("")
   const supabase = createClient()
 
@@ -32,6 +35,11 @@ export default function CustomerClaimsPage() {
     }
   }
 
+  const handleViewClaim = (claim: Claim) => {
+    // Navegar a la página de detalles de la reclamación
+    router.push(`/customer/claims/${claim.id}`)
+  }
+
   return (
     <ProtectedRoute allowedRoles={["customer"]}>
       <div className="container mx-auto py-8 px-4">
@@ -48,7 +56,7 @@ export default function CustomerClaimsPage() {
           </Button>
         </div>
 
-        {customerId && <ClaimList customerId={customerId} />}
+        {customerId && <ClaimList customerId={customerId} onViewClaim={handleViewClaim} />}
       </div>
     </ProtectedRoute>
   )

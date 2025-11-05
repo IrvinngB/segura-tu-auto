@@ -54,9 +54,11 @@ interface ClaimDocument {
 
 interface ClaimEvidenceSystemProps {
   claimId: string;
-  claimType: string;
+  claimType?: string;
   canUpload?: boolean;
   canVerify?: boolean;
+  currentUserRole?: string;
+  customerId?: string;
 }
 
 const DOCUMENT_TYPES = {
@@ -113,13 +115,30 @@ export function ClaimEvidenceSystem({
   const loadDocuments = async () => {
     try {
       setLoading(true);
+      console.log('📥 Cargando evidencias para claim:', claimId);
+      
       const { data, error } = await supabase
-        .from('claim_documents_with_details')
-        .select('*')
+        .from('claim_documents')
+        .select(`
+          *,
+          uploader:uploaded_by(
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
         .eq('claim_id', claimId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error al cargar evidencias:', error);
+        throw error;
+      }
+      
+      console.log('✅ Evidencias cargadas:', data?.length || 0, 'documentos');
+      console.log('Datos:', data);
+      
       setDocuments((data as any) || []);
     } catch (error) {
       console.error('Error loading documents:', error);
@@ -138,20 +157,37 @@ export function ClaimEvidenceSystem({
       const timestamp = Date.now();
       const fileName = `${claimId}/${documentType}/${timestamp}.${fileExt}`;
 
+      console.log('📤 Subiendo evidencia:', fileName);
+
       // Subir archivo a Supabase Storage
       const { data, error } = await supabase.storage.from('claim-evidence').upload(fileName, file);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error en upload de evidencia:', error);
+        
+        // Mensajes de error más específicos
+        if (error.message.includes('row-level security')) {
+          throw new Error('Permisos insuficientes. El administrador debe configurar las políticas RLS del bucket claim-evidence.');
+        } else if (error.message.includes('Bucket not found')) {
+          throw new Error('El bucket claim-evidence no existe. Contacta al administrador.');
+        } else {
+          throw new Error(`Error al subir archivo: ${error.message}`);
+        }
+      }
+
+      console.log('✅ Evidencia subida:', data);
 
       // Obtener URL pública del archivo
       const {
         data: { publicUrl },
       } = supabase.storage.from('claim-evidence').getPublicUrl(fileName);
 
+      console.log('🔗 URL pública evidencia:', publicUrl);
+
       return publicUrl;
     } catch (error) {
-      console.error('Error uploading file:', error);
-      toast.error('Error al subir el archivo');
+      console.error('❌ Error completo al subir evidencia:', error);
+      toast.error((error as Error).message || 'Error al subir el archivo');
       return null;
     } finally {
       setUploading(false);
@@ -183,12 +219,23 @@ export function ClaimEvidenceSystem({
     if (!selectedFile) return;
 
     try {
+      console.log('📤 Iniciando subida de evidencia...');
+      console.log('- Archivo:', selectedFile.name);
+      console.log('- Tipo documento:', documentType);
+      console.log('- Claim ID:', claimId);
+      
       // Subir archivo
       const fileUrl = await uploadFile(selectedFile);
-      if (!fileUrl) return;
+      if (!fileUrl) {
+        console.error('❌ No se obtuvo URL del archivo');
+        return;
+      }
+
+      console.log('✅ Archivo subido, guardando en BD...');
+      console.log('- URL:', fileUrl);
 
       // Guardar información del documento en la base de datos
-      const { error } = await supabase.from('claim_documents').insert({
+      const { data, error } = await supabase.from('claim_documents').insert({
         claim_id: claimId,
         document_type: documentType,
         file_name: selectedFile.name,
@@ -198,9 +245,14 @@ export function ClaimEvidenceSystem({
         uploaded_by: userProfile?.id,
         upload_source: 'web',
         description: description.trim() || null,
-      });
+      }).select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error al guardar en BD:', error);
+        throw error;
+      }
+
+      console.log('✅ Evidencia guardada en BD:', data);
 
       // Limpiar formulario
       setSelectedFile(null);
@@ -309,7 +361,7 @@ export function ClaimEvidenceSystem({
     }
   };
 
-  const requiredDocs = getRequiredDocuments(claimType);
+  const requiredDocs = getRequiredDocuments(claimType || 'collision');
   const uploadedTypes = documents.map(doc => doc.document_type);
   const missingDocs = requiredDocs.filter(type => !uploadedTypes.includes(type));
 

@@ -253,13 +253,18 @@ export default function HomePage() {
                   variant="outline"
                   className="capitalize dark:text-purple-200 dark:border-purple-300"
                 >
-                  {userProfile.role === 'customer'
-                    ? 'Cliente'
-                    : userProfile.role === 'agent'
-                      ? 'Agente'
-                      : userProfile.role === 'adjuster'
-                        ? 'Evaluador'
-                        : 'Admin'}
+                  {(() => {
+                    switch (userProfile.role) {
+                      case 'customer':
+                        return 'Cliente';
+                      case 'adjuster':
+                        return 'Evaluador';
+                      case 'admin':
+                        return 'Admin';
+                      default:
+                        return userProfile.role;
+                    }
+                  })()}
                 </Badge>
               )}
             </div>

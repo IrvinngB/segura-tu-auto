@@ -370,19 +370,19 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
         {/* Progress Overview */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Progreso de Documentación</span>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm font-medium dark:text-gray-200">Progreso de Documentación</span>
+            <span className="text-sm text-muted-foreground dark:text-gray-400">
               {completionPercentage}% completado
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
             <div
               className={`h-2 rounded-full transition-all duration-300 ${
                 completionPercentage === 100
-                  ? 'bg-green-500'
+                  ? 'bg-green-500 dark:bg-green-600'
                   : completionPercentage >= 70
-                    ? 'bg-blue-500'
-                    : 'bg-orange-500'
+                    ? 'bg-blue-500 dark:bg-blue-600'
+                    : 'bg-orange-500 dark:bg-orange-600'
               }`}
               style={{ width: `${completionPercentage}%` }}
             />
@@ -406,9 +406,9 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
           return (
             <div key={category} className="space-y-3">
               <div className="flex items-center gap-2">
-                <CategoryIcon className="h-4 w-4" />
-                <h4 className="font-medium">{categoryName}</h4>
-                <Badge className={getCategoryColor(category)}>
+                <CategoryIcon className="h-4 w-4 dark:text-gray-300" />
+                <h4 className="font-medium dark:text-gray-200">{categoryName}</h4>
+                <Badge className={`${getCategoryColor(category)} dark:bg-opacity-20 dark:border dark:border-gray-600`}>
                   {categoryDocs.filter(doc => submittedDocs.includes(doc.id)).length}/
                   {categoryDocs.length}
                 </Badge>
@@ -424,34 +424,34 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
                       key={doc.id}
                       className={`flex items-start gap-3 p-3 rounded-lg border ${
                         isSubmitted
-                          ? 'bg-green-50 border-green-200'
+                          ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
                           : doc.required
-                            ? 'bg-red-50 border-red-200'
-                            : 'bg-gray-50 border-gray-200'
+                            ? 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                            : 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700'
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <DocIcon className="h-4 w-4 text-muted-foreground" />
+                        <DocIcon className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{doc.name}</span>
+                            <span className="font-medium text-sm dark:text-gray-200">{doc.name}</span>
                             {doc.required && (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-xs dark:border-gray-600 dark:text-gray-300">
                                 Requerido
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">{doc.description}</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">{doc.description}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center">
                         {isSubmitted ? (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400" />
                         ) : doc.required ? (
-                          <AlertTriangle className="h-5 w-5 text-red-500" />
+                          <AlertTriangle className="h-5 w-5 text-red-500 dark:text-red-400" />
                         ) : (
-                          <Clock className="h-5 w-5 text-gray-400" />
+                          <Clock className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                         )}
                       </div>
                     </div>
@@ -464,11 +464,11 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
 
         {/* Action Buttons */}
         {canSendRequest && (
-          <div className="space-y-4 border-t pt-4">
+          <div className="space-y-4 border-t dark:border-gray-700 pt-4">
             {completionPercentage < 100 && (
-              <Alert>
+              <Alert className="dark:bg-yellow-950 dark:border-yellow-800">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
+                <AlertDescription className="dark:text-yellow-200">
                   Faltan{' '}
                   {
                     requiredDocs.filter(doc => doc.required && !submittedDocs.includes(doc.id))
@@ -490,7 +490,7 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
               </Button>
 
               {completionPercentage === 100 && (
-                <Button variant="outline" className="flex-1">
+                <Button variant="outline" className="flex-1 dark:border-gray-600 dark:text-gray-200">
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Documentación Completa
                 </Button>
@@ -501,9 +501,9 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
 
         {/* Customer Instructions */}
         {!canSendRequest && (
-          <Alert>
+          <Alert className="dark:bg-blue-950 dark:border-blue-800">
             <FileText className="h-4 w-4" />
-            <AlertDescription>
+            <AlertDescription className="dark:text-blue-200">
               Para completar su reclamación, debe enviar todos los documentos marcados como
               "Requerido". Puede enviarlos por email a documentos@seguratvauto.com o entregarlos en
               nuestras oficinas.
