@@ -31,6 +31,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 
 interface ClaimFormProps {
   policyId?: string;
@@ -643,7 +644,13 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="claimType">Tipo de Siniestro *</Label>
+                <Label htmlFor="claimType" className="flex items-center gap-2">
+                  Tipo de Siniestro *
+                  <InfoTooltip 
+                    content="Selecciona el tipo de incidente que ocurrió. Esto ayuda a asignar tu caso al ajustador correcto y determinar la cobertura aplicable."
+                    side="right"
+                  />
+                </Label>
                 <Select
                   value={claimData.claimType}
                   onValueChange={value => handleInputChange('claimType', value)}
@@ -696,7 +703,13 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="incidentDescription">Descripción del Siniestro *</Label>
+              <Label htmlFor="incidentDescription" className="flex items-center gap-2">
+                Descripción del Siniestro *
+                <InfoTooltip 
+                  content="Proporciona todos los detalles relevantes: qué pasó, cómo ocurrió, si hubo testigos, condiciones del clima, etc. Esto acelera el proceso de investigación."
+                  side="right"
+                />
+              </Label>
               <Textarea
                 id="incidentDescription"
                 placeholder="Describa detalladamente lo que ocurrió..."

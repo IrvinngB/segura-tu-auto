@@ -14,6 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/auth-provider';
 import {
@@ -32,6 +42,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 
 interface ClaimDocument {
   id: string;
@@ -84,6 +95,8 @@ export function ClaimEvidenceSystem({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState<string>('evidence');
   const [description, setDescription] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -314,11 +327,16 @@ export function ClaimEvidenceSystem({
     }
   };
 
-  const deleteDocument = async (documentId: string) => {
-    if (!confirm('¿Está seguro de que desea eliminar este documento?')) return;
+  const handleDeleteClick = (documentId: string) => {
+    setDocumentToDelete(documentId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!documentToDelete) return;
 
     try {
-      const { error } = await supabase.from('claim_documents').delete().eq('id', documentId);
+      const { error } = await supabase.from('claim_documents').delete().eq('id', documentToDelete);
 
       if (error) throw error;
 
@@ -327,6 +345,9 @@ export function ClaimEvidenceSystem({
     } catch (error) {
       console.error('Error deleting document:', error);
       toast.error('Error al eliminar el documento');
+    } finally {
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
     }
   };
 
@@ -366,11 +387,16 @@ export function ClaimEvidenceSystem({
   const missingDocs = requiredDocs.filter(type => !uploadedTypes.includes(type));
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Camera className="h-5 w-5" />
           Evidencias y Documentos
+          <InfoTooltip 
+            content="Sube fotos claras del daño, reportes policiales, cotizaciones de reparación y cualquier otro documento relevante. Esto acelera el proceso de tu reclamación."
+            side="right"
+          />
         </CardTitle>
         <CardDescription>Documentos y evidencias relacionadas con esta reclamación</CardDescription>
       </CardHeader>
@@ -576,7 +602,7 @@ export function ClaimEvidenceSystem({
                       )}
 
                       {(userProfile?.role === 'admin' || doc.uploaded_by === userProfile?.id) && (
-                        <Button size="sm" variant="outline" onClick={() => deleteDocument(doc.id)}>
+                        <Button size="sm" variant="outline" onClick={() => handleDeleteClick(doc.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
@@ -589,5 +615,23 @@ export function ClaimEvidenceSystem({
         </div>
       </CardContent>
     </Card>
+
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción no se puede deshacer. El documento será eliminado permanentemente del sistema.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

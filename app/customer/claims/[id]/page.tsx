@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 
 export default function CustomerClaimDetailPage() {
   const params = useParams();
@@ -101,38 +102,79 @@ export default function CustomerClaimDetailPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      submitted: { label: 'Enviada', variant: 'outline' as const, icon: Clock },
-      under_review: { label: 'En Revisión', variant: 'secondary' as const, icon: FileText },
+      submitted: { 
+        label: 'Enviada', 
+        variant: 'outline' as const, 
+        icon: Clock,
+        tooltip: 'Tu reclamación ha sido recibida y está esperando ser asignada a un ajustador.'
+      },
+      under_review: { 
+        label: 'En Revisión', 
+        variant: 'secondary' as const, 
+        icon: FileText,
+        tooltip: 'Un ajustador está revisando tu caso. Puede contactarte si necesita más información.'
+      },
       pending_documentation: {
         label: 'Documentos Pendientes',
         variant: 'outline' as const,
         icon: FileText,
+        tooltip: 'Se requieren documentos adicionales. Revisa la pestaña de Comunicación para ver qué documentos se solicitan.'
       },
       waiting_approval: {
         label: 'Esperando Aprobación',
         variant: 'secondary' as const,
         icon: Clock,
+        tooltip: 'Tu caso está siendo evaluado por un supervisor para aprobación final.'
       },
-      investigating: { label: 'Investigando', variant: 'default' as const, icon: AlertTriangle },
-      approved: { label: 'Aprobada', variant: 'default' as const, icon: CheckCircle },
+      investigating: { 
+        label: 'Investigando', 
+        variant: 'default' as const, 
+        icon: AlertTriangle,
+        tooltip: 'El ajustador está realizando una investigación detallada del incidente. Este proceso puede tomar algunos días.'
+      },
+      approved: { 
+        label: 'Aprobada', 
+        variant: 'default' as const, 
+        icon: CheckCircle,
+        tooltip: '¡Buenas noticias! Tu reclamación ha sido aprobada. El pago será procesado pronto.'
+      },
       processing_payment: {
         label: 'Procesando Pago',
         variant: 'secondary' as const,
         icon: DollarSign,
+        tooltip: 'El departamento financiero está procesando tu pago. Recibirás una notificación cuando se complete.'
       },
-      denied: { label: 'Denegada', variant: 'destructive' as const, icon: XCircle },
-      closed: { label: 'Cerrada', variant: 'outline' as const, icon: CheckCircle },
-      paid: { label: 'Pagada', variant: 'default' as const, icon: CheckCircle },
+      denied: { 
+        label: 'Denegada', 
+        variant: 'destructive' as const, 
+        icon: XCircle,
+        tooltip: 'Tu reclamación no fue aprobada. Revisa la pestaña de Comunicación para conocer los motivos.'
+      },
+      closed: { 
+        label: 'Cerrada', 
+        variant: 'outline' as const, 
+        icon: CheckCircle,
+        tooltip: 'Este caso ha sido cerrado y completado.'
+      },
+      paid: { 
+        label: 'Pagada', 
+        variant: 'default' as const, 
+        icon: CheckCircle,
+        tooltip: 'El pago ha sido procesado exitosamente. Revisa tu cuenta bancaria.'
+      },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.submitted;
     const Icon = config.icon;
 
     return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
-        <Icon className="h-3 w-3" />
-        {config.label}
-      </Badge>
+      <div className="flex items-center gap-1.5">
+        <Badge variant={config.variant} className="flex items-center gap-1">
+          <Icon className="h-3 w-3" />
+          {config.label}
+        </Badge>
+        <InfoTooltip content={config.tooltip} side="right" />
+      </div>
     );
   };
 
@@ -230,6 +272,10 @@ export default function CustomerClaimDetailPage() {
                   <CardTitle className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" />
                     Detalles del Siniestro
+                    <InfoTooltip 
+                      content="Información sobre el incidente reportado. Si necesitas corregir algún dato, contacta a tu ajustador a través de la pestaña de Comunicación."
+                      side="right"
+                    />
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -276,8 +322,12 @@ export default function CustomerClaimDetailPage() {
 
                   {claim.approved_amount && (
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">
+                      <label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
                         Monto Aprobado
+                        <InfoTooltip 
+                          content="Este es el monto que la aseguradora pagará por tu reclamación. El pago se procesará en los próximos días hábiles."
+                          side="right"
+                        />
                       </label>
                       <div className="flex items-center gap-2 mt-1">
                         <CheckCircle className="h-4 w-4 text-green-600" />
@@ -377,6 +427,10 @@ export default function CustomerClaimDetailPage() {
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
                   Estado de la Reclamación
+                  <InfoTooltip 
+                    content="Aquí puedes ver el progreso de tu reclamación. El estado se actualiza automáticamente cuando el ajustador realiza cambios."
+                    side="right"
+                  />
                 </CardTitle>
               </CardHeader>
               <CardContent>

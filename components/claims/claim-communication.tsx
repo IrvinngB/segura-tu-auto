@@ -27,6 +27,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 
 interface Communication {
   id: string;
@@ -343,6 +344,7 @@ export function ClaimCommunication({
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5" />
           Comunicaciones con el Cliente
+          <InfoTooltip content="Aquí puedes ver todo el historial de comunicaciones con tu agente o ajustador. Los mensajes se actualizan en tiempo real. Puedes enviar fotos, documentos y mensajes de texto para dar seguimiento a tu reclamación." />
         </CardTitle>
         <CardDescription>
           Historial de comunicaciones y mensajes relacionados con esta reclamación
@@ -507,31 +509,37 @@ export function ClaimCommunication({
             <Label>Enviar Nuevo Mensaje</Label>
 
             {/* Tipo de mensaje */}
-            <div className="flex gap-2">
-              <Button
-                variant={messageType === 'email' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setMessageType('email')}
-              >
-                <Mail className="h-4 w-4 mr-1" />
-                Email
-              </Button>
-              <Button
-                variant={messageType === 'sms' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setMessageType('sms')}
-              >
-                <MessageSquare className="h-4 w-4 mr-1" />
-                SMS
-              </Button>
-              <Button
-                variant={messageType === 'chat' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setMessageType('chat')}
-              >
-                <MessageCircle className="h-4 w-4 mr-1" />
-                Chat
-              </Button>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                Tipo de Mensaje
+                <InfoTooltip content="Selecciona cómo quieres comunicarte con tu agente. Email para mensajes detallados, SMS para notificaciones cortas, o Chat para conversación en tiempo real." />
+              </Label>
+              <div className="flex gap-2">
+                <Button
+                  variant={messageType === 'email' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMessageType('email')}
+                >
+                  <Mail className="h-4 w-4 mr-1" />
+                  Email
+                </Button>
+                <Button
+                  variant={messageType === 'sms' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMessageType('sms')}
+                >
+                  <MessageSquare className="h-4 w-4 mr-1" />
+                  SMS
+                </Button>
+                <Button
+                  variant={messageType === 'chat' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMessageType('chat')}
+                >
+                  <MessageCircle className="h-4 w-4 mr-1" />
+                  Chat
+                </Button>
+              </div>
             </div>
 
             {/* Área de mensaje */}
@@ -551,6 +559,10 @@ export function ClaimCommunication({
 
             {/* Archivo adjunto */}
             <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                Adjuntar Archivo
+                <InfoTooltip content="Puedes adjuntar fotos del daño, documentos, cotizaciones o cualquier archivo que ayude con tu reclamación. Formatos permitidos: JPG, PNG, PDF (máximo 10MB)." />
+              </Label>
               <div className="flex items-center gap-2">
                 <input
                   type="file"

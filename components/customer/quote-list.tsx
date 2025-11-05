@@ -44,6 +44,7 @@ import {
 import { format } from "date-fns";
 import jsPDF from "jspdf";
 import { POLICY_PLANS } from "@/lib/policy-plans";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 interface QuoteListProps {
     customerId?: string;
@@ -302,13 +303,19 @@ export function QuoteList({ customerId }: QuoteListProps) {
                 );
             case "approved":
                 return (
-                    <Badge
-                        variant="default"
-                        className="flex items-center gap-1 bg-green-600"
-                    >
-                        <CheckCircle className="h-3 w-3" />
-                        Aprobada
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                        <Badge
+                            variant="default"
+                            className="flex items-center gap-1 bg-green-600"
+                        >
+                            <CheckCircle className="h-3 w-3" />
+                            Aprobada
+                        </Badge>
+                        <InfoTooltip 
+                            content="Tu cotización fue aprobada. Ahora puedes convertirla en una póliza activa realizando el pago correspondiente."
+                            side="right"
+                        />
+                    </div>
                 );
             case "rejected":
                 return (

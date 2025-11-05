@@ -76,6 +76,7 @@ import { es } from "date-fns/locale";
 import { toast } from "@/components/ui/use-toast";
 import { CustomerPaymentModal } from "@/components/customer/customer-payment-modal";
 import { PaymentMethods } from "@/components/customer/payment-methods";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 interface Payment {
     id: string;
@@ -495,6 +496,42 @@ export default function CustomerPaymentsPage() {
         return upcomingPayments.reduce((sum, payment) => sum + payment.amount, 0);
     };
 
+    const getAccountStatus = () => {
+        // Verificar si hay pagos vencidos
+        const hasOverduePayments = upcomingPayments.some(payment => {
+            const status = getUpcomingPaymentStatus(payment.due_date);
+            return status === "overdue";
+        });
+
+        if (hasOverduePayments) {
+            return {
+                status: "Vencido",
+                description: "Tienes pagos pendientes",
+                color: "text-red-600 dark:text-red-400"
+            };
+        }
+
+        // Verificar si hay pagos en período de gracia
+        const hasGracePeriodPayments = upcomingPayments.some(payment => {
+            const status = getUpcomingPaymentStatus(payment.due_date);
+            return status === "grace_period";
+        });
+
+        if (hasGracePeriodPayments) {
+            return {
+                status: "Atención",
+                description: "Pagos en período de gracia",
+                color: "text-orange-600 dark:text-orange-400"
+            };
+        }
+
+        return {
+            status: "Al Día",
+            description: "Todos los pagos al corriente",
+            color: "text-green-600 dark:text-green-400"
+        };
+    };
+
     const handlePayment = (paymentId: string, paymentType: string, amount: number, policyNumber: string) => {
         // Abrir modal de pago con los datos
         setPendingPayment({
@@ -601,10 +638,7 @@ export default function CustomerPaymentsPage() {
                                         ${getTotalPaid().toLocaleString()}
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                        <span className="text-green-600">
-                                            +12%
-                                        </span>{" "}
-                                        vs año anterior
+                                        Total de pagos completados
                                     </p>
                                 </CardContent>
                             </Card>
@@ -653,11 +687,11 @@ export default function CustomerPaymentsPage() {
                                     <CheckCircle className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-green-600">
-                                        Al Día
+                                    <div className={`text-2xl font-bold ${getAccountStatus().color}`}>
+                                        {getAccountStatus().status}
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                        Todos los pagos al corriente
+                                        {getAccountStatus().description}
                                     </p>
                                 </CardContent>
                             </Card>
@@ -780,6 +814,7 @@ export default function CustomerPaymentsPage() {
                                 <CardTitle className="flex items-center gap-2">
                                     <Shield className="h-5 w-5" />
                                     Mis Pólizas de Seguro
+                                    <InfoTooltip content="Gestiona y paga las primas de tus pólizas activas. Las pólizas en estado 'Draft' necesitan el primer pago para activarse." />
                                 </CardTitle>
                                 <CardDescription>
                                     Gestiona y paga las primas de tus pólizas activas
@@ -849,7 +884,7 @@ export default function CustomerPaymentsPage() {
                                                                         </div>
                                                                     </div>
                                                                     <div className="text-right space-y-2">
-                                                                        <div className="text-2xl font-bold text-green-600">
+                                                                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                                                                             ${monthlyAmount.toLocaleString()}
                                                                         </div>
                                                                         <Button
@@ -877,7 +912,7 @@ export default function CustomerPaymentsPage() {
                                                 {/* Mostrar pólizas activas */}
                                                 {policies.filter(p => p.status === 'active').length > 0 && (
                                                     <div className="mt-6">
-                                                        <h3 className="text-lg font-semibold mb-4 text-green-600 flex items-center gap-2">
+                                                        <h3 className="text-lg font-semibold mb-4 text-green-600 dark:text-green-400 flex items-center gap-2">
                                                             <Shield className="h-5 w-5" />
                                                             Pólizas Activas
                                                         </h3>
@@ -885,7 +920,7 @@ export default function CustomerPaymentsPage() {
                                                             const monthlyAmount = Math.round(policy.premium_amount / 12);
                                                             
                                                             return (
-                                                                <div key={policy.id} className="border border-green-200 rounded-lg p-4 mb-3 bg-green-50">
+                                                                <div key={policy.id} className="border border-green-200 dark:border-green-800 rounded-lg p-4 mb-3 bg-green-50 dark:bg-green-950">
                                                                     <div className="flex justify-between items-center">
                                                                         <div className="space-y-1">
                                                                             <div className="flex items-center gap-2">
@@ -894,7 +929,7 @@ export default function CustomerPaymentsPage() {
                                                                                            policy.policy_type === 'limitada' ? 'Limitada' : 
                                                                                            'Todo Riesgo'}
                                                                                 </h4>
-                                                                                <Badge className="bg-green-100 text-green-800">
+                                                                                <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
                                                                                     Activa
                                                                                 </Badge>
                                                                             </div>
@@ -928,41 +963,41 @@ export default function CustomerPaymentsPage() {
 
                                     {/* Resumen de Pólizas */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t">
-                                        <Card className="bg-green-50 border-green-200">
+                                        <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
                                             <CardContent className="pt-4">
                                                 <div className="text-center">
-                                                    <div className="text-2xl font-bold text-green-600">
+                                                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                                                         {policies.filter(p => p.status === 'active').length}
                                                     </div>
-                                                    <p className="text-sm text-green-700">Pólizas Activas</p>
+                                                    <p className="text-sm text-green-700 dark:text-green-300">Pólizas Activas</p>
                                                 </div>
                                             </CardContent>
                                         </Card>
 
-                                        <Card className="bg-blue-50 border-blue-200">
+                                        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
                                             <CardContent className="pt-4">
                                                 <div className="text-center">
-                                                    <div className="text-2xl font-bold text-blue-600">
+                                                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                                                         ${policies
                                                             .filter(p => p.status === 'active')
                                                             .reduce((sum, p) => sum + Math.round(p.premium_amount / 12), 0)
                                                             .toLocaleString()}
                                                     </div>
-                                                    <p className="text-sm text-blue-700">Prima Mensual Total</p>
+                                                    <p className="text-sm text-blue-700 dark:text-blue-300">Prima Mensual Total</p>
                                                 </div>
                                             </CardContent>
                                         </Card>
 
-                                        <Card className="bg-purple-50 border-purple-200">
+                                        <Card className="bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800">
                                             <CardContent className="pt-4">
                                                 <div className="text-center">
-                                                    <div className="text-2xl font-bold text-purple-600">
+                                                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                                                         ${policies
                                                             .filter(p => p.status === 'active')
                                                             .reduce((sum, p) => sum + (p.total_coverage_limit || 0), 0)
                                                             .toLocaleString()}
                                                     </div>
-                                                    <p className="text-sm text-purple-700">Cobertura Total</p>
+                                                    <p className="text-sm text-purple-700 dark:text-purple-300">Cobertura Total</p>
                                                 </div>
                                             </CardContent>
                                         </Card>
