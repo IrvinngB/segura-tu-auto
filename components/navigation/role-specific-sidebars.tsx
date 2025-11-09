@@ -23,6 +23,11 @@ import {
   ClipboardList,
   MessageSquare,
   Calculator,
+  Activity,
+  RefreshCw,
+  Archive,
+  Bell,
+  Settings,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
@@ -49,6 +54,37 @@ const adminNavigation: NavigationItem[] = [
     description: 'Evaluación de riesgos',
   },
   { name: 'Análisis', href: '/analytics', icon: BarChart3, description: 'Reportes y análisis' },
+  {
+    name: 'Reportes Avanzados',
+    href: '/admin/reports',
+    icon: TrendingUp,
+    description: 'Dashboard de métricas y reportes',
+  },
+  { name: 'Auditoría', href: '/admin/audit', icon: Activity, description: 'Registro de auditoría' },
+  {
+    name: 'Renovaciones',
+    href: '/admin/renewals',
+    icon: RefreshCw,
+    description: 'Sistema de renovación automática',
+  },
+  {
+    name: 'Gestión de Documentos',
+    href: '/admin/documents',
+    icon: Archive,
+    description: 'Gestión avanzada de documentos',
+  },
+  {
+    name: 'Notificaciones',
+    href: '/notifications',
+    icon: Bell,
+    description: 'Centro de notificaciones',
+  },
+  {
+    name: 'Configuración',
+    href: '/settings',
+    icon: Settings,
+    description: 'Configuración de cuenta',
+  },
 ];
 
 const agentNavigation: NavigationItem[] = [
@@ -161,8 +197,16 @@ const SidebarContent = memo(function SidebarContent({ navigation, userProfile }:
     const tools = navigation.filter(item =>
       ['Nueva Cotización', 'Documentos', 'Pagos', 'Comunicaciones'].includes(item.name)
     );
-    const reports = navigation.filter(item => ['Análisis'].includes(item.name));
-    return { main, management, tools, reports };
+    const reports = navigation.filter(item =>
+      ['Análisis', 'Reportes Avanzados'].includes(item.name)
+    );
+    const admin = navigation.filter(item =>
+      ['Auditoría', 'Renovaciones', 'Gestión de Documentos'].includes(item.name)
+    );
+    const general = navigation.filter(item =>
+      ['Notificaciones', 'Configuración'].includes(item.name)
+    );
+    return { main, management, tools, reports, admin, general };
   }, [navigation]);
 
   const getRoleDisplayName = (role: string) => {
@@ -272,6 +316,8 @@ const SidebarContent = memo(function SidebarContent({ navigation, userProfile }:
           {renderNavigationGroup(groupedNavigation.management, 'Gestión')}
           {renderNavigationGroup(groupedNavigation.tools, 'Herramientas')}
           {renderNavigationGroup(groupedNavigation.reports, 'Reportes')}
+          {renderNavigationGroup(groupedNavigation.admin, 'Administración')}
+          {renderNavigationGroup(groupedNavigation.general, 'General')}
         </nav>
 
         <div className="border-t border-border p-4">
