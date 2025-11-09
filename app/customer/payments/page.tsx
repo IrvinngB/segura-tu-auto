@@ -834,7 +834,7 @@ export default function CustomerPaymentsPage() {
                                             <>
                                                 {/* Mostrar pólizas pendientes de pago */}
                                                 {policies
-                                                    .filter(policy => policy.status === 'draft')
+                                                    .filter(policy => policy.status === 'draft' || policy.status === 'pending_payment')
                                                     .map((policy) => {
                                                         const monthlyAmount = Math.round(policy.premium_amount / 12);
                                                         const nextPaymentDate = calculateNextPaymentDate(policy);
@@ -851,13 +851,13 @@ export default function CustomerPaymentsPage() {
                                                                                        'Todo Riesgo'}
                                                                             </h4>
                                                                             <Badge className={
-                                                                                policy.status === 'draft' 
+                                                                                (policy.status === 'draft' || policy.status === 'pending_payment') 
                                                                                     ? "bg-yellow-100 text-yellow-800" 
                                                                                     : policy.status === 'active'
                                                                                     ? "bg-green-100 text-green-800"
                                                                                     : "bg-gray-100 text-gray-800"
                                                                             }>
-                                                                                {policy.status === 'draft' ? 'Pendiente de Pago' : 
+                                                                                {(policy.status === 'draft' || policy.status === 'pending_payment') ? 'Pendiente de Pago' : 
                                                                                  policy.status === 'active' ? 'Activa' : 
                                                                                  'Inactiva'}
                                                                             </Badge>

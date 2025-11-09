@@ -129,8 +129,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Si la póliza estaba pendiente de pago (draft), activarla
-        if (policy.status === "draft") {
+        // Si la póliza estaba pendiente de pago (draft o pending_payment), activarla
+        if (policy.status === "draft" || policy.status === "pending_payment") {
             console.log("🔄 Activating policy after payment...");
             
             const { error: activationError } = await supabase
@@ -146,6 +146,35 @@ export async function POST(request: NextRequest) {
                 // El pago ya se procesó, no fallar por esto
             } else {
                 console.log("✅ Policy activated successfully");
+                
+                // Si es una renovación (contiene RENEW- en el número), expirar la póliza anterior
+                if (policy.policy_number && policy.policy_number.includes('RENEW-')) {
+                    console.log("🔄 Processing renewal - looking for old policy to expire...");
+                    
+                    // Extraer el número de póliza original del número de renovación
+                    // Formato: RENEW-{timestamp}-{random}-{original_policy_number}
+                    const renewParts = policy.policy_number.split('-');
+                    if (renewParts.length >= 4) {
+                        const originalPolicyNumber = renewParts.slice(3).join('-');
+                        console.log("🔍 Looking for original policy:", originalPolicyNumber);
+                        
+                        const { error: expireError } = await supabase
+                            .from("policies")
+                            .update({ 
+                                status: "expired",
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq("policy_number", originalPolicyNumber)
+                            .eq("customer_id", customer.id)
+                            .neq("id", policy_id); // No actualizar la nueva póliza
+                        
+                        if (expireError) {
+                            console.error("❌ Error expiring old policy:", expireError);
+                        } else {
+                            console.log("✅ Old policy expired successfully");
+                        }
+                    }
+                }
             }
         }
 

@@ -144,10 +144,32 @@ export default function PolicyRenewalPage() {
       const newStartDate = new Date(policy.end_date);
       const newEndDate = addYears(newStartDate, 1);
 
-      // Generate new policy number
-      const newPolicyNumber = `POL-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      // Generate unique policy number with timestamp and random components
+      const timestamp = Date.now();
+      const random1 = Math.floor(Math.random() * 999999).toString().padStart(6, '0');
+      const random2 = Math.floor(Math.random() * 99999).toString().padStart(5, '0');
+      let newPolicyNumber = `POL-${timestamp}-${random1}-${random2}`;
 
-      // Create new policy
+      // Extra safety: Check if policy number already exists
+      let attempts = 0;
+      while (attempts < 5) {
+        const { data: existingPolicy } = await supabase
+          .from('policies')
+          .select('policy_number')
+          .eq('policy_number', newPolicyNumber)
+          .single();
+
+        if (!existingPolicy) break; // Number is unique, we can use it
+
+        // Generate a new number
+        const newTimestamp = Date.now() + Math.floor(Math.random() * 10000);
+        const newRandom1 = Math.floor(Math.random() * 999999).toString().padStart(6, '0');
+        const newRandom2 = Math.floor(Math.random() * 99999).toString().padStart(5, '0');
+        newPolicyNumber = `POL-${newTimestamp}-${newRandom1}-${newRandom2}`;
+        attempts++;
+      }
+
+      // Create new policy in pending payment status
       const { data: newPolicy, error: createError } = await supabase
         .from('policies')
         .insert({
@@ -155,7 +177,7 @@ export default function PolicyRenewalPage() {
           customer_id: policy.customer_id,
           vehicle_id: policy.vehicle_id,
           policy_type: policy.policy_type,
-          status: 'active',
+          status: 'pending_payment',
           start_date: newStartDate.toISOString(),
           end_date: newEndDate.toISOString(),
           premium_amount: policy.premium_amount * 1.05, // 5% annual increase
@@ -170,13 +192,8 @@ export default function PolicyRenewalPage() {
 
       if (createError) throw createError;
 
-      // Update old policy status to expired
-      const { error: updateError } = await supabase
-        .from('policies')
-        .update({ status: 'expired' })
-        .eq('id', policyId);
-
-      if (updateError) throw updateError;
+      // Don't expire old policy yet - wait for payment
+      // It will be expired when payment is completed
 
       // Copy coverages to new policy
       const { data: oldCoverages } = await supabase
@@ -196,12 +213,59 @@ export default function PolicyRenewalPage() {
         await supabase.from('policy_coverages').insert(newCoverages);
       }
 
-      // Remove from current list since it's now renewed
-      setPolicies(prev => prev.filter(p => p.id !== policyId));
+      // Create pending payment record
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          policy_id: newPolicy.id,
+          amount: newPolicy.premium_amount,
+          payment_type: 'renewal',
+          status: 'pending',
+          due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        });
+
+      if (paymentError) console.error('Error creating payment record:', paymentError);
+
+      // Create notification for customer to pay
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: policy.customer_id,
+          title: '🔔 Renovación de Póliza - Pago Requerido',
+          message: `¡Su póliza ha sido renovada exitosamente! 
+          
+Póliza anterior: ${policy.policy_number}
+Nueva póliza: ${newPolicyNumber}
+Monto a pagar: $${(policy.premium_amount * 1.05).toLocaleString()}
+Vigencia: 12 meses
+
+Para activar su nueva póliza, complete el pago en la sección "Pagos" de su cuenta.`,
+          type: 'payment_required',
+          reference_type: 'policy',
+          reference_id: newPolicy.id,
+        });
+
+      if (notificationError) console.error('Error creating notification:', notificationError);
+
+      // Create internal notification for agents/admins
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user) {
+        await supabase.from('notifications').insert({
+          user_id: userData.user.id,
+          title: '✅ Renovación Procesada',
+          message: `Renovación completada: ${policy.policy_number} → ${newPolicyNumber}. Cliente notificado para pago de $${(policy.premium_amount * 1.05).toLocaleString()}.`,
+          type: 'info',
+          reference_type: 'policy',
+          reference_id: newPolicy.id,
+        });
+      }
+
+      // Refresh the policies list to get updated data
+      await fetchPoliciesAndStats();
 
       setMessage({
         type: 'success',
-        text: `Póliza ${policy.policy_number} renovada exitosamente como ${newPolicyNumber}`,
+        text: `✅ Renovación completada: ${policy.policy_number} → ${newPolicyNumber}. Cliente notificado para realizar el pago de $${(policy.premium_amount * 1.05).toLocaleString()}.`,
       });
     } catch (error) {
       console.error('Error renewing policy:', error);
@@ -379,23 +443,33 @@ export default function PolicyRenewalPage() {
                             </div>
                           </div>
 
-                          <Button
-                            onClick={() => renewPolicy(policy.id)}
-                            disabled={processingRenewal === policy.id}
-                            size="sm"
-                          >
-                            {processingRenewal === policy.id ? (
-                              <>
-                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                Renovando...
-                              </>
-                            ) : (
-                              <>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Renovar Ahora
-                              </>
-                            )}
-                          </Button>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-green-600">
+                                Nueva prima: ${(policy.premium_amount * 1.05).toLocaleString()}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Cliente pagará después
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => renewPolicy(policy.id)}
+                              disabled={processingRenewal === policy.id}
+                              size="sm"
+                            >
+                              {processingRenewal === policy.id ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                  Creando renovación...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Crear Renovación
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
