@@ -360,10 +360,20 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
 
       console.log(`📤 Subiendo documento ${docType} inmediatamente...`);
 
+      // Mapeo de tipos de documentos a nombres en español
+      const documentNames = {
+        id: 'Cedula_Identidad',
+        license: 'Licencia_Conducir', 
+        invoice: 'Poliza_Seguro',
+        photos: 'Fotografias_Siniestro',
+        police_report: 'Reporte_Policial'
+      };
+
       // Subir archivo inmediatamente a Supabase Storage
       const fileExt = file.name.split('.').pop();
       const timestamp = Date.now();
-      const fileName = `draft_${docType}_${timestamp}.${fileExt}`;
+      const spanishName = documentNames[docType as keyof typeof documentNames] || docType;
+      const fileName = `${spanishName}_${timestamp}.${fileExt}`;
       const storagePath = `drafts/${fileName}`;
 
       // Subir a Supabase Storage

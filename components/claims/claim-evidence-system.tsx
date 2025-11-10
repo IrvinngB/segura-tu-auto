@@ -364,6 +364,34 @@ export function ClaimEvidenceSystem({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const translateFileName = (fileName: string) => {
+    // Mapeo de nombres en inglés a español
+    const translations = {
+      'draft_police_report': 'Reporte_Policial',
+      'draft_photos': 'Fotografias_del_Siniestro',
+      'draft_invoice': 'Factura_del_Vehiculo',
+      'draft_proof_of_address': 'Comprobante_de_Domicilio',
+      'draft_license': 'Licencia_de_Conducir',
+      'draft_id': 'Identificacion_Oficial',
+      'police_report': 'Reporte_Policial',
+      'photos': 'Fotografias_del_Siniestro',
+      'invoice': 'Factura_del_Vehiculo',
+      'proof_of_address': 'Comprobante_de_Domicilio',
+      'license': 'Licencia_de_Conducir',
+      'id': 'Identificacion_Oficial'
+    };
+
+    let translatedName = fileName;
+    
+    // Buscar y reemplazar cada patrón en inglés
+    Object.entries(translations).forEach(([english, spanish]) => {
+      const regex = new RegExp(english, 'gi');
+      translatedName = translatedName.replace(regex, spanish);
+    });
+
+    return translatedName;
+  };
+
   const getRequiredDocuments = (claimType: string) => {
     const baseRequired = ['evidence'];
 
@@ -544,7 +572,7 @@ export function ClaimEvidenceSystem({
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-medium truncate">{doc.file_name}</h4>
+                        <h4 className="font-medium truncate">{translateFileName(doc.file_name)}</h4>
                         <Badge variant="outline">{docTypeConfig?.label || doc.document_type}</Badge>
                         {doc.is_verified && (
                           <Badge className="bg-green-100 text-green-800">

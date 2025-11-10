@@ -68,6 +68,12 @@ const adminNavigation: NavigationItem[] = [
     description: 'Sistema de renovación automática',
   },
   {
+    name: 'Progreso de Documentos',
+    href: '/admin/documents-progress',
+    icon: FileText,
+    description: 'Sistema de documentación requerida',
+  },
+  {
     name: 'Gestión de Documentos',
     href: '/admin/documents',
     icon: Archive,
@@ -101,6 +107,12 @@ const agentNavigation: NavigationItem[] = [
     href: '/claims',
     icon: AlertTriangle,
     description: 'Gestión de reclamos',
+  },
+  {
+    name: 'Progreso de Documentos',
+    href: '/admin/documents-progress',
+    icon: FileText,
+    description: 'Sistema de documentación requerida',
   },
   { name: 'Documentos', href: '/documents', icon: Upload, description: 'Gestión de documentos' },
 ];

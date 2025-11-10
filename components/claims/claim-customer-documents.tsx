@@ -288,6 +288,34 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
+  const translateFileName = (fileName: string) => {
+    // Mapeo de nombres en inglés a español
+    const translations = {
+      'draft_police_report': 'Reporte_Policial',
+      'draft_photos': 'Fotografias_del_Siniestro',
+      'draft_invoice': 'Factura_del_Vehiculo',
+      'draft_proof_of_address': 'Comprobante_de_Domicilio',
+      'draft_license': 'Licencia_de_Conducir',
+      'draft_id': 'Identificacion_Oficial',
+      'police_report': 'Reporte_Policial',
+      'photos': 'Fotografias_del_Siniestro',
+      'invoice': 'Factura_del_Vehiculo',
+      'proof_of_address': 'Comprobante_de_Domicilio',
+      'license': 'Licencia_de_Conducir',
+      'id': 'Identificacion_Oficial'
+    };
+
+    let translatedName = fileName;
+    
+    // Buscar y reemplazar cada patrón en inglés
+    Object.entries(translations).forEach(([english, spanish]) => {
+      const regex = new RegExp(english, 'gi');
+      translatedName = translatedName.replace(regex, spanish);
+    });
+
+    return translatedName;
+  };
+
   if (loading) {
     return (
       <Card>
@@ -390,7 +418,7 @@ export function ClaimCustomerDocuments({ claimId, customerId, currentUserRole }:
                 <div className="flex items-center gap-3 flex-1">
                   <FileText className="h-8 w-8 text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate dark:text-gray-100">{doc.file_name}</p>
+                    <p className="font-medium truncate dark:text-gray-100">{translateFileName(doc.file_name)}</p>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
                       <span>{DOCUMENT_TYPE_LABELS[doc.document_type]}</span>
                       <span>•</span>

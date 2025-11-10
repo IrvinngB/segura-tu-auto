@@ -83,17 +83,9 @@ export function DocumentRequirementSystem({
         category: 'vehicle',
       },
       {
-        id: 'fotos_danio',
+        id: 'fotos_daño',
         name: 'Fotografías del Daño',
         description: 'Fotos claras de todos los daños del vehículo',
-        icon: Camera,
-        required: true,
-        category: 'incident',
-      },
-      {
-        id: 'fotos_lugar',
-        name: 'Fotografías del Lugar',
-        description: 'Fotos del lugar donde ocurrió el siniestro',
         icon: Camera,
         required: true,
         category: 'incident',

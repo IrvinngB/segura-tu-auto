@@ -13,7 +13,7 @@ import { ClaimCommunications } from '@/components/claims/claim-communications';
 import { PaymentStatus } from '@/components/claims/payment-status';
 import { ClaimWorkflow } from '@/components/claims/claim-workflow';
 import { ClaimCommunication } from '@/components/claims/claim-communication';
-import { DocumentRequirementSystem } from '@/components/claims/document-requirement-system';
+
 import { ClaimEvidenceSystem } from '@/components/claims/claim-evidence-system';
 import { ClaimCustomerDocuments } from '@/components/claims/claim-customer-documents';
 import { ProtectedRoute } from '@/components/auth/protected-route';
@@ -1427,13 +1427,7 @@ export default function ClaimDetailPage() {
                 currentUserRole={userProfile?.role}
               />
 
-              {/* Document Requirement System */}
-              <DocumentRequirementSystem
-                claimId={claim.id}
-                claimType={claim.claim_type}
-                hasInjuries={claim.injury_involved}
-                hasThirdParty={claim.third_party_involved}
-              />
+
 
               {/* Original Documents List */}
               <Card>
