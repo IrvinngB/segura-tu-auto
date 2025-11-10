@@ -44,7 +44,6 @@ interface ClaimCustomerDocument {
   document_type:
     | 'license'
     | 'id'
-    | 'proof_of_address'
     | 'invoice'
     | 'police_report'
     | 'photos'
@@ -69,7 +68,6 @@ interface ClaimCustomerDocumentsProps {
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   license: 'Licencia de Conducir',
   id: 'Identificación Oficial',
-  proof_of_address: 'Comprobante de Domicilio',
   invoice: 'Factura del Vehículo',
   police_report: 'Reporte Policial',
   photos: 'Fotografías del Siniestro',
@@ -342,13 +340,13 @@ export function ClaimCustomerDocuments({
       draft_police_report: 'Reporte_Policial',
       draft_photos: 'Fotografias_del_Siniestro',
       draft_invoice: 'Factura_del_Vehiculo',
-      draft_proof_of_address: 'Comprobante_de_Domicilio',
+
       draft_license: 'Licencia_de_Conducir',
       draft_id: 'Identificacion_Oficial',
       police_report: 'Reporte_Policial',
       photos: 'Fotografias_del_Siniestro',
       invoice: 'Factura_del_Vehiculo',
-      proof_of_address: 'Comprobante_de_Domicilio',
+
       license: 'Licencia_de_Conducir',
       id: 'Identificacion_Oficial',
     };
@@ -413,10 +411,9 @@ export function ClaimCustomerDocuments({
                       <SelectValue placeholder="Selecciona el tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="license">📄 Licencia de Conducir</SelectItem>
-                      <SelectItem value="id">🪪 Identificación Oficial</SelectItem>
-                      <SelectItem value="proof_of_address">🏠 Comprobante de Domicilio</SelectItem>
-                      <SelectItem value="invoice">🧾 Factura del Vehículo</SelectItem>
+                    <SelectItem value="license">📄 Licencia de Conducir</SelectItem>
+                    <SelectItem value="id">🪪 Identificación Oficial</SelectItem>
+                    <SelectItem value="invoice">🧾 Factura del Vehículo</SelectItem>
                       <SelectItem value="police_report">👮 Reporte Policial</SelectItem>
                       <SelectItem value="photos">📸 Fotografías del Siniestro</SelectItem>
                       <SelectItem value="other">📎 Otro Documento</SelectItem>
@@ -466,7 +463,7 @@ export function ClaimCustomerDocuments({
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:border-gray-700 dark:hover:bg-gray-800/50 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    <FileText className="h-8 w-8 text-primary flex-shrink-0" />
+                    <FileText className="h-8 w-8 text-primary shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate dark:text-gray-100">
                         {translateFileName(doc.file_name)}
@@ -488,7 +485,7 @@ export function ClaimCustomerDocuments({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     {getStatusBadge(doc.status)}
 
                     <Button

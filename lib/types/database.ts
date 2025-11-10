@@ -249,7 +249,7 @@ export interface ClaimCustomerDocument {
   id: string;
   claim_id: string;
   customer_id: string;
-  document_type: 'license' | 'id' | 'proof_of_address' | 'invoice' | 'police_report' | 'photos' | 'other';
+  document_type: 'license' | 'id' | 'invoice' | 'police_report' | 'photos' | 'other';
   file_name: string;
   file_url: string;
   file_size: number;

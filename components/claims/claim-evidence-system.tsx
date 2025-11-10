@@ -377,13 +377,13 @@ export function ClaimEvidenceSystem({
       draft_police_report: 'Reporte_Policial',
       draft_photos: 'Fotografias_del_Siniestro',
       draft_invoice: 'Factura_del_Vehiculo',
-      draft_proof_of_address: 'Comprobante_de_Domicilio',
+
       draft_license: 'Licencia_de_Conducir',
       draft_id: 'Identificacion_Oficial',
       police_report: 'Reporte_Policial',
       photos: 'Fotografias_del_Siniestro',
       invoice: 'Factura_del_Vehiculo',
-      proof_of_address: 'Comprobante_de_Domicilio',
+
       license: 'Licencia_de_Conducir',
       id: 'Identificacion_Oficial',
     };
