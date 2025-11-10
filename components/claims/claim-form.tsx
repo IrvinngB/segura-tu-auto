@@ -17,8 +17,28 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { createClient } from '@/lib/supabase/client';
 import type { Policy, Customer } from '@/lib/types/database';
+
+// Interfaces para documentos requeridos
+interface RequiredDocument {
+  id: string;
+  type: 'license' | 'id' | 'invoice' | 'police_report' | 'photos';
+  name: string;
+  description: string;
+  required: boolean;
+  category: 'identity' | 'vehicle' | 'incident' | 'legal';
+  icon: any;
+}
+
+interface UploadedDocument {
+  file: File;
+  url: string;
+  fileName: string;
+  storagePath: string;
+}
 import {
   FileText,
   Calendar,
@@ -29,9 +49,15 @@ import {
   CheckCircle,
   Users,
   Loader2,
+  Camera,
+  Shield,
+  ExternalLink,
+  Eye,
+  Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { toast } from 'sonner';
 
 interface ClaimFormProps {
   policyId?: string;
@@ -59,11 +85,18 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
     injuryInvolved: false,
     priority: 'medium',
   });
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [countdown, setCountdown] = useState(0);
+
+  // Estados para documentos requeridos
+  const [requiredDocuments, setRequiredDocuments] = useState<RequiredDocument[]>([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState<{ [key: string]: UploadedDocument }>(
+    {}
+  );
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+
   const supabase = createClient();
 
   // Efecto para el temporizador del modal de éxito
@@ -196,27 +229,6 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
     setClaimData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const validFiles = files.filter(file => {
-      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      return validTypes.includes(file.type) && file.size <= maxSize;
-    });
-
-    if (validFiles.length !== files.length) {
-      setError(
-        'Algunos archivos no son válidos. Solo se permiten imágenes (JPG, PNG, GIF) y PDF hasta 10MB'
-      );
-    }
-
-    setUploadedFiles(prev => [...prev, ...validFiles]);
-  };
-
-  const removeFile = (index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
   const generateClaimNumber = () => {
     const year = new Date().getFullYear();
     const random = Math.floor(Math.random() * 1000000)
@@ -251,6 +263,202 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
     return 'low';
   };
 
+  // Obtener documentos requeridos basados en el tipo de reclamación
+  const getRequiredDocuments = (claimType: string): RequiredDocument[] => {
+    const baseDocuments: RequiredDocument[] = [
+      {
+        id: 'id',
+        type: 'id',
+        name: 'Cédula de Identidad',
+        description: 'Documento de identidad del titular de la póliza',
+        required: true,
+        category: 'identity',
+        icon: FileText,
+      },
+      {
+        id: 'license',
+        type: 'license',
+        name: 'Licencia de Conducir',
+        description: 'Licencia de conducir vigente del conductor al momento del siniestro',
+        required: true,
+        category: 'identity',
+        icon: FileText,
+      },
+      {
+        id: 'invoice',
+        type: 'invoice',
+        name: 'Póliza de Seguro',
+        description: 'Copia de la póliza de seguro vigente',
+        required: true,
+        category: 'vehicle',
+        icon: Shield,
+      },
+      {
+        id: 'photos',
+        type: 'photos',
+        name: 'Fotografías del Daño',
+        description: 'Fotos claras de todos los daños del vehículo',
+        required: true,
+        category: 'incident',
+        icon: Camera,
+      },
+    ];
+
+    // Documentos adicionales según tipo de siniestro
+    if (claimType === 'Colisión' || claimType === 'Vandalismo') {
+      baseDocuments.push({
+        id: 'police_report',
+        type: 'police_report',
+        name: 'Parte Policial',
+        description: 'Reporte oficial de la policía de tránsito',
+        required: true,
+        category: 'legal',
+        icon: FileText,
+      });
+    }
+
+    if (claimType === 'Robo') {
+      baseDocuments.push({
+        id: 'police_report',
+        type: 'police_report',
+        name: 'Parte Policial',
+        description: 'Reporte oficial de la policía de tránsito',
+        required: true,
+        category: 'legal',
+        icon: FileText,
+      });
+    }
+
+    return baseDocuments;
+  };
+
+  // Actualizar documentos requeridos cuando cambia el tipo de reclamación
+  useEffect(() => {
+    const docs = getRequiredDocuments(claimData.claimType);
+    setRequiredDocuments(docs);
+    // Limpiar documentos subidos si cambia el tipo
+    setUploadedDocuments({});
+  }, [claimData.claimType]);
+
+  // Función para subir un documento
+  const handleDocumentUpload = async (docType: string, file: File) => {
+    try {
+      setUploadingDocs(true);
+
+      // Validar archivo
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        toast.error('El archivo no debe superar los 10MB');
+        return;
+      }
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Solo se permiten archivos JPG, PNG o PDF');
+        return;
+      }
+
+      console.log(`📤 Subiendo documento ${docType} inmediatamente...`);
+
+      // Subir archivo inmediatamente a Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const timestamp = Date.now();
+      const fileName = `draft_${docType}_${timestamp}.${fileExt}`;
+      const storagePath = `drafts/${fileName}`;
+
+      // Subir a Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('clientes-adjuntos')
+        .upload(storagePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type,
+        });
+
+      if (uploadError) {
+        console.error(`❌ Error subiendo ${docType}:`, uploadError);
+
+        // Mensajes de error más específicos
+        if (uploadError.message.includes('row-level security')) {
+          throw new Error(
+            'Permisos insuficientes. El administrador debe configurar las políticas RLS del bucket clientes-adjuntos.'
+          );
+        } else if (uploadError.message.includes('Bucket not found')) {
+          throw new Error('El bucket clientes-adjuntos no existe. Contacta al administrador.');
+        } else {
+          throw new Error(`Error al subir archivo: ${uploadError.message}`);
+        }
+      }
+
+      // Obtener URL pública
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('clientes-adjuntos').getPublicUrl(storagePath);
+
+      console.log(`✅ Documento ${docType} subido a:`, publicUrl);
+
+      // Guardar información del archivo en el estado para usar en la creación
+      setUploadedDocuments(prev => ({
+        ...prev,
+        [docType]: {
+          file: file,
+          url: publicUrl,
+          fileName: fileName,
+          storagePath: storagePath,
+        },
+      }));
+
+      toast.success(`Documento ${docType} subido correctamente`);
+    } catch (error) {
+      console.error(`Error uploading document ${docType}:`, error);
+      toast.error((error as Error).message || 'Error al subir el documento');
+    } finally {
+      setUploadingDocs(false);
+    }
+  };
+
+  // Función para eliminar un documento
+  const handleDocumentRemove = async (docType: string) => {
+    try {
+      const docInfo = uploadedDocuments[docType];
+      if (docInfo && docInfo.storagePath) {
+        // Eliminar del storage
+        const { error: deleteError } = await supabase.storage
+          .from('clientes-adjuntos')
+          .remove([docInfo.storagePath]);
+
+        if (deleteError) {
+          console.error(`Error eliminando archivo ${docType}:`, deleteError);
+        }
+      }
+
+      // Eliminar del estado
+      setUploadedDocuments(prev => {
+        const newDocs = { ...prev };
+        delete newDocs[docType];
+        return newDocs;
+      });
+
+      toast.success('Documento eliminado');
+    } catch (error) {
+      console.error('Error removing document:', error);
+      toast.error('Error al eliminar el documento');
+    }
+  };
+
+  // Calcular progreso de documentos
+  const getDocumentProgress = () => {
+    const requiredDocs = requiredDocuments.filter(doc => doc.required);
+    const uploadedCount = requiredDocs.filter(doc => uploadedDocuments[doc.type]).length;
+    return requiredDocs.length > 0 ? (uploadedCount / requiredDocs.length) * 100 : 0;
+  };
+
+  // Verificar si todos los documentos requeridos están subidos
+  const areAllRequiredDocumentsUploaded = () => {
+    const requiredDocs = requiredDocuments.filter(doc => doc.required);
+    return requiredDocs.every(doc => uploadedDocuments[doc.type]);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -269,6 +477,15 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
 
       if (!selectedPolicy) {
         throw new Error('Debe seleccionar una póliza');
+      }
+
+      // Validar que todos los documentos requeridos estén subidos
+      if (!areAllRequiredDocumentsUploaded()) {
+        const missingDocs = requiredDocuments
+          .filter(doc => doc.required && !uploadedDocuments[doc.type])
+          .map(doc => doc.name)
+          .join(', ');
+        throw new Error(`Faltan documentos requeridos: ${missingDocs}`);
       }
 
       const policy = policies.find(p => p.id === selectedPolicy);
@@ -314,75 +531,45 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
 
       if (claimError) throw claimError;
 
-      // Upload files if any
-      if (uploadedFiles.length > 0) {
-        console.log('📁 Uploading files:', uploadedFiles.length);
-        const uploadPromises = uploadedFiles.map(async file => {
-          try {
-            const fileName = `${claim.id}/${Date.now()}-${file.name}`;
-            console.log('⬆️ Uploading file:', fileName);
+      console.log('📄 Uploading documents for claim:', claim.id);
 
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('Documentos')
-              .upload(fileName, file);
+      // Subir documentos a Supabase Storage y guardar en base de datos
+      let uploadedCount = 0;
+      const totalDocs = Object.keys(uploadedDocuments).length;
 
-            if (uploadError) {
-              console.error('❌ Error uploading file:', uploadError);
-              throw new Error(`Error uploading ${file.name}: ${uploadError.message}`);
-            }
+      for (const [docType, docInfo] of Object.entries(uploadedDocuments)) {
+        try {
+          console.log(`📄 Registrando documento ${docType} en BD:`, docInfo.fileName);
 
-            console.log('✅ File uploaded:', uploadData);
+          // Guardar en base de datos (el archivo ya está subido)
+          const { error: dbError } = await supabase.from('claim_customer_documents').insert({
+            claim_id: claim.id,
+            customer_id: selectedCustomer,
+            document_type: docType,
+            file_name: docInfo.fileName,
+            file_url: docInfo.url,
+            file_size: docInfo.file.size,
+            mime_type: docInfo.file.type,
+            status: 'pending',
+          });
 
-            // Save document record
-            const { error: docError } = await supabase.from('documents').insert({
-              claim_id: claim.id,
-              customer_id: selectedCustomer,
-              document_type: file.type.startsWith('image/') ? 'photo' : 'other',
-              file_name: file.name,
-              file_path: uploadData.path,
-              file_size: file.size,
-              mime_type: file.type,
-              uploaded_by: claim.customer_id,
-              is_verified: false,
-            });
-
-            if (docError) {
-              console.error('❌ Error saving document record:', docError);
-              // Try to cleanup uploaded file
-              await supabase.storage.from('Documentos').remove([fileName]);
-              throw new Error(`Error saving document record for ${file.name}: ${docError.message}`);
-            }
-
-            return { success: true, fileName: file.name };
-          } catch (error) {
-            console.error(`Failed to upload ${file.name}:`, error);
-            return {
-              success: false,
-              fileName: file.name,
-              error: error instanceof Error ? error.message : 'Unknown error',
-            };
+          if (dbError) {
+            console.error(`❌ Error guardando ${docType} en BD:`, dbError);
+          } else {
+            uploadedCount++;
+            console.log(`✅ Documento ${docType} registrado en BD correctamente`);
           }
-        });
-
-        const uploadResults = await Promise.allSettled(uploadPromises);
-        const failures = uploadResults
-          .map((result, index) =>
-            result.status === 'fulfilled'
-              ? result.value
-              : { success: false, fileName: uploadedFiles[index].name, error: 'Upload failed' }
-          )
-          .filter(result => !result.success);
-
-        if (failures.length > 0) {
-          console.warn('Some files failed to upload:', failures);
-          setError(
-            `Reclamación creada, pero algunos archivos no se pudieron subir: ${failures.map(f => f.fileName).join(', ')}`
-          );
+        } catch (docError) {
+          console.error(`❌ Error procesando documento ${docType}:`, docError);
         }
       }
 
-      setSuccess(`Reclamación ${claimNumber} creada exitosamente`);
-      setCountdown(1); // Iniciar countdown de 1 segundo
+      console.log(`✅ Documentos subidos: ${uploadedCount}/${totalDocs}`);
+
+      setSuccess(
+        `¡Reclamación ${claimNumber} creada exitosamente! Se han subido ${uploadedCount} de ${totalDocs} documentos. Los documentos están siendo procesados y serán revisados por nuestro equipo.`
+      );
+      setCountdown(5); // Más tiempo para leer el mensaje con info de documentos
     } catch (error) {
       console.error('💥 Error creating claim:', error);
       let errorMessage = 'Error al crear la reclamación';
@@ -646,7 +833,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
               <div className="space-y-2">
                 <Label htmlFor="claimType" className="flex items-center gap-2">
                   Tipo de Siniestro *
-                  <InfoTooltip 
+                  <InfoTooltip
                     content="Selecciona el tipo de incidente que ocurrió. Esto ayuda a asignar tu caso al ajustador correcto y determinar la cobertura aplicable."
                     side="right"
                   />
@@ -705,7 +892,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
             <div className="space-y-2">
               <Label htmlFor="incidentDescription" className="flex items-center gap-2">
                 Descripción del Siniestro *
-                <InfoTooltip 
+                <InfoTooltip
                   content="Proporciona todos los detalles relevantes: qué pasó, cómo ocurrió, si hubo testigos, condiciones del clima, etc. Esto acelera el proceso de investigación."
                   side="right"
                 />
@@ -771,57 +958,196 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
               </div>
             </div>
 
-            {/* File Upload */}
-            <div className="space-y-4">
-              <Label>Documentos y Fotografías</Label>
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
-                <div className="text-center">
-                  <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <div className="mt-4">
-                    <Label htmlFor="file-upload" className="cursor-pointer">
-                      <span className="mt-2 block text-sm font-medium text-primary hover:text-primary/80">
-                        Subir archivos
-                      </span>
-                      <span className="mt-1 block text-xs text-muted-foreground">
-                        PNG, JPG, GIF, PDF hasta 10MB cada uno
-                      </span>
-                    </Label>
-                    <Input
-                      id="file-upload"
-                      type="file"
-                      multiple
-                      accept="image/*,.pdf"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </div>
-                </div>
+            {/* Sistema de Documentación Requerida */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2 text-lg font-semibold">
+                  📋 Sistema de Documentación Requerida
+                  <InfoTooltip
+                    content="Debes subir TODOS los documentos requeridos antes de poder enviar la reclamación. Los documentos son verificados automáticamente."
+                    side="right"
+                  />
+                </Label>
+                <Badge variant={areAllRequiredDocumentsUploaded() ? 'default' : 'destructive'}>
+                  {Object.keys(uploadedDocuments).length} /{' '}
+                  {requiredDocuments.filter(d => d.required).length} documentos
+                </Badge>
               </div>
 
-              {/* Uploaded Files */}
-              {uploadedFiles.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Archivos seleccionados:</Label>
-                  <div className="space-y-2">
-                    {uploadedFiles.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-2 bg-muted rounded"
-                      >
-                        <span className="text-sm truncate">{file.name}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFile(index)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+              {/* Barra de Progreso */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Progreso de Documentación</span>
+                  <span>{Math.round(getDocumentProgress())}% completado</span>
                 </div>
+                <Progress value={getDocumentProgress()} className="h-2" />
+              </div>
+
+              {/* Documentos por Categoría */}
+              {['identity', 'vehicle', 'incident', 'legal'].map(category => {
+                const categoryDocs = requiredDocuments.filter(doc => doc.category === category);
+                if (categoryDocs.length === 0) return null;
+
+                const categoryNames = {
+                  identity: 'Documentos de Identidad',
+                  vehicle: 'Documentos del Vehículo',
+                  incident: 'Documentos del Siniestro',
+                  legal: 'Documentos Legales',
+                };
+
+                const categoryProgress = categoryDocs.filter(
+                  doc => uploadedDocuments[doc.type]
+                ).length;
+                const categoryTotal = categoryDocs.filter(doc => doc.required).length;
+
+                return (
+                  <Card key={category} className="relative">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          {category === 'identity' && <FileText className="h-5 w-5" />}
+                          {category === 'vehicle' && <Shield className="h-5 w-5" />}
+                          {category === 'incident' && <Camera className="h-5 w-5" />}
+                          {category === 'legal' && <FileText className="h-5 w-5" />}
+                          {categoryNames[category as keyof typeof categoryNames]}
+                        </CardTitle>
+                        <Badge variant={categoryProgress === categoryTotal ? 'default' : 'outline'}>
+                          {categoryProgress}/{categoryTotal}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {categoryDocs.map(doc => {
+                        const isUploaded = !!uploadedDocuments[doc.type];
+                        const docInfo = uploadedDocuments[doc.type];
+
+                        return (
+                          <div
+                            key={doc.id}
+                            className={`border rounded-lg p-4 transition-colors ${
+                              isUploaded
+                                ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+                                : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <doc.icon className="h-4 w-4" />
+                                  <span className="font-medium">{doc.name}</span>
+                                  {doc.required && (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Requerido
+                                    </Badge>
+                                  )}
+                                  {isUploaded && <CheckCircle className="h-4 w-4 text-green-600" />}
+                                  {!isUploaded && (
+                                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground mb-3">
+                                  {doc.description}
+                                </p>
+
+                                {/* Información del archivo subido */}
+                                {isUploaded && docInfo && (
+                                  <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-300">
+                                    <CheckCircle className="h-3 w-3" />
+                                    <span>{docInfo.file.name}</span>
+                                    <span>({(docInfo.file.size / 1024 / 1024).toFixed(1)} MB)</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex gap-2 ml-4">
+                                {!isUploaded ? (
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`doc-${doc.type}`}
+                                      className="hidden"
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      onChange={e => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          handleDocumentUpload(doc.type, file);
+                                        }
+                                      }}
+                                      disabled={uploadingDocs}
+                                    />
+                                    <label htmlFor={`doc-${doc.type}`}>
+                                      <Button
+                                        asChild
+                                        size="sm"
+                                        disabled={uploadingDocs}
+                                        className="cursor-pointer"
+                                      >
+                                        <span>
+                                          <Upload className="h-4 w-4 mr-1" />
+                                          Subir
+                                        </span>
+                                      </Button>
+                                    </label>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        // Usar la URL ya subida a Supabase en lugar de crear una local
+                                        window.open(docInfo.url, '_blank');
+                                      }}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDocumentRemove(doc.type)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+
+              {/* Mensaje de validación */}
+              {!areAllRequiredDocumentsUploaded() && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>
+                      Faltan{' '}
+                      {
+                        requiredDocuments.filter(d => d.required && !uploadedDocuments[d.type])
+                          .length
+                      }{' '}
+                      documentos requeridos.
+                    </strong>
+                    <br />
+                    Debes subir todos los documentos marcados como "Requerido" antes de poder enviar
+                    la reclamación.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {areAllRequiredDocumentsUploaded() && (
+                <Alert>
+                  <CheckCircle className="h-4 w-4" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    <strong>¡Excelente!</strong> Todos los documentos requeridos han sido subidos.
+                    Ya puedes proceder a crear la reclamación.
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
 
@@ -829,10 +1155,36 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
             <div className="flex gap-4 pt-6">
               <Button
                 type="submit"
-                disabled={loading || !selectedPolicy || !claimData.incidentDescription}
+                disabled={
+                  loading ||
+                  !selectedPolicy ||
+                  !claimData.incidentDescription ||
+                  !areAllRequiredDocumentsUploaded() ||
+                  uploadingDocs
+                }
                 className="flex-1"
               >
-                {loading ? 'Creando reclamación...' : 'Crear Reclamación'}
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creando reclamación y subiendo documentos...
+                  </>
+                ) : uploadingDocs ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Subiendo documentos...
+                  </>
+                ) : !areAllRequiredDocumentsUploaded() ? (
+                  <>
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Faltan documentos requeridos
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Crear Reclamación con Documentos
+                  </>
+                )}
               </Button>
               {onCancel && (
                 <Button type="button" variant="outline" onClick={onCancel}>
