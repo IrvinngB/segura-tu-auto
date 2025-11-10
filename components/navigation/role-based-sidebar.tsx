@@ -324,7 +324,7 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
                     onClick={() => setIsOpen(false)}
                     title={item.description}
                   >
-                    <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                    <item.icon className="mr-3 h-5 w-5 shrink-0" />
                     <span className="truncate">{item.name}</span>
                   </span>
                 </OptimizedLink>
@@ -365,7 +365,7 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
         {userProfile && (
           <div className="px-4 py-4 border-b border-border">
             <div className="flex items-center space-x-3">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                   <User className="h-4 w-4 text-primary" />
                 </div>
