@@ -12,21 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+
 import {
   Upload,
   FileText,
   Download,
-  Trash2,
   Eye,
   AlertCircle,
   CheckCircle,
@@ -84,10 +74,7 @@ export function ClaimCustomerDocuments({
   const [uploading, setUploading] = useState(false);
   const [selectedDocumentType, setSelectedDocumentType] =
     useState<ClaimCustomerDocument['document_type']>('other');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [documentToDelete, setDocumentToDelete] = useState<{ id: string; fileUrl: string } | null>(
-    null
-  );
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -235,43 +222,143 @@ export function ClaimCustomerDocuments({
     }
   };
 
-  const handleDeleteClick = (docId: string, fileUrl: string) => {
-    setDocumentToDelete({ id: docId, fileUrl });
-    setDeleteDialogOpen(true);
-  };
+  const handleReplaceDocument = async (docId: string, oldFileUrl: string, documentType: string) => {
+    // Crear input de archivo dinámicamente
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.jpg,.jpeg,.png';
+    
+    input.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
 
-  const confirmDelete = async () => {
-    if (!documentToDelete) return;
+      // Validar tamaño (10MB)
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast.error('El archivo no debe superar los 10MB');
+        return;
+      }
 
-    try {
-      // Extraer path del archivo de la URL
-      const urlParts = documentToDelete.fileUrl.split('/');
-      const filePath = urlParts.slice(urlParts.indexOf('clientes-adjuntos') + 1).join('/');
+      // Validar tipo
+      const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Solo se permiten archivos JPG, PNG o PDF');
+        return;
+      }
 
-      // Eliminar de storage
-      const { error: storageError } = await supabase.storage
-        .from('clientes-adjuntos')
-        .remove([filePath]);
+      setUploading(true);
 
-      if (storageError) throw storageError;
+      try {
+        console.log('🔄 Iniciando reemplazo de documento:', {
+          docId,
+          oldFileUrl,
+          documentType,
+          newFileName: file.name,
+          newFileSize: file.size
+        });
 
-      // Eliminar de base de datos
-      const { error: dbError } = await supabase
-        .from('claim_customer_documents')
-        .delete()
-        .eq('id', documentToDelete.id);
+        // Obtener extensión del archivo nuevo
+        const fileExt = file.name.split('.').pop();
+        
+        // Generar nombre basado en el tipo de documento
+        const documentTypeLabel = DOCUMENT_TYPE_LABELS[documentType]
+          .toLowerCase()
+          .replace(/\s+/g, '_')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        
+        const timestamp = Date.now();
+        const newFileName = `${documentTypeLabel}_${timestamp}.${fileExt}`;
+        const storagePath = `${claimId}/${newFileName}`;
 
-      if (dbError) throw dbError;
+        // Subir nuevo archivo a Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('clientes-adjuntos')
+          .upload(storagePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: file.type,
+          });
 
-      toast.success('Documento eliminado');
-      fetchDocuments();
-    } catch (error) {
-      console.error('Error deleting document:', error);
-      toast.error('Error al eliminar el documento');
-    } finally {
-      setDeleteDialogOpen(false);
-      setDocumentToDelete(null);
-    }
+        if (uploadError) {
+          throw new Error(`Error al subir archivo: ${uploadError.message}`);
+        }
+
+        // Obtener URL pública del nuevo archivo
+        const { data: { publicUrl } } = supabase.storage
+          .from('clientes-adjuntos')
+          .getPublicUrl(storagePath);
+
+        // Actualizar el documento en la base de datos
+        const { data: updateData, error: updateError } = await supabase
+          .from('claim_customer_documents')
+          .update({
+            file_name: newFileName,
+            file_url: publicUrl,
+            file_size: file.size,
+            mime_type: file.type,
+            upload_date: new Date().toISOString(),
+            status: 'pending', // Reset status to pending when replaced
+          })
+          .eq('id', docId)
+          .select();
+
+        if (updateError) {
+          throw new Error(`Error al actualizar documento: ${updateError.message}`);
+        }
+
+        console.log('✅ Documento actualizado en BD exitosamente:', {
+          docId,
+          newFileName,
+          newUrl: publicUrl,
+          updateData
+        });
+
+        // Eliminar el archivo anterior del storage
+        try {
+          console.log('🗑️ Intentando eliminar archivo anterior:', oldFileUrl);
+          const oldUrlParts = oldFileUrl.split('/');
+          const bucketIndex = oldUrlParts.findIndex(part => part === 'clientes-adjuntos');
+          
+          if (bucketIndex !== -1 && bucketIndex < oldUrlParts.length - 1) {
+            const oldFilePath = oldUrlParts.slice(bucketIndex + 1).join('/');
+            console.log('📂 Path del archivo anterior:', oldFilePath);
+            
+            const { error: deleteError } = await supabase.storage
+              .from('clientes-adjuntos')
+              .remove([oldFilePath]);
+            
+            if (deleteError) {
+              console.warn('⚠️ Error eliminando archivo anterior:', deleteError);
+            } else {
+              console.log('✅ Archivo anterior eliminado exitosamente');
+            }
+          } else {
+            console.warn('⚠️ No se pudo extraer el path del archivo anterior');
+          }
+        } catch (cleanupError) {
+          console.warn('⚠️ Error en cleanup:', cleanupError);
+        }
+
+        toast.success('Documento actualizado exitosamente');
+        
+        // Recargar documentos para mostrar los cambios
+        console.log('🔄 Recargando lista de documentos...');
+        await fetchDocuments();
+        
+        // Forzar re-render del componente con un pequeño delay
+        setTimeout(() => {
+          fetchDocuments();
+        }, 1000);
+      } catch (error) {
+        console.error('Error replacing document:', error);
+        toast.error('Error al actualizar el documento: ' + (error as Error).message);
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    input.click();
   };
 
   const updateDocumentStatus = async (
@@ -491,7 +578,11 @@ export function ClaimCustomerDocuments({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => window.open(doc.file_url, '_blank')}
+                      onClick={() => {
+                        // Agregar timestamp para evitar caché del navegador
+                        const urlWithoutCache = `${doc.file_url}?t=${Date.now()}`;
+                        window.open(urlWithoutCache, '_blank');
+                      }}
                       className="dark:hover:bg-gray-700"
                     >
                       <Eye className="h-4 w-4" />
@@ -502,8 +593,9 @@ export function ClaimCustomerDocuments({
                       variant="ghost"
                       onClick={() => {
                         const link = document.createElement('a');
-                        link.href = doc.file_url;
-                        link.download = doc.file_name;
+                        // Agregar timestamp para evitar caché del navegador
+                        link.href = `${doc.file_url}?t=${Date.now()}`;
+                        link.download = translateFileName(doc.file_name);
                         link.click();
                       }}
                       className="dark:hover:bg-gray-700"
@@ -511,14 +603,16 @@ export function ClaimCustomerDocuments({
                       <Download className="h-4 w-4" />
                     </Button>
 
-                    {currentUserRole === 'customer' && doc.status === 'pending' && (
+                    {currentUserRole === 'customer' && (
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleDeleteClick(doc.id, doc.file_url)}
-                        className="text-destructive hover:text-destructive dark:hover:bg-gray-700"
+                        onClick={() => handleReplaceDocument(doc.id, doc.file_url, doc.document_type)}
+                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-gray-700"
+                        disabled={uploading}
+                        title="Reemplazar documento"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Upload className="h-4 w-4" />
                       </Button>
                     )}
 
@@ -554,25 +648,7 @@ export function ClaimCustomerDocuments({
         </CardContent>
       </Card>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. El documento será eliminado permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </>
   );
 }

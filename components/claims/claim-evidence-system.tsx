@@ -621,7 +621,11 @@ export function ClaimEvidenceSystem({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => window.open(doc.file_url, '_blank')}
+                          onClick={() => {
+                            // Agregar timestamp para evitar caché del navegador
+                            const urlWithoutCache = `${doc.file_url}?t=${Date.now()}`;
+                            window.open(urlWithoutCache, '_blank');
+                          }}
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           {doc.file_type.startsWith('image/') ? 'Ver' : 'Descargar'}
