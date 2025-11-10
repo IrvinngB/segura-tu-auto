@@ -222,7 +222,7 @@ export default function ClaimDetailPage() {
         title: 'Estado Actualizado',
         message: `Estado actualizado correctamente a: ${newStatus}`,
         type: 'success',
-        onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+        onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
       });
     } catch (error) {
       console.error('Error updating claim status:', error);
@@ -231,7 +231,7 @@ export default function ClaimDetailPage() {
         title: 'Error',
         message: 'Error al actualizar el estado de la reclamación: ' + (error as Error).message,
         type: 'error',
-        onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+        onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
       });
     }
   };
@@ -256,7 +256,7 @@ export default function ClaimDetailPage() {
             title: 'Error',
             message: 'Debe ingresar un monto válido',
             type: 'error',
-            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
           });
           return;
         }
@@ -280,7 +280,7 @@ export default function ClaimDetailPage() {
             title: 'Reclamación Aprobada',
             message: `Reclamación aprobada por $${Number(approvedAmount).toLocaleString()}`,
             type: 'success',
-            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
           });
         } catch (error) {
           console.error('Error approving claim:', error);
@@ -289,11 +289,11 @@ export default function ClaimDetailPage() {
             title: 'Error',
             message: 'Error al aprobar la reclamación: ' + (error as Error).message,
             type: 'error',
-            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
           });
         }
       },
-      onCancel: () => setInputModal(prev => ({ ...prev, show: false }))
+      onCancel: () => setInputModal(prev => ({ ...prev, show: false })),
     });
   };
 
@@ -324,7 +324,7 @@ export default function ClaimDetailPage() {
             title: 'Proceso Iniciado',
             message: 'Proceso de pago iniciado. Se enviará notificación al cliente.',
             type: 'success',
-            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
           });
         } catch (error) {
           console.error('Error processing payment:', error);
@@ -333,11 +333,11 @@ export default function ClaimDetailPage() {
             title: 'Error',
             message: 'Error al procesar el pago: ' + (error as Error).message,
             type: 'error',
-            onClose: () => setMessageModal(prev => ({ ...prev, show: false }))
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
           });
         }
       },
-      onCancel: () => setConfirmModal(prev => ({ ...prev, show: false }))
+      onCancel: () => setConfirmModal(prev => ({ ...prev, show: false })),
     });
   };
 
@@ -414,13 +414,13 @@ export default function ClaimDetailPage() {
         label: 'Denegada',
         classes: 'status-badge status-denied',
       },
-      closed: { 
-        label: 'Cerrada', 
-        classes: 'status-badge status-closed' 
+      closed: {
+        label: 'Cerrada',
+        classes: 'status-badge status-closed',
       },
-      paid: { 
-        label: 'Pagada', 
-        classes: 'status-badge status-paid' 
+      paid: {
+        label: 'Pagada',
+        classes: 'status-badge status-paid',
       },
     };
 
@@ -662,8 +662,8 @@ export default function ClaimDetailPage() {
                       <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 p-3 rounded-lg">
                         <p className="text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
-                          <strong>Caso en proceso técnico:</strong> El ajustador está manejando
-                          la evaluación y aprobación.
+                          <strong>Caso en proceso técnico:</strong> El ajustador está manejando la
+                          evaluación y aprobación.
                         </p>
                       </div>
                     )}
@@ -709,8 +709,8 @@ export default function ClaimDetailPage() {
                       <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3 rounded-lg">
                         <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
-                          <strong>Caso en revisión documental:</strong> El agente está revisando
-                          la documentación antes de asignarte el caso.
+                          <strong>Caso en revisión documental:</strong> El agente está revisando la
+                          documentación antes de asignarte el caso.
                         </p>
                       </div>
                     )}
@@ -791,8 +791,8 @@ export default function ClaimDetailPage() {
                         <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
                           <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
                             <CheckCircle className="h-4 w-4" />
-                            <strong>Aprobación completada:</strong> El proceso de pago será
-                            manejado por el agente o administrador.
+                            <strong>Aprobación completada:</strong> El proceso de pago será manejado
+                            por el agente o administrador.
                           </p>
                         </div>
                       </>
@@ -812,8 +812,8 @@ export default function ClaimDetailPage() {
                       <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-3 rounded-lg">
                         <p className="text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
                           <XCircle className="h-4 w-4" />
-                          <strong>Caso denegado:</strong> Solo un administrador puede reabrir
-                          este caso.
+                          <strong>Caso denegado:</strong> Solo un administrador puede reabrir este
+                          caso.
                         </p>
                       </div>
                     )}
@@ -1426,8 +1426,6 @@ export default function ClaimDetailPage() {
                 customerId={claim.customer_id}
                 currentUserRole={userProfile?.role}
               />
-
-
 
               {/* Original Documents List */}
               <Card>

@@ -363,10 +363,10 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
       // Mapeo de tipos de documentos a nombres en español
       const documentNames = {
         id: 'Cedula_Identidad',
-        license: 'Licencia_Conducir', 
+        license: 'Licencia_Conducir',
         invoice: 'Poliza_Seguro',
         photos: 'Fotografias_Siniestro',
-        police_report: 'Reporte_Policial'
+        police_report: 'Reporte_Policial',
       };
 
       // Subir archivo inmediatamente a Supabase Storage

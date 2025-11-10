@@ -129,10 +129,11 @@ export function ClaimEvidenceSystem({
     try {
       setLoading(true);
       console.log('📥 Cargando evidencias para claim:', claimId);
-      
+
       const { data, error } = await supabase
         .from('claim_documents')
-        .select(`
+        .select(
+          `
           *,
           uploader:uploaded_by(
             id,
@@ -140,7 +141,8 @@ export function ClaimEvidenceSystem({
             last_name,
             email
           )
-        `)
+        `
+        )
         .eq('claim_id', claimId)
         .order('created_at', { ascending: false });
 
@@ -148,10 +150,10 @@ export function ClaimEvidenceSystem({
         console.error('❌ Error al cargar evidencias:', error);
         throw error;
       }
-      
+
       console.log('✅ Evidencias cargadas:', data?.length || 0, 'documentos');
       console.log('Datos:', data);
-      
+
       setDocuments((data as any) || []);
     } catch (error) {
       console.error('Error loading documents:', error);
@@ -177,10 +179,12 @@ export function ClaimEvidenceSystem({
 
       if (error) {
         console.error('❌ Error en upload de evidencia:', error);
-        
+
         // Mensajes de error más específicos
         if (error.message.includes('row-level security')) {
-          throw new Error('Permisos insuficientes. El administrador debe configurar las políticas RLS del bucket claim-evidence.');
+          throw new Error(
+            'Permisos insuficientes. El administrador debe configurar las políticas RLS del bucket claim-evidence.'
+          );
         } else if (error.message.includes('Bucket not found')) {
           throw new Error('El bucket claim-evidence no existe. Contacta al administrador.');
         } else {
@@ -236,7 +240,7 @@ export function ClaimEvidenceSystem({
       console.log('- Archivo:', selectedFile.name);
       console.log('- Tipo documento:', documentType);
       console.log('- Claim ID:', claimId);
-      
+
       // Subir archivo
       const fileUrl = await uploadFile(selectedFile);
       if (!fileUrl) {
@@ -248,17 +252,20 @@ export function ClaimEvidenceSystem({
       console.log('- URL:', fileUrl);
 
       // Guardar información del documento en la base de datos
-      const { data, error } = await supabase.from('claim_documents').insert({
-        claim_id: claimId,
-        document_type: documentType,
-        file_name: selectedFile.name,
-        file_url: fileUrl,
-        file_type: selectedFile.type,
-        file_size: selectedFile.size,
-        uploaded_by: userProfile?.id,
-        upload_source: 'web',
-        description: description.trim() || null,
-      }).select();
+      const { data, error } = await supabase
+        .from('claim_documents')
+        .insert({
+          claim_id: claimId,
+          document_type: documentType,
+          file_name: selectedFile.name,
+          file_url: fileUrl,
+          file_type: selectedFile.type,
+          file_size: selectedFile.size,
+          uploaded_by: userProfile?.id,
+          upload_source: 'web',
+          description: description.trim() || null,
+        })
+        .select();
 
       if (error) {
         console.error('❌ Error al guardar en BD:', error);
@@ -367,22 +374,22 @@ export function ClaimEvidenceSystem({
   const translateFileName = (fileName: string) => {
     // Mapeo de nombres en inglés a español
     const translations = {
-      'draft_police_report': 'Reporte_Policial',
-      'draft_photos': 'Fotografias_del_Siniestro',
-      'draft_invoice': 'Factura_del_Vehiculo',
-      'draft_proof_of_address': 'Comprobante_de_Domicilio',
-      'draft_license': 'Licencia_de_Conducir',
-      'draft_id': 'Identificacion_Oficial',
-      'police_report': 'Reporte_Policial',
-      'photos': 'Fotografias_del_Siniestro',
-      'invoice': 'Factura_del_Vehiculo',
-      'proof_of_address': 'Comprobante_de_Domicilio',
-      'license': 'Licencia_de_Conducir',
-      'id': 'Identificacion_Oficial'
+      draft_police_report: 'Reporte_Policial',
+      draft_photos: 'Fotografias_del_Siniestro',
+      draft_invoice: 'Factura_del_Vehiculo',
+      draft_proof_of_address: 'Comprobante_de_Domicilio',
+      draft_license: 'Licencia_de_Conducir',
+      draft_id: 'Identificacion_Oficial',
+      police_report: 'Reporte_Policial',
+      photos: 'Fotografias_del_Siniestro',
+      invoice: 'Factura_del_Vehiculo',
+      proof_of_address: 'Comprobante_de_Domicilio',
+      license: 'Licencia_de_Conducir',
+      id: 'Identificacion_Oficial',
     };
 
     let translatedName = fileName;
-    
+
     // Buscar y reemplazar cada patrón en inglés
     Object.entries(translations).forEach(([english, spanish]) => {
       const regex = new RegExp(english, 'gi');
@@ -416,250 +423,264 @@ export function ClaimEvidenceSystem({
 
   return (
     <>
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Camera className="h-5 w-5" />
-          Evidencias y Documentos
-          <InfoTooltip 
-            content="Sube fotos claras del daño, reportes policiales, cotizaciones de reparación y cualquier otro documento relevante. Esto acelera el proceso de tu reclamación."
-            side="right"
-          />
-        </CardTitle>
-        <CardDescription>Documentos y evidencias relacionadas con esta reclamación</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Documentos requeridos faltantes */}
-        {missingDocs.length > 0 && (
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Documentos requeridos pendientes:</strong>
-              <ul className="mt-2 list-disc list-inside">
-                {missingDocs.map(type => (
-                  <li key={type}>
-                    {DOCUMENT_TYPES[type as keyof typeof DOCUMENT_TYPES]?.label || type}
-                  </li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="h-5 w-5" />
+            Evidencias y Documentos
+            <InfoTooltip
+              content="Sube fotos claras del daño, reportes policiales, cotizaciones de reparación y cualquier otro documento relevante. Esto acelera el proceso de tu reclamación."
+              side="right"
+            />
+          </CardTitle>
+          <CardDescription>
+            Documentos y evidencias relacionadas con esta reclamación
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Documentos requeridos faltantes */}
+          {missingDocs.length > 0 && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Documentos requeridos pendientes:</strong>
+                <ul className="mt-2 list-disc list-inside">
+                  {missingDocs.map(type => (
+                    <li key={type}>
+                      {DOCUMENT_TYPES[type as keyof typeof DOCUMENT_TYPES]?.label || type}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {/* Formulario de subida */}
-        {canUpload && (
-          <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
-            <h3 className="font-semibold">Subir Nuevo Documento</h3>
+          {/* Formulario de subida */}
+          {canUpload && (
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+              <h3 className="font-semibold">Subir Nuevo Documento</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Tipo de Documento</Label>
-                <Select value={documentType} onValueChange={setDocumentType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DOCUMENT_TYPES).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>
-                        <div className="flex items-center gap-2">
-                          <config.icon className="h-4 w-4" />
-                          {config.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Tipo de Documento</Label>
+                  <Select value={documentType} onValueChange={setDocumentType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(DOCUMENT_TYPES).map(([key, config]) => (
+                        <SelectItem key={key} value={key}>
+                          <div className="flex items-center gap-2">
+                            <config.icon className="h-4 w-4" />
+                            {config.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label>Archivo</Label>
-                <input
-                  type="file"
-                  id="evidence-file-upload"
-                  className="hidden"
-                  accept=".png,.jpg,.jpeg,.pdf"
-                  onChange={handleFileSelect}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('evidence-file-upload')?.click()}
-                  disabled={uploading}
-                  className="w-full"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {uploading ? 'Subiendo...' : 'Seleccionar archivo'}
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <Label>Descripción (opcional)</Label>
-              <Textarea
-                placeholder="Describe el contenido del documento..."
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={2}
-              />
-            </div>
-
-            {/* Archivo seleccionado */}
-            {selectedFile && (
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const FileIcon = getFileIcon(selectedFile.type);
-                    return <FileIcon className="h-6 w-6 text-blue-500" />;
-                  })()}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{selectedFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatFileSize(selectedFile.size)} •{' '}
-                      {selectedFile.type.split('/')[1]?.toUpperCase()}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={uploadDocument} disabled={uploading} size="sm">
-                      {uploading ? 'Subiendo...' : 'Subir'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedFile(null);
-                        const fileInput = document.getElementById(
-                          'evidence-file-upload'
-                        ) as HTMLInputElement;
-                        if (fileInput) fileInput.value = '';
-                      }}
-                    >
-                      ×
-                    </Button>
-                  </div>
+                <div>
+                  <Label>Archivo</Label>
+                  <input
+                    type="file"
+                    id="evidence-file-upload"
+                    className="hidden"
+                    accept=".png,.jpg,.jpeg,.pdf"
+                    onChange={handleFileSelect}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('evidence-file-upload')?.click()}
+                    disabled={uploading}
+                    className="w-full"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? 'Subiendo...' : 'Seleccionar archivo'}
+                  </Button>
                 </div>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Lista de documentos */}
-        <div className="space-y-4">
-          <h3 className="font-semibold">Documentos Cargados ({documents.length})</h3>
+              <div>
+                <Label>Descripción (opcional)</Label>
+                <Textarea
+                  placeholder="Describe el contenido del documento..."
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  rows={2}
+                />
+              </div>
 
-          {loading ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Cargando documentos...</p>
-            </div>
-          ) : documents.length === 0 ? (
-            <div className="text-center py-8">
-              <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">No hay documentos cargados</p>
-            </div>
-          ) : (
-            documents.map(doc => {
-              const FileIcon = getFileIcon(doc.file_type);
-              const docTypeConfig =
-                DOCUMENT_TYPES[doc.document_type as keyof typeof DOCUMENT_TYPES];
-
-              return (
-                <div
-                  key={doc.id}
-                  className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-start gap-4">
-                    <FileIcon className="h-8 w-8 text-blue-500 mt-1" />
-
+              {/* Archivo seleccionado */}
+              {selectedFile && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const FileIcon = getFileIcon(selectedFile.type);
+                      return <FileIcon className="h-6 w-6 text-blue-500" />;
+                    })()}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="font-medium truncate">{translateFileName(doc.file_name)}</h4>
-                        <Badge variant="outline">{docTypeConfig?.label || doc.document_type}</Badge>
-                        {doc.is_verified && (
-                          <Badge className="bg-green-100 text-green-800">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Verificado
+                      <p className="font-medium text-sm truncate">{selectedFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(selectedFile.size)} •{' '}
+                        {selectedFile.type.split('/')[1]?.toUpperCase()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={uploadDocument} disabled={uploading} size="sm">
+                        {uploading ? 'Subiendo...' : 'Subir'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          const fileInput = document.getElementById(
+                            'evidence-file-upload'
+                          ) as HTMLInputElement;
+                          if (fileInput) fileInput.value = '';
+                        }}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Lista de documentos */}
+          <div className="space-y-4">
+            <h3 className="font-semibold">Documentos Cargados ({documents.length})</h3>
+
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Cargando documentos...</p>
+              </div>
+            ) : documents.length === 0 ? (
+              <div className="text-center py-8">
+                <Camera className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">No hay documentos cargados</p>
+              </div>
+            ) : (
+              documents.map(doc => {
+                const FileIcon = getFileIcon(doc.file_type);
+                const docTypeConfig =
+                  DOCUMENT_TYPES[doc.document_type as keyof typeof DOCUMENT_TYPES];
+
+                return (
+                  <div
+                    key={doc.id}
+                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start gap-4">
+                      <FileIcon className="h-8 w-8 text-blue-500 mt-1" />
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-medium truncate">
+                            {translateFileName(doc.file_name)}
+                          </h4>
+                          <Badge variant="outline">
+                            {docTypeConfig?.label || doc.document_type}
                           </Badge>
+                          {doc.is_verified && (
+                            <Badge className="bg-green-100 text-green-800">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Verificado
+                            </Badge>
+                          )}
+                        </div>
+
+                        {doc.description && (
+                          <p className="text-sm text-muted-foreground mb-2">{doc.description}</p>
+                        )}
+
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>
+                            Subido por: {doc.uploader_first_name} {doc.uploader_last_name} (
+                            {doc.uploader_role})
+                          </span>
+                          <span>
+                            {format(new Date(doc.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                          </span>
+                          {doc.file_size && <span>{formatFileSize(doc.file_size)}</span>}
+                        </div>
+
+                        {doc.verification_notes && (
+                          <p className="text-xs text-muted-foreground mt-2 p-2 bg-yellow-50 rounded">
+                            <strong>Notas de verificación:</strong> {doc.verification_notes}
+                          </p>
                         )}
                       </div>
 
-                      {doc.description && (
-                        <p className="text-sm text-muted-foreground mb-2">{doc.description}</p>
-                      )}
-
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>
-                          Subido por: {doc.uploader_first_name} {doc.uploader_last_name} (
-                          {doc.uploader_role})
-                        </span>
-                        <span>
-                          {format(new Date(doc.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
-                        </span>
-                        {doc.file_size && <span>{formatFileSize(doc.file_size)}</span>}
-                      </div>
-
-                      {doc.verification_notes && (
-                        <p className="text-xs text-muted-foreground mt-2 p-2 bg-yellow-50 rounded">
-                          <strong>Notas de verificación:</strong> {doc.verification_notes}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => window.open(doc.file_url, '_blank')}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        {doc.file_type.startsWith('image/') ? 'Ver' : 'Descargar'}
-                      </Button>
-
-                      {canVerify && (
+                      <div className="flex gap-2">
                         <Button
                           size="sm"
-                          variant={doc.is_verified ? 'outline' : 'default'}
-                          onClick={() => verifyDocument(doc.id, !doc.is_verified)}
+                          variant="outline"
+                          onClick={() => window.open(doc.file_url, '_blank')}
                         >
-                          {doc.is_verified ? (
-                            <XCircle className="h-4 w-4 mr-1" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                          )}
-                          {doc.is_verified ? 'Desverificar' : 'Verificar'}
+                          <Eye className="h-4 w-4 mr-1" />
+                          {doc.file_type.startsWith('image/') ? 'Ver' : 'Descargar'}
                         </Button>
-                      )}
 
-                      {(userProfile?.role === 'admin' || doc.uploaded_by === userProfile?.id) && (
-                        <Button size="sm" variant="outline" onClick={() => handleDeleteClick(doc.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                        {canVerify && (
+                          <Button
+                            size="sm"
+                            variant={doc.is_verified ? 'outline' : 'default'}
+                            onClick={() => verifyDocument(doc.id, !doc.is_verified)}
+                          >
+                            {doc.is_verified ? (
+                              <XCircle className="h-4 w-4 mr-1" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                            )}
+                            {doc.is_verified ? 'Desverificar' : 'Verificar'}
+                          </Button>
+                        )}
+
+                        {(userProfile?.role === 'admin' || doc.uploaded_by === userProfile?.id) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteClick(doc.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </CardContent>
-    </Card>
+                );
+              })
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Esta acción no se puede deshacer. El documento será eliminado permanentemente del sistema.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
-            Eliminar
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El documento será eliminado permanentemente del
+              sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -362,7 +362,9 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
         {/* Progress Overview */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium dark:text-gray-200">Progreso de Documentación</span>
+            <span className="text-sm font-medium dark:text-gray-200">
+              Progreso de Documentación
+            </span>
             <span className="text-sm text-muted-foreground dark:text-gray-400">
               {completionPercentage}% completado
             </span>
@@ -400,7 +402,9 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
               <div className="flex items-center gap-2">
                 <CategoryIcon className="h-4 w-4 dark:text-gray-300" />
                 <h4 className="font-medium dark:text-gray-200">{categoryName}</h4>
-                <Badge className={`${getCategoryColor(category)} dark:bg-opacity-20 dark:border dark:border-gray-600`}>
+                <Badge
+                  className={`${getCategoryColor(category)} dark:bg-opacity-20 dark:border dark:border-gray-600`}
+                >
                   {categoryDocs.filter(doc => submittedDocs.includes(doc.id)).length}/
                   {categoryDocs.length}
                 </Badge>
@@ -426,14 +430,21 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
                         <DocIcon className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm dark:text-gray-200">{doc.name}</span>
+                            <span className="font-medium text-sm dark:text-gray-200">
+                              {doc.name}
+                            </span>
                             {doc.required && (
-                              <Badge variant="outline" className="text-xs dark:border-gray-600 dark:text-gray-300">
+                              <Badge
+                                variant="outline"
+                                className="text-xs dark:border-gray-600 dark:text-gray-300"
+                              >
                                 Requerido
                               </Badge>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">{doc.description}</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
+                            {doc.description}
+                          </p>
                         </div>
                       </div>
 
@@ -482,7 +493,10 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
               </Button>
 
               {completionPercentage === 100 && (
-                <Button variant="outline" className="flex-1 dark:border-gray-600 dark:text-gray-200">
+                <Button
+                  variant="outline"
+                  className="flex-1 dark:border-gray-600 dark:text-gray-200"
+                >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Documentación Completa
                 </Button>
