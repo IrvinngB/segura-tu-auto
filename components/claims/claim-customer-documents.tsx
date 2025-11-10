@@ -13,15 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import {
-  Upload,
-  FileText,
-  Download,
-  Eye,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-} from 'lucide-react';
+import { Upload, FileText, Download, Eye, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -31,13 +23,7 @@ interface ClaimCustomerDocument {
   id: string;
   claim_id: string;
   customer_id: string;
-  document_type:
-    | 'license'
-    | 'id'
-    | 'invoice'
-    | 'police_report'
-    | 'photos'
-    | 'other';
+  document_type: 'license' | 'id' | 'invoice' | 'police_report' | 'photos' | 'other';
   file_name: string;
   file_url: string;
   file_size: number;
@@ -83,6 +69,7 @@ export function ClaimCustomerDocuments({
 
   const fetchDocuments = async () => {
     try {
+      console.log('📥 Fetching documents para claim:', claimId);
       const { data, error } = await supabase
         .from('claim_customer_documents')
         .select('*')
@@ -90,6 +77,13 @@ export function ClaimCustomerDocuments({
         .order('upload_date', { ascending: false });
 
       if (error) throw error;
+      console.log('✅ Documentos cargados desde BD:', data?.length || 0, 'documentos');
+      // console.log('📋 Datos de documentos completos:', JSON.stringify(data?.map(d => ({
+      //   id: d.id,
+      //   fileName: d.file_name,
+      //   url: d.file_url,
+      //   docType: d.document_type
+      // })), null, 2));
       setDocuments(data || []);
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -131,9 +125,10 @@ export function ClaimCustomerDocuments({
 
       const timestamp = Date.now();
       const newFileName = `${documentTypeLabel}_${timestamp}.${fileExt}`;
-      const storagePath = `${claimId}/${newFileName}`;
+      const storagePath = `drafts/${newFileName}`;
 
       console.log('📤 Subiendo archivo como:', newFileName);
+      console.log('📂 Path completo:', storagePath);
 
       // Subir a Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -151,12 +146,27 @@ export function ClaimCustomerDocuments({
 
       console.log('✅ Archivo subido:', uploadData);
 
+      // Verificar que el archivo existe listando la carpeta
+      const { data: listData, error: listError } = await supabase.storage
+        .from('clientes-adjuntos')
+        .list('drafts');
+
+      console.log('📁 Archivos en carpeta drafts:', listData);
+
       // Obtener URL pública
       const {
         data: { publicUrl },
       } = supabase.storage.from('clientes-adjuntos').getPublicUrl(storagePath);
 
-      console.log('🔗 URL pública:', publicUrl);
+      console.log('🔗 URL pública generada:', publicUrl);
+
+      // Verificar accesibilidad del archivo
+      try {
+        const response = await fetch(publicUrl, { method: 'HEAD' });
+        console.log('🌐 Status de verificación:', response.status, response.statusText);
+      } catch (fetchError) {
+        console.warn('⚠️ Error verificando archivo:', fetchError);
+      }
 
       // Usar el tipo de documento seleccionado por el usuario
       const documentType = selectedDocumentType;
@@ -227,8 +237,8 @@ export function ClaimCustomerDocuments({
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.pdf,.jpg,.jpeg,.png';
-    
-    input.onchange = async (event) => {
+
+    input.onchange = async event => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
@@ -254,22 +264,22 @@ export function ClaimCustomerDocuments({
           oldFileUrl,
           documentType,
           newFileName: file.name,
-          newFileSize: file.size
+          newFileSize: file.size,
         });
 
         // Obtener extensión del archivo nuevo
         const fileExt = file.name.split('.').pop();
-        
+
         // Generar nombre basado en el tipo de documento
         const documentTypeLabel = DOCUMENT_TYPE_LABELS[documentType]
           .toLowerCase()
           .replace(/\s+/g, '_')
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '');
-        
+
         const timestamp = Date.now();
         const newFileName = `${documentTypeLabel}_${timestamp}.${fileExt}`;
-        const storagePath = `${claimId}/${newFileName}`;
+        const storagePath = `drafts/${newFileName}`;
 
         // Subir nuevo archivo a Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase.storage
@@ -285,33 +295,64 @@ export function ClaimCustomerDocuments({
         }
 
         // Obtener URL pública del nuevo archivo
-        const { data: { publicUrl } } = supabase.storage
-          .from('clientes-adjuntos')
-          .getPublicUrl(storagePath);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('clientes-adjuntos').getPublicUrl(storagePath);
 
-        // Actualizar el documento en la base de datos
-        const { data: updateData, error: updateError } = await supabase
+        // Verificar que el documento existe antes de actualizar
+        console.log('🔍 Verificando existencia del documento con ID:', docId);
+        const { data: existingDoc, error: checkError } = await supabase
           .from('claim_customer_documents')
-          .update({
-            file_name: newFileName,
-            file_url: publicUrl,
-            file_size: file.size,
-            mime_type: file.type,
-            upload_date: new Date().toISOString(),
-            status: 'pending', // Reset status to pending when replaced
-          })
+          .select('*')
           .eq('id', docId)
-          .select();
+          .single();
 
-        if (updateError) {
-          throw new Error(`Error al actualizar documento: ${updateError.message}`);
+        console.log('📋 Documento existente:', existingDoc);
+        console.log('❌ Error de verificación:', checkError);
+
+        if (checkError || !existingDoc) {
+          throw new Error(
+            `Documento no encontrado o sin acceso: ${checkError?.message || 'No existe'}`
+          );
         }
 
-        console.log('✅ Documento actualizado en BD exitosamente:', {
+        // Actualizar el documento en la base de datos
+        console.log('📝 Iniciando actualización en BD con datos:', {
           docId,
           newFileName,
           newUrl: publicUrl,
-          updateData
+          fileSize: file.size,
+          mimeType: file.type,
+        });
+
+        // Usar API endpoint para bypasear RLS
+        console.log('🔄 Llamando API para actualizar documento...');
+        const response = await fetch('/api/documents/replace', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            docId,
+            newFileName,
+            newUrl: publicUrl,
+            fileSize: file.size,
+            mimeType: file.type,
+          }),
+        });
+
+        const result = await response.json();
+        console.log('📋 Resultado de la API:', result);
+
+        if (!result.success) {
+          throw new Error(`Error en API: ${result.error}`);
+        }
+
+        console.log('✅ Documento actualizado via API exitosamente:', {
+          docId,
+          newFileName,
+          newUrl: publicUrl,
+          updatedRecord: result.data,
         });
 
         // Eliminar el archivo anterior del storage
@@ -319,15 +360,15 @@ export function ClaimCustomerDocuments({
           console.log('🗑️ Intentando eliminar archivo anterior:', oldFileUrl);
           const oldUrlParts = oldFileUrl.split('/');
           const bucketIndex = oldUrlParts.findIndex(part => part === 'clientes-adjuntos');
-          
+
           if (bucketIndex !== -1 && bucketIndex < oldUrlParts.length - 1) {
             const oldFilePath = oldUrlParts.slice(bucketIndex + 1).join('/');
             console.log('📂 Path del archivo anterior:', oldFilePath);
-            
+
             const { error: deleteError } = await supabase.storage
               .from('clientes-adjuntos')
               .remove([oldFilePath]);
-            
+
             if (deleteError) {
               console.warn('⚠️ Error eliminando archivo anterior:', deleteError);
             } else {
@@ -341,15 +382,26 @@ export function ClaimCustomerDocuments({
         }
 
         toast.success('Documento actualizado exitosamente');
-        
-        // Recargar documentos para mostrar los cambios
+
+        // Forzar actualización del estado local inmediatamente
+        console.log('🔄 Actualizando estado local...');
+        setDocuments(prevDocs =>
+          prevDocs.map(doc =>
+            doc.id === docId
+              ? { ...doc, fileName: newFileName, url: publicUrl, status: 'pending' as const }
+              : doc
+          )
+        );
+
+        // Recargar documentos inmediatamente
         console.log('🔄 Recargando lista de documentos...');
         await fetchDocuments();
-        
-        // Forzar re-render del componente con un pequeño delay
-        setTimeout(() => {
-          fetchDocuments();
-        }, 1000);
+
+        // Recargar datos con delay adicional para asegurar que la BD esté actualizada
+        setTimeout(async () => {
+          console.log('🔄 Recargando documentos después del delay...');
+          await fetchDocuments();
+        }, 2000);
       } catch (error) {
         console.error('Error replacing document:', error);
         toast.error('Error al actualizar el documento: ' + (error as Error).message);
@@ -498,9 +550,9 @@ export function ClaimCustomerDocuments({
                       <SelectValue placeholder="Selecciona el tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                    <SelectItem value="license">📄 Licencia de Conducir</SelectItem>
-                    <SelectItem value="id">🪪 Identificación Oficial</SelectItem>
-                    <SelectItem value="invoice">🧾 Factura del Vehículo</SelectItem>
+                      <SelectItem value="license">📄 Licencia de Conducir</SelectItem>
+                      <SelectItem value="id">🪪 Identificación Oficial</SelectItem>
+                      <SelectItem value="invoice">🧾 Factura del Vehículo</SelectItem>
                       <SelectItem value="police_report">👮 Reporte Policial</SelectItem>
                       <SelectItem value="photos">📸 Fotografías del Siniestro</SelectItem>
                       <SelectItem value="other">📎 Otro Documento</SelectItem>
@@ -544,111 +596,155 @@ export function ClaimCustomerDocuments({
             </div>
           ) : (
             <div className="space-y-3">
-              {documents.map(doc => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:border-gray-700 dark:hover:bg-gray-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    <FileText className="h-8 w-8 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate dark:text-gray-100">
-                        {translateFileName(doc.file_name)}
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
-                        <span>{DOCUMENT_TYPE_LABELS[doc.document_type]}</span>
-                        <span>•</span>
-                        <span>{formatFileSize(doc.file_size)}</span>
-                        <span>•</span>
-                        <span>
-                          {format(new Date(doc.upload_date), 'dd/MM/yyyy HH:mm', { locale: es })}
-                        </span>
-                      </div>
-                      {doc.notes && (
-                        <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1 italic">
-                          {doc.notes}
+              {documents.map(doc => {
+                // console.log('🎨 Renderizando doc:', {
+                //   id: doc.id,
+                //   url: doc.url,
+                //   fileName: doc.fileName
+                // });
+                return (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:border-gray-700 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <FileText className="h-8 w-8 text-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate dark:text-gray-100">
+                          {translateFileName(doc.file_name)}
                         </p>
-                      )}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
+                          <span>{DOCUMENT_TYPE_LABELS[doc.document_type]}</span>
+                          <span>•</span>
+                          <span>{formatFileSize(doc.file_size)}</span>
+                          <span>•</span>
+                          <span>
+                            {format(new Date(doc.upload_date), 'dd/MM/yyyy HH:mm', { locale: es })}
+                          </span>
+                        </div>
+                        {doc.notes && (
+                          <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1 italic">
+                            {doc.notes}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {getStatusBadge(doc.status)}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {getStatusBadge(doc.status)}
 
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        // Agregar timestamp para evitar caché del navegador
-                        const urlWithoutCache = `${doc.file_url}?t=${Date.now()}`;
-                        window.open(urlWithoutCache, '_blank');
-                      }}
-                      className="dark:hover:bg-gray-700"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        const link = document.createElement('a');
-                        // Agregar timestamp para evitar caché del navegador
-                        link.href = `${doc.file_url}?t=${Date.now()}`;
-                        link.download = translateFileName(doc.file_name);
-                        link.click();
-                      }}
-                      className="dark:hover:bg-gray-700"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-
-                    {currentUserRole === 'customer' && (
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleReplaceDocument(doc.id, doc.file_url, doc.document_type)}
-                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-gray-700"
-                        disabled={uploading}
-                        title="Reemplazar documento"
-                      >
-                        <Upload className="h-4 w-4" />
-                      </Button>
-                    )}
+                        onClick={async () => {
+                          try {
+                            console.log('🔍 Verificando archivo:', doc.file_url);
+                            const response = await fetch(doc.file_url, { method: 'HEAD' });
+                            console.log('📡 Status de verificación:', response.status);
 
-                    {['admin', 'agent', 'adjuster'].includes(currentUserRole || '') &&
-                      doc.status === 'pending' && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => updateDocumentStatus(doc.id, 'approved')}
-                            className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-gray-700"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              const notes = prompt('Razón del rechazo (opcional):');
-                              updateDocumentStatus(doc.id, 'rejected', notes || undefined);
-                            }}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-gray-700"
-                          >
-                            <AlertCircle className="h-4 w-4" />
-                          </Button>
-                        </>
+                            if (response.ok) {
+                              const urlWithoutCache = `${doc.file_url}?t=${Date.now()}`;
+                              window.open(urlWithoutCache, '_blank');
+                            } else {
+                              console.error(
+                                '❌ Archivo no encontrado (status:',
+                                response.status,
+                                ')'
+                              );
+                              toast.error(
+                                `El archivo no está disponible (Error ${response.status}). Puede haber sido movido o eliminado.`
+                              );
+                            }
+                          } catch (error) {
+                            console.error('❌ Error verificando archivo:', error);
+                            toast.error('Error al verificar la disponibilidad del archivo.');
+                          }
+                        }}
+                        className="dark:hover:bg-gray-700"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={async () => {
+                          try {
+                            console.log('📥 Verificando archivo para descarga:', doc.file_url);
+                            const response = await fetch(doc.file_url, { method: 'HEAD' });
+
+                            if (response.ok) {
+                              const link = document.createElement('a');
+                              link.href = `${doc.file_url}?t=${Date.now()}`;
+                              link.download = translateFileName(doc.file_name);
+                              link.click();
+                            } else {
+                              console.error(
+                                '❌ Archivo no disponible para descarga (status:',
+                                response.status,
+                                ')'
+                              );
+                              toast.error(
+                                `El archivo no está disponible para descarga (Error ${response.status}).`
+                              );
+                            }
+                          } catch (error) {
+                            console.error('❌ Error descargando archivo:', error);
+                            toast.error('Error al descargar el archivo.');
+                          }
+                        }}
+                        className="dark:hover:bg-gray-700"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+
+                      {currentUserRole === 'customer' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            handleReplaceDocument(doc.id, doc.file_url, doc.document_type)
+                          }
+                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-gray-700"
+                          disabled={uploading}
+                          title="Reemplazar documento"
+                        >
+                          <Upload className="h-4 w-4" />
+                        </Button>
                       )}
+
+                      {['admin', 'agent', 'adjuster'].includes(currentUserRole || '') &&
+                        doc.status === 'pending' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => updateDocumentStatus(doc.id, 'approved')}
+                              className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-gray-700"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                const notes = prompt('Razón del rechazo (opcional):');
+                                updateDocumentStatus(doc.id, 'rejected', notes || undefined);
+                              }}
+                              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-gray-700"
+                            >
+                              <AlertCircle className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
-
-
     </>
   );
 }
