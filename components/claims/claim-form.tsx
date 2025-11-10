@@ -25,7 +25,7 @@ import type { Policy, Customer } from '@/lib/types/database';
 // Interfaces para documentos requeridos
 interface RequiredDocument {
   id: string;
-  type: 'license' | 'id' | 'proof_of_address' | 'invoice' | 'police_report' | 'photos';
+  type: 'license' | 'id' | 'invoice' | 'police_report' | 'photos';
   name: string;
   description: string;
   required: boolean;
@@ -89,12 +89,14 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [countdown, setCountdown] = useState(0);
-  
+
   // Estados para documentos requeridos
   const [requiredDocuments, setRequiredDocuments] = useState<RequiredDocument[]>([]);
-  const [uploadedDocuments, setUploadedDocuments] = useState<{[key: string]: UploadedDocument}>({});
+  const [uploadedDocuments, setUploadedDocuments] = useState<{ [key: string]: UploadedDocument }>(
+    {}
+  );
   const [uploadingDocs, setUploadingDocs] = useState(false);
-  
+
   const supabase = createClient();
 
   // Efecto para el temporizador del modal de éxito
@@ -227,8 +229,6 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
     setClaimData(prev => ({ ...prev, [field]: value }));
   };
 
-
-
   const generateClaimNumber = () => {
     const year = new Date().getFullYear();
     const random = Math.floor(Math.random() * 1000000)
@@ -280,15 +280,6 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
         type: 'license',
         name: 'Licencia de Conducir',
         description: 'Licencia de conducir vigente del conductor al momento del siniestro',
-        required: true,
-        category: 'identity',
-        icon: FileText,
-      },
-      {
-        id: 'proof_of_address',
-        type: 'proof_of_address',
-        name: 'Comprobante de Domicilio',
-        description: 'Recibo de servicios públicos o documento que acredite domicilio (no mayor a 3 meses)',
         required: true,
         category: 'identity',
         icon: FileText,
@@ -386,10 +377,12 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
 
       if (uploadError) {
         console.error(`❌ Error subiendo ${docType}:`, uploadError);
-        
+
         // Mensajes de error más específicos
         if (uploadError.message.includes('row-level security')) {
-          throw new Error('Permisos insuficientes. El administrador debe configurar las políticas RLS del bucket clientes-adjuntos.');
+          throw new Error(
+            'Permisos insuficientes. El administrador debe configurar las políticas RLS del bucket clientes-adjuntos.'
+          );
         } else if (uploadError.message.includes('Bucket not found')) {
           throw new Error('El bucket clientes-adjuntos no existe. Contacta al administrador.');
         } else {
@@ -398,9 +391,9 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
       }
 
       // Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('clientes-adjuntos')
-        .getPublicUrl(storagePath);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('clientes-adjuntos').getPublicUrl(storagePath);
 
       console.log(`✅ Documento ${docType} subido a:`, publicUrl);
 
@@ -411,8 +404,8 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
           file: file,
           url: publicUrl,
           fileName: fileName,
-          storagePath: storagePath
-        }
+          storagePath: storagePath,
+        },
       }));
 
       toast.success(`Documento ${docType} subido correctamente`);
@@ -445,7 +438,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
         delete newDocs[docType];
         return newDocs;
       });
-      
+
       toast.success('Documento eliminado');
     } catch (error) {
       console.error('Error removing document:', error);
@@ -549,18 +542,16 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
           console.log(`📄 Registrando documento ${docType} en BD:`, docInfo.fileName);
 
           // Guardar en base de datos (el archivo ya está subido)
-          const { error: dbError } = await supabase
-            .from('claim_customer_documents')
-            .insert({
-              claim_id: claim.id,
-              customer_id: selectedCustomer,
-              document_type: docType,
-              file_name: docInfo.fileName,
-              file_url: docInfo.url,
-              file_size: docInfo.file.size,
-              mime_type: docInfo.file.type,
-              status: 'pending',
-            });
+          const { error: dbError } = await supabase.from('claim_customer_documents').insert({
+            claim_id: claim.id,
+            customer_id: selectedCustomer,
+            document_type: docType,
+            file_name: docInfo.fileName,
+            file_url: docInfo.url,
+            file_size: docInfo.file.size,
+            mime_type: docInfo.file.type,
+            status: 'pending',
+          });
 
           if (dbError) {
             console.error(`❌ Error guardando ${docType} en BD:`, dbError);
@@ -575,7 +566,9 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
 
       console.log(`✅ Documentos subidos: ${uploadedCount}/${totalDocs}`);
 
-      setSuccess(`¡Reclamación ${claimNumber} creada exitosamente! Se han subido ${uploadedCount} de ${totalDocs} documentos. Los documentos están siendo procesados y serán revisados por nuestro equipo.`);
+      setSuccess(
+        `¡Reclamación ${claimNumber} creada exitosamente! Se han subido ${uploadedCount} de ${totalDocs} documentos. Los documentos están siendo procesados y serán revisados por nuestro equipo.`
+      );
       setCountdown(5); // Más tiempo para leer el mensaje con info de documentos
     } catch (error) {
       console.error('💥 Error creating claim:', error);
@@ -840,7 +833,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
               <div className="space-y-2">
                 <Label htmlFor="claimType" className="flex items-center gap-2">
                   Tipo de Siniestro *
-                  <InfoTooltip 
+                  <InfoTooltip
                     content="Selecciona el tipo de incidente que ocurrió. Esto ayuda a asignar tu caso al ajustador correcto y determinar la cobertura aplicable."
                     side="right"
                   />
@@ -899,7 +892,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
             <div className="space-y-2">
               <Label htmlFor="incidentDescription" className="flex items-center gap-2">
                 Descripción del Siniestro *
-                <InfoTooltip 
+                <InfoTooltip
                   content="Proporciona todos los detalles relevantes: qué pasó, cómo ocurrió, si hubo testigos, condiciones del clima, etc. Esto acelera el proceso de investigación."
                   side="right"
                 />
@@ -970,13 +963,14 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-2 text-lg font-semibold">
                   📋 Sistema de Documentación Requerida
-                  <InfoTooltip 
+                  <InfoTooltip
                     content="Debes subir TODOS los documentos requeridos antes de poder enviar la reclamación. Los documentos son verificados automáticamente."
                     side="right"
                   />
                 </Label>
-                <Badge variant={areAllRequiredDocumentsUploaded() ? "default" : "destructive"}>
-                  {Object.keys(uploadedDocuments).length} / {requiredDocuments.filter(d => d.required).length} documentos
+                <Badge variant={areAllRequiredDocumentsUploaded() ? 'default' : 'destructive'}>
+                  {Object.keys(uploadedDocuments).length} /{' '}
+                  {requiredDocuments.filter(d => d.required).length} documentos
                 </Badge>
               </div>
 
@@ -996,12 +990,14 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
 
                 const categoryNames = {
                   identity: 'Documentos de Identidad',
-                  vehicle: 'Documentos del Vehículo', 
+                  vehicle: 'Documentos del Vehículo',
                   incident: 'Documentos del Siniestro',
-                  legal: 'Documentos Legales'
+                  legal: 'Documentos Legales',
                 };
 
-                const categoryProgress = categoryDocs.filter(doc => uploadedDocuments[doc.type]).length;
+                const categoryProgress = categoryDocs.filter(
+                  doc => uploadedDocuments[doc.type]
+                ).length;
                 const categoryTotal = categoryDocs.filter(doc => doc.required).length;
 
                 return (
@@ -1015,7 +1011,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                           {category === 'legal' && <FileText className="h-5 w-5" />}
                           {categoryNames[category as keyof typeof categoryNames]}
                         </CardTitle>
-                        <Badge variant={categoryProgress === categoryTotal ? "default" : "outline"}>
+                        <Badge variant={categoryProgress === categoryTotal ? 'default' : 'outline'}>
                           {categoryProgress}/{categoryTotal}
                         </Badge>
                       </div>
@@ -1026,11 +1022,11 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                         const docInfo = uploadedDocuments[doc.type];
 
                         return (
-                          <div 
+                          <div
                             key={doc.id}
                             className={`border rounded-lg p-4 transition-colors ${
-                              isUploaded 
-                                ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' 
+                              isUploaded
+                                ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
                                 : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
                             }`}
                           >
@@ -1039,12 +1035,20 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                                 <div className="flex items-center gap-2 mb-2">
                                   <doc.icon className="h-4 w-4" />
                                   <span className="font-medium">{doc.name}</span>
-                                  {doc.required && <Badge variant="destructive" className="text-xs">Requerido</Badge>}
+                                  {doc.required && (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Requerido
+                                    </Badge>
+                                  )}
                                   {isUploaded && <CheckCircle className="h-4 w-4 text-green-600" />}
-                                  {!isUploaded && <AlertTriangle className="h-4 w-4 text-red-600" />}
+                                  {!isUploaded && (
+                                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                                  )}
                                 </div>
-                                <p className="text-sm text-muted-foreground mb-3">{doc.description}</p>
-                                
+                                <p className="text-sm text-muted-foreground mb-3">
+                                  {doc.description}
+                                </p>
+
                                 {/* Información del archivo subido */}
                                 {isUploaded && docInfo && (
                                   <div className="flex items-center gap-2 text-xs text-green-700 dark:text-green-300">
@@ -1063,7 +1067,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                                       id={`doc-${doc.type}`}
                                       className="hidden"
                                       accept=".pdf,.jpg,.jpeg,.png"
-                                      onChange={(e) => {
+                                      onChange={e => {
                                         const file = e.target.files?.[0];
                                         if (file) {
                                           handleDocumentUpload(doc.type, file);
@@ -1072,9 +1076,9 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                                       disabled={uploadingDocs}
                                     />
                                     <label htmlFor={`doc-${doc.type}`}>
-                                      <Button 
-                                        asChild 
-                                        size="sm" 
+                                      <Button
+                                        asChild
+                                        size="sm"
                                         disabled={uploadingDocs}
                                         className="cursor-pointer"
                                       >
@@ -1121,9 +1125,17 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>Faltan {requiredDocuments.filter(d => d.required && !uploadedDocuments[d.type]).length} documentos requeridos.</strong>
+                    <strong>
+                      Faltan{' '}
+                      {
+                        requiredDocuments.filter(d => d.required && !uploadedDocuments[d.type])
+                          .length
+                      }{' '}
+                      documentos requeridos.
+                    </strong>
                     <br />
-                    Debes subir todos los documentos marcados como "Requerido" antes de poder enviar la reclamación.
+                    Debes subir todos los documentos marcados como "Requerido" antes de poder enviar
+                    la reclamación.
                   </AlertDescription>
                 </Alert>
               )}
@@ -1132,7 +1144,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                 <Alert>
                   <CheckCircle className="h-4 w-4" />
                   <AlertDescription className="text-green-800 dark:text-green-200">
-                    <strong>¡Excelente!</strong> Todos los documentos requeridos han sido subidos. 
+                    <strong>¡Excelente!</strong> Todos los documentos requeridos han sido subidos.
                     Ya puedes proceder a crear la reclamación.
                   </AlertDescription>
                 </Alert>
@@ -1144,9 +1156,9 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
               <Button
                 type="submit"
                 disabled={
-                  loading || 
-                  !selectedPolicy || 
-                  !claimData.incidentDescription || 
+                  loading ||
+                  !selectedPolicy ||
+                  !claimData.incidentDescription ||
                   !areAllRequiredDocumentsUploaded() ||
                   uploadingDocs
                 }

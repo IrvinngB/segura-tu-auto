@@ -5,13 +5,15 @@ El sistema de documentos y evidencias para reclamaciones ya está **implementado
 ## 📋 Estado Actual
 
 ### ✅ Ya Implementado
+
 - **Componente ClaimCustomerDocuments**: Permite a clientes subir documentos requeridos
-- **Componente ClaimEvidenceSystem**: Sistema completo de evidencias y fotografías  
+- **Componente ClaimEvidenceSystem**: Sistema completo de evidencias y fotografías
 - **Interfaz integrada**: Ambos sistemas están integrados en el detalle de reclamaciones
 - **Validaciones**: Tipos de archivo, tamaños, categorización automática
 - **Flujo completo**: Subida → Revisión → Aprobación/Rechazo
 
 ### ⚠️ Requiere Configuración
+
 - **Storage buckets** en Supabase
 - **Políticas RLS** para storage
 - **Tablas de base de datos** (si no existen)
@@ -19,6 +21,7 @@ El sistema de documentos y evidencias para reclamaciones ya está **implementado
 ## 🚀 Pasos para Activar Completamente
 
 ### 1. Ejecutar Script de Base de Datos
+
 ```sql
 -- En Supabase SQL Editor, ejecutar:
 -- scripts/setup-claim-documents-storage.sql
@@ -27,6 +30,7 @@ El sistema de documentos y evidencias para reclamaciones ya está **implementado
 ### 2. Crear Storage Buckets en Supabase
 
 #### A. Bucket "clientes-adjuntos"
+
 1. Ir a **Storage** en Supabase Dashboard
 2. Crear nuevo bucket: `clientes-adjuntos`
 3. Configurar como **Público**: No
@@ -37,7 +41,7 @@ El sistema de documentos y evidencias para reclamaciones ya está **implementado
 CREATE POLICY "Users can view their claim documents" ON storage.objects
 FOR SELECT USING (bucket_id = 'clientes-adjuntos' AND auth.role() = 'authenticated');
 
--- Política INSERT  
+-- Política INSERT
 CREATE POLICY "Users can upload claim documents" ON storage.objects
 FOR INSERT WITH CHECK (bucket_id = 'clientes-adjuntos' AND auth.role() = 'authenticated');
 
@@ -50,7 +54,8 @@ CREATE POLICY "Users can delete their documents" ON storage.objects
 FOR DELETE USING (bucket_id = 'clientes-adjuntos' AND auth.role() = 'authenticated');
 ```
 
-#### B. Bucket "claim-evidence"  
+#### B. Bucket "claim-evidence"
+
 1. Crear bucket: `claim-evidence`
 2. Configurar como **Público**: No
 3. Agregar políticas similares:
@@ -74,6 +79,7 @@ FOR DELETE USING (bucket_id = 'claim-evidence' AND auth.role() = 'authenticated'
 ```
 
 ### 3. Verificar Configuración
+
 ```sql
 -- En Supabase SQL Editor, ejecutar:
 -- scripts/test-claim-documents-setup.sql
@@ -82,13 +88,15 @@ FOR DELETE USING (bucket_id = 'claim-evidence' AND auth.role() = 'authenticated'
 ## 📸 Funcionalidades Disponibles
 
 ### Para Clientes
+
 - **Subir documentos requeridos**: Licencia, ID, comprobantes, etc.
 - **Fotografías del siniestro**: Múltiples fotos con categorización
 - **Reportes policiales**: Documentos oficiales
 - **Cotizaciones de reparación**: Estimados de costos
 - **Seguimiento de estado**: Pendiente → Aprobado → Rechazado
 
-### Para Agentes/Ajustadores  
+### Para Agentes/Ajustadores
+
 - **Revisar documentos**: Ver todos los documentos subidos
 - **Aprobar/Rechazar**: Con notas explicativas
 - **Solicitar documentos adicionales**: A través del sistema de comunicación
@@ -106,8 +114,9 @@ FOR DELETE USING (bucket_id = 'claim-evidence' AND auth.role() = 'authenticated'
 ## 🎯 Tipos de Documentos Soportados
 
 ### Documentos del Cliente
+
 - 📄 Licencia de Conducir
-- 🪪 Identificación Oficial  
+- 🪪 Identificación Oficial
 - 🏠 Comprobante de Domicilio
 - 🧾 Factura del Vehículo
 - 👮 Reporte Policial
@@ -115,6 +124,7 @@ FOR DELETE USING (bucket_id = 'claim-evidence' AND auth.role() = 'authenticated'
 - 📎 Otros Documentos
 
 ### Evidencia del Siniestro
+
 - 📷 **Fotografías del daño**: Múltiples ángulos
 - 🚗 **Fotos del vehículo**: Antes y después
 - 📍 **Fotos del lugar**: Contexto del incidente
@@ -155,7 +165,7 @@ FOR DELETE USING (bucket_id = 'claim-evidence' AND auth.role() = 'authenticated'
 Si encuentras algún problema:
 
 1. **Verificar buckets**: Que existan en Supabase Storage
-2. **Revisar políticas**: Que estén configuradas correctamente  
+2. **Revisar políticas**: Que estén configuradas correctamente
 3. **Comprobar RLS**: Que las tablas tengan Row Level Security habilitado
 4. **Logs de consola**: Revisar errores en el navegador
 
