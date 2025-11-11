@@ -79,7 +79,7 @@ export function Sidebar() {
                     {showNotificationBadge && (
                       <Badge
                         variant="destructive"
-                        className="ml-2 h-6 w-6 rounded-full text-xs font-bold !p-0 grid place-items-center"
+                        className="ml-2 h-6 w-6 rounded-full text-xs font-bold p-0 grid place-items-center"
                       >
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </Badge>

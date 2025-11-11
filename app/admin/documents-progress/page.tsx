@@ -120,7 +120,8 @@ export default function ClaimDocumentProgressPage() {
           claim_type,
           status,
           created_at,
-          customer:customers(
+          customer_id,
+          customers!inner(
             first_name,
             last_name
           )
@@ -162,7 +163,7 @@ export default function ClaimDocumentProgressPage() {
             claim_number: claim.claim_number,
             claim_type: claim.claim_type,
             status: claim.status,
-            customer_name: `${claim.customer?.first_name} ${claim.customer?.last_name}`,
+            customer_name: `${(claim as any).customers?.[0]?.first_name || ''} ${(claim as any).customers?.[0]?.last_name || ''}`.trim(),
             created_at: claim.created_at,
             total_required: totalRequired,
             completed_documents: completed,
