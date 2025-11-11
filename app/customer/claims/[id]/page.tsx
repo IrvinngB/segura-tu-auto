@@ -10,7 +10,6 @@ import { ProtectedRoute } from '@/components/auth/protected-route';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/auth-provider';
 import { ClaimCommunication } from '@/components/claims/claim-communication';
-import { ClaimEvidenceSystem } from '@/components/claims/claim-evidence-system';
 import { ClaimCustomerDocuments } from '@/components/claims/claim-customer-documents';
 import type { Claim } from '@/lib/types/database';
 import {
@@ -387,13 +386,6 @@ export default function CustomerClaimDetailPage() {
                 claimId={claim.id}
                 customerId={customerId}
                 currentUserRole="customer"
-              />
-
-              {/* Sistema de Evidencia */}
-              <ClaimEvidenceSystem
-                claimId={claim.id}
-                currentUserRole="customer"
-                customerId={customerId}
               />
             </div>
           </TabsContent>

@@ -53,20 +53,20 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
 // Función simple para generar nombres limpios de archivos
 const generateCleanFileName = (documentType: string, fileExtension: string): string => {
   console.log('🚀🚀🚀 NUEVA FUNCIÓN EJECUTÁNDOSE - Tipo:', documentType);
-  
+
   const cleanNames: Record<string, string> = {
-    'id': 'Cedula_Identificacion',
-    'license': 'Licencia_Conducir',
-    'invoice': 'Factura_Vehiculo',
-    'photos': 'Fotografias_Siniestro',
-    'police_report': 'Reporte_Policial',
-    'other': 'Otro_Documento'
+    id: 'Cedula_Identificacion',
+    license: 'Licencia_Conducir',
+    invoice: 'Factura_Vehiculo',
+    photos: 'Fotografias_Siniestro',
+    police_report: 'Reporte_Policial',
+    other: 'Otro_Documento',
   };
-  
+
   const baseName = cleanNames[documentType] || 'Documento';
   const timestamp = Date.now();
   const finalName = `${baseName}_${timestamp}.${fileExtension}`;
-  
+
   console.log('🚀🚀🚀 NOMBRE FINAL GENERADO:', finalName);
   return finalName;
 };
@@ -287,7 +287,7 @@ export function ClaimCustomerDocuments({
 
         // Generar nombre limpio usando la misma función centralizada
         const newFileName = generateCleanFileName(documentType, fileExt || 'pdf');
-        
+
         console.log('✅ REPLACE - Tipo documento:', documentType);
         console.log('✅ REPLACE - Archivo generado:', newFileName);
         const storagePath = `drafts/${newFileName}`;
@@ -492,9 +492,9 @@ export function ClaimCustomerDocuments({
       'Factura_Vehiculo_',
       'Fotografias_Siniestro_',
       'Reporte_Policial_',
-      'Otro_Documento_'
+      'Otro_Documento_',
     ];
-    
+
     // Si el nombre ya está limpio, devuélvelo tal como está
     if (cleanPatterns.some(pattern => fileName.includes(pattern))) {
       return fileName;
@@ -506,7 +506,7 @@ export function ClaimCustomerDocuments({
       draft_photos: 'Fotografias_del_Siniestro',
       draft_invoice: 'Factura_del_Vehiculo',
       draft_license: 'Licencia_de_Conducir',
-      draft_id: 'Identificacion_Oficial'
+      draft_id: 'Identificacion_Oficial',
     };
 
     let translatedName = fileName;
@@ -551,55 +551,7 @@ export function ClaimCustomerDocuments({
               </div>
             </div>
 
-            {/* Permitir subir a: customer, agent, adjuster, admin */}
-            {['customer', 'agent', 'adjuster', 'admin'].includes(currentUserRole || '') && (
-              <div className="flex gap-3 items-end">
-                {/* Selector de tipo de documento */}
-                <div className="flex-1">
-                  <label className="text-sm font-medium text-muted-foreground dark:text-gray-300 block mb-2">
-                    Tipo de Documento
-                  </label>
-                  <Select
-                    value={selectedDocumentType}
-                    onValueChange={value =>
-                      setSelectedDocumentType(value as ClaimCustomerDocument['document_type'])
-                    }
-                  >
-                    <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700">
-                      <SelectValue placeholder="Selecciona el tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="license">📄 Licencia de Conducir</SelectItem>
-                      <SelectItem value="id">🪪 Identificación Oficial</SelectItem>
-                      <SelectItem value="invoice">🧾 Factura del Vehículo</SelectItem>
-                      <SelectItem value="police_report">👮 Reporte Policial</SelectItem>
-                      <SelectItem value="photos">📸 Fotografías del Siniestro</SelectItem>
-                      <SelectItem value="other">📎 Otro Documento</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                {/* Botón de subir */}
-                <div>
-                  <input
-                    type="file"
-                    id="file-upload"
-                    className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileUpload}
-                    disabled={uploading}
-                  />
-                  <label htmlFor="file-upload">
-                    <Button asChild disabled={uploading}>
-                      <span className="cursor-pointer">
-                        <Upload className="h-4 w-4 mr-2" />
-                        {uploading ? 'Subiendo...' : 'Subir Documento'}
-                      </span>
-                    </Button>
-                  </label>
-                </div>
-              </div>
-            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -607,11 +559,6 @@ export function ClaimCustomerDocuments({
             <div className="text-center py-8">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground">No hay documentos adicionales</p>
-              {['customer', 'agent', 'adjuster', 'admin'].includes(currentUserRole || '') && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Sube documentos de hasta 10MB (PDF, JPG, PNG)
-                </p>
-              )}
             </div>
           ) : (
             <div className="space-y-3">
