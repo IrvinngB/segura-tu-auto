@@ -67,50 +67,27 @@ export function DocumentRequestModal({
       console.log('📄 Documentos solicitados:', requestedDocs);
       console.log('📝 Notas:', notes);
 
-      // 1. Actualizar estado de la reclamación
-      const { error: claimError } = await supabase
+      // Simplificado: Solo actualizar el estado del claim
+      console.log('🔄 Intentando actualizar claim con ID:', claimId);
+      
+      const { data, error: claimError } = await supabase
         .from('claims')
         .update({
-          status: 'pending_documentation',
-          updated_at: new Date().toISOString(),
+          status: 'under_review'
         })
         .eq('id', claimId)
-        .select('*')
-        .single();
+        .select();
+
+      console.log('📊 Resultado de actualización:', { data, error: claimError });
 
       if (claimError) {
-        console.error('❌ Error actualizando reclamación:', claimError);
-        throw new Error(`Error actualizando reclamación: ${claimError.message}`);
+        console.error('❌ Error completo:', JSON.stringify(claimError, null, 2));
+        throw new Error(`Error: ${claimError.message}`);
       }
 
       console.log('✅ Estado de reclamación actualizado a pending_documentation');
 
-      // 2. Crear registro de comunicación
-      const { error: commError } = await supabase.from('communications').insert({
-        claim_id: claimId,
-        communication_type: 'email',
-        direction: 'outbound',
-        subject: 'Solicitud de Documentos Adicionales',
-        content: `Se han solicitado los siguientes documentos:
-${requestedDocs
-  .map(docId => {
-    const doc = DOCUMENT_TYPES.find(d => d.id === docId);
-    return `- ${doc?.name || docId}`;
-  })
-  .join('\n')}
-
-${notes ? `Notas adicionales: ${notes}` : ''}`,
-        status: 'sent',
-      });
-
-      if (commError) {
-        console.error('⚠️ Error creando comunicación:', commError);
-        // No lanzamos error aquí ya que el estado principal sí se actualizó
-      } else {
-        console.log('✅ Comunicación registrada');
-      }
-
-      // 3. Llamar callback y cerrar modal
+      // Llamar callback y cerrar modal
       onDocumentRequested();
       setOpen(false);
       setRequestedDocs([]);
@@ -205,16 +182,27 @@ ${notes ? `Notas adicionales: ${notes}` : ''}`,
           {/* Notas adicionales */}
           <div>
             <Label htmlFor="notes" className="text-sm font-medium">
-              Notas adicionales (opcional):
+              Notas adicionales (opcional): {notes.length}/500
             </Label>
             <Textarea
               id="notes"
               placeholder="Instrucciones específicas para el cliente..."
               value={notes}
-              onChange={e => setNotes(e.target.value)}
+              onChange={e => {
+                const value = e.target.value;
+                if (value.length <= 500) {
+                  setNotes(value);
+                }
+              }}
               className="mt-1"
               rows={3}
+              maxLength={500}
             />
+            {notes.length >= 450 && (
+              <p className="text-xs text-orange-600 mt-1">
+                Límite de caracteres: {notes.length}/500
+              </p>
+            )}
           </div>
 
           {/* Error */}

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useClaimNotifications } from '@/hooks/use-claim-notifications';
+import { useDocumentCount } from '@/hooks/use-document-count';
 import {
   Shield,
   FileText,
@@ -33,6 +34,10 @@ export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { unreadCount } = useClaimNotifications();
+  const { documentCount } = useDocumentCount();
+  
+  console.log('� SIDEBAR DOCUMENT COUNT:', documentCount);
+  console.log('🚨 SIDEBAR RENDERING WITH COUNT:', documentCount);
 
   return (
     <>
@@ -59,7 +64,9 @@ export function Sidebar() {
           <ul className="space-y-2">
             {navigation.map(item => {
               const isActive = pathname === item.href;
-              const showNotificationBadge = item.href === '/claims' && unreadCount > 0;
+              const showClaimsBadge = item.href === '/claims' && unreadCount > 0;
+              const showDocumentsBadge = item.href === '/documents'; // Siempre mostrar para prueba
+              
               return (
                 <li key={item.name}>
                   <Link
@@ -76,12 +83,22 @@ export function Sidebar() {
                       <item.icon className="mr-3 h-5 w-5" />
                       {item.name}
                     </div>
-                    {showNotificationBadge && (
+                    
+                    {showClaimsBadge && (
                       <Badge
                         variant="destructive"
-                        className="ml-2 h-6 w-6 rounded-full text-xs font-bold p-0 grid place-items-center"
+                        className="ml-2 h-6 w-6 rounded-full text-xs font-bold !flex !items-center !justify-center !p-0 min-w-[24px] leading-none"
                       >
                         {unreadCount > 99 ? '99+' : unreadCount}
+                      </Badge>
+                    )}
+                    
+                    {showDocumentsBadge && (
+                      <Badge
+                        variant="secondary"
+                        className="ml-2 h-6 w-6 rounded-full text-xs font-bold flex items-center justify-center bg-orange-500 text-white"
+                      >
+                        {documentCount > 99 ? '99+' : documentCount}
                       </Badge>
                     )}
                   </Link>
