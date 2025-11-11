@@ -362,9 +362,9 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
 
       // Mapeo de tipos de documentos a nombres en español
       const documentNames = {
-        id: 'Cedula_Identidad',
+        id: 'Cedula_Identificacion',
         license: 'Licencia_Conducir',
-        invoice: 'Poliza_Seguro',
+        invoice: 'Factura_Vehiculo',
         photos: 'Fotografias_Siniestro',
         police_report: 'Reporte_Policial',
       };
@@ -375,6 +375,9 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
       const spanishName = documentNames[docType as keyof typeof documentNames] || docType;
       const fileName = `${spanishName}_${timestamp}.${fileExt}`;
       const storagePath = `drafts/${fileName}`;
+
+      console.log('🏗️🏗️🏗️ CLAIM FORM - Tipo documento:', docType);
+      console.log('🏗️🏗️🏗️ CLAIM FORM - Nombre generado:', fileName);
 
       // Subir a Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage

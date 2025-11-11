@@ -50,6 +50,27 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   other: 'Otro Documento',
 };
 
+// Función simple para generar nombres limpios de archivos
+const generateCleanFileName = (documentType: string, fileExtension: string): string => {
+  console.log('🚀🚀🚀 NUEVA FUNCIÓN EJECUTÁNDOSE - Tipo:', documentType);
+  
+  const cleanNames: Record<string, string> = {
+    'id': 'Cedula_Identificacion',
+    'license': 'Licencia_Conducir',
+    'invoice': 'Factura_Vehiculo',
+    'photos': 'Fotografias_Siniestro',
+    'police_report': 'Reporte_Policial',
+    'other': 'Otro_Documento'
+  };
+  
+  const baseName = cleanNames[documentType] || 'Documento';
+  const timestamp = Date.now();
+  const finalName = `${baseName}_${timestamp}.${fileExtension}`;
+  
+  console.log('🚀🚀🚀 NOMBRE FINAL GENERADO:', finalName);
+  return finalName;
+};
+
 export function ClaimCustomerDocuments({
   claimId,
   customerId,
@@ -116,19 +137,13 @@ export function ClaimCustomerDocuments({
       // Obtener extensión del archivo original
       const fileExt = file.name.split('.').pop();
 
-      // Generar nombre basado en el tipo de documento seleccionado
-      const documentTypeLabel = DOCUMENT_TYPE_LABELS[selectedDocumentType]
-        .toLowerCase()
-        .replace(/\s+/g, '_') // Reemplazar espacios por guiones bajos
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, ''); // Eliminar acentos
-
-      const timestamp = Date.now();
-      const newFileName = `${documentTypeLabel}_${timestamp}.${fileExt}`;
+      // Generar nombre limpio usando la función centralizada
+      const newFileName = generateCleanFileName(selectedDocumentType, fileExt || 'pdf');
       const storagePath = `drafts/${newFileName}`;
 
-      console.log('📤 Subiendo archivo como:', newFileName);
-      console.log('📂 Path completo:', storagePath);
+      console.log('🆕🆕🆕 SUBIDA NUEVA - Tipo seleccionado:', selectedDocumentType);
+      console.log('🆕🆕🆕 SUBIDA NUEVA - Archivo generado:', newFileName);
+      console.log('🆕🆕🆕 SUBIDA NUEVA - Path completo:', storagePath);
 
       // Subir a Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -270,15 +285,11 @@ export function ClaimCustomerDocuments({
         // Obtener extensión del archivo nuevo
         const fileExt = file.name.split('.').pop();
 
-        // Generar nombre basado en el tipo de documento
-        const documentTypeLabel = DOCUMENT_TYPE_LABELS[documentType]
-          .toLowerCase()
-          .replace(/\s+/g, '_')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
-
-        const timestamp = Date.now();
-        const newFileName = `${documentTypeLabel}_${timestamp}.${fileExt}`;
+        // Generar nombre limpio usando la misma función centralizada
+        const newFileName = generateCleanFileName(documentType, fileExt || 'pdf');
+        
+        console.log('✅ REPLACE - Tipo documento:', documentType);
+        console.log('✅ REPLACE - Archivo generado:', newFileName);
         const storagePath = `drafts/${newFileName}`;
 
         // Subir nuevo archivo a Supabase Storage
@@ -388,7 +399,7 @@ export function ClaimCustomerDocuments({
         setDocuments(prevDocs =>
           prevDocs.map(doc =>
             doc.id === docId
-              ? { ...doc, fileName: newFileName, url: publicUrl, status: 'pending' as const }
+              ? { ...doc, file_name: newFileName, file_url: publicUrl, status: 'pending' as const }
               : doc
           )
         );
@@ -474,25 +485,33 @@ export function ClaimCustomerDocuments({
   };
 
   const translateFileName = (fileName: string) => {
-    // Mapeo de nombres en inglés a español
+    // Si el archivo ya tiene un nombre limpio generado por nuestra función, no lo modifiques
+    const cleanPatterns = [
+      'Cedula_Identificacion_',
+      'Licencia_Conducir_',
+      'Factura_Vehiculo_',
+      'Fotografias_Siniestro_',
+      'Reporte_Policial_',
+      'Otro_Documento_'
+    ];
+    
+    // Si el nombre ya está limpio, devuélvelo tal como está
+    if (cleanPatterns.some(pattern => fileName.includes(pattern))) {
+      return fileName;
+    }
+
+    // Solo traducir nombres viejos/corruptos
     const translations = {
       draft_police_report: 'Reporte_Policial',
       draft_photos: 'Fotografias_del_Siniestro',
       draft_invoice: 'Factura_del_Vehiculo',
-
       draft_license: 'Licencia_de_Conducir',
-      draft_id: 'Identificacion_Oficial',
-      police_report: 'Reporte_Policial',
-      photos: 'Fotografias_del_Siniestro',
-      invoice: 'Factura_del_Vehiculo',
-
-      license: 'Licencia_de_Conducir',
-      id: 'Identificacion_Oficial',
+      draft_id: 'Identificacion_Oficial'
     };
 
     let translatedName = fileName;
 
-    // Buscar y reemplazar cada patrón en inglés
+    // Buscar y reemplazar cada patrón SOLO si no es un nombre limpio
     Object.entries(translations).forEach(([english, spanish]) => {
       const regex = new RegExp(english, 'gi');
       translatedName = translatedName.replace(regex, spanish);
