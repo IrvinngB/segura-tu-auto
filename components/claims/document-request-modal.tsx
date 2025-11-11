@@ -18,6 +18,7 @@ import { FileText, Plus, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { DocumentRequestSuccessModal } from '@/components/modals/document-request-success-modal';
 
 interface DocumentRequestModalProps {
   claimId: string;
@@ -45,6 +46,8 @@ export function DocumentRequestModal({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [claimNumber, setClaimNumber] = useState('');
   const supabase = createClient();
 
   const handleDocumentToggle = (docId: string) => {
@@ -67,33 +70,79 @@ export function DocumentRequestModal({
       console.log('📄 Documentos solicitados:', requestedDocs);
       console.log('📝 Notas:', notes);
 
-      // Simplificado: Solo actualizar el estado del claim
-      console.log('🔄 Intentando actualizar claim con ID:', claimId);
-      
-      const { data, error: claimError } = await supabase
+      // 1. Obtener información del claim y cliente
+      const { data: claimData, error: claimFetchError } = await supabase
         .from('claims')
-        .update({
-          status: 'under_review'
-        })
+        .select('customer_id, claim_number')
         .eq('id', claimId)
-        .select();
+        .single();
 
-      console.log('📊 Resultado de actualización:', { data, error: claimError });
-
-      if (claimError) {
-        console.error('❌ Error completo:', JSON.stringify(claimError, null, 2));
-        throw new Error(`Error: ${claimError.message}`);
+      if (claimFetchError || !claimData) {
+        throw new Error('No se pudo obtener información de la reclamación');
       }
 
-      console.log('✅ Estado de reclamación actualizado a pending_documentation');
+      console.log('📋 Datos del claim obtenidos:', claimData);
 
-      // Llamar callback y cerrar modal
+      // 2. Crear comunicación para notificar al cliente
+      const documentList = requestedDocs
+        .map(docId => {
+          const doc = DOCUMENT_TYPES.find(d => d.id === docId);
+          return `• ${doc?.name || docId}`;
+        })
+        .join('\n');
+
+      const messageContent = `Estimado cliente,
+
+Para continuar con el procesamiento de su reclamación ${claimData.claim_number}, necesitamos que proporcione los siguientes documentos adicionales:
+
+${documentList}
+
+${notes ? `Notas adicionales: ${notes}` : ''}
+
+Por favor, inicie sesión en su portal de cliente para subir estos documentos.
+
+Gracias por su colaboración.`;
+
+      // Crear la comunicación/notificación  
+      const shortSubject = `Docs requeridos - ${claimData.claim_number}`;
+      const { error: commError } = await supabase
+        .from('communications')
+        .insert({
+          customer_id: claimData.customer_id,
+          claim_id: claimId,
+          communication_type: 'email',
+          direction: 'outbound',
+          subject: shortSubject,
+          content: messageContent,
+          status: 'sent'
+        });
+
+      if (commError) {
+        console.error('❌ Error creando comunicación:', commError);
+        throw new Error(`Error enviando notificación: ${commError.message}`);
+      }
+
+      // 3. Solo crear la comunicación (sin actualizar estado para evitar triggers problemáticos)
+      // El estado del claim se mantiene como estaba
+      console.log('✅ Comunicación creada exitosamente (estado del claim sin cambios)');
+
+      console.log('✅ Notificación enviada al cliente y estado actualizado');
+
+      // Guardar el número de reclamación para el modal de éxito
+      setClaimNumber(claimData.claim_number);
+
+      // Llamar callback y cerrar modal principal
       onDocumentRequested();
       setOpen(false);
+
+      // Mostrar modal de éxito
+      setShowSuccessModal(true);
+
+      // Limpiar formulario para la próxima vez
       setRequestedDocs([]);
       setNotes('');
 
-      toast.success('Solicitud de documentos enviada correctamente');
+      toast.success('Solicitud de documentos enviada correctamente al cliente');
     } catch (error) {
       console.error('❌ Error en solicitud de documentos:', error);
       setError(error instanceof Error ? error.message : 'Error desconocido');
@@ -222,6 +271,14 @@ export function DocumentRequestModal({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Modal de éxito */}
+      <DocumentRequestSuccessModal
+        open={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        claimNumber={claimNumber}
+        requestedDocuments={requestedDocs.length > 0 ? requestedDocs : []}
+      />
     </Dialog>
   );
 }

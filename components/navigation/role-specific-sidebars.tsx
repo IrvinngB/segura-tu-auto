@@ -29,7 +29,10 @@ import {
   Bell,
   Settings,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useCustomerCommunicationsCount } from '@/hooks/use-customer-communications-count';
+import { useCustomerDataSimple } from '@/hooks/use-customer-data-simple';
 
 interface NavigationItem {
   name: string;
@@ -361,12 +364,203 @@ export const AgentSidebar = memo(function AgentSidebar({ userProfile }: { userPr
   return <SidebarContent navigation={agentNavigation} userProfile={userProfile} />;
 });
 
+const CustomerSidebarContent = memo(function CustomerSidebarContent({ 
+  navigation, 
+  userProfile 
+}: SidebarProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+  const { customerData } = useCustomerDataSimple();
+  const { count: unreadCommunications } = useCustomerCommunicationsCount(customerData?.id);
+
+  const routesToPrefetch = useMemo(() => {
+    return navigation.slice(0, 5).map(item => item.href);
+  }, [navigation]);
+
+  usePrefetchRoutes(routesToPrefetch);
+
+  const groupedNavigation = useMemo(() => {
+    const main = navigation.filter(item =>
+      [
+        'Dashboard',
+        'Panel Admin',
+        'Mis Pólizas',
+        'Pólizas',
+        'Mis Cotizaciones',
+        'Cotizaciones',
+        'Mis Reclamaciones',
+        'Reclamaciones',
+        'Mis Casos',
+      ].includes(item.name)
+    );
+    const management = navigation.filter(item =>
+      ['Clientes', 'Mis Vehículos', 'Evaluación de Riesgo'].includes(item.name)
+    );
+    const tools = navigation.filter(item =>
+      ['Nueva Cotización', 'Documentos', 'Pagos', 'Comunicaciones'].includes(item.name)
+    );
+    const reports = navigation.filter(item =>
+      ['Análisis', 'Reportes Avanzados'].includes(item.name)
+    );
+    const admin = navigation.filter(item =>
+      ['Auditoría', 'Renovaciones', 'Gestión de Documentos'].includes(item.name)
+    );
+    const general = navigation.filter(item =>
+      ['Notificaciones', 'Configuración'].includes(item.name)
+    );
+    return { main, management, tools, reports, admin, general };
+  }, [navigation]);
+
+  const getRoleDisplayName = (role: string) => {
+    const roleNames = {
+      admin: 'Administrador',
+      agent: 'Agente',
+      adjuster: 'Ajustador',
+      customer: 'Cliente',
+    };
+    return roleNames[role as keyof typeof roleNames] || role;
+  };
+
+  const getRoleColor = (role: string) => {
+    const roleColors = {
+      admin: 'text-red-600',
+      agent: 'text-blue-400 dark:text-blue-300',
+      adjuster: 'text-green-600',
+      customer: 'text-purple-600 dark:text-purple-200',
+    };
+    return roleColors[role as keyof typeof roleColors] || 'text-gray-600';
+  };
+
+  const renderNavigationGroup = (items: NavigationItem[], title?: string) => {
+    if (items.length === 0) return null;
+    return (
+      <div className="mb-6">
+        {title && (
+          <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            {title}
+          </h3>
+        )}
+        <ul className="space-y-1">
+          {items.map(item => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const showBadge = item.name === 'Comunicaciones' && unreadCommunications > 0;
+            
+            return (
+              <li key={item.name}>
+                <OptimizedLink
+                  href={item.href}
+                  className={cn(
+                    'flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors group',
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <span
+                    className="flex items-center justify-between w-full"
+                    onClick={() => setIsOpen(false)}
+                    title={item.description}
+                  >
+                    <div className="flex items-center">
+                      <item.icon className="mr-3 h-5 w-5 shrink-0" />
+                      <span className="truncate">{item.name}</span>
+                    </div>
+                    {showBadge && (
+                      <Badge 
+                        variant="secondary" 
+                        className="ml-2 h-5 px-1.5 text-xs bg-red-500 text-white border-red-500 hover:bg-red-600"
+                      >
+                        {unreadCommunications}
+                      </Badge>
+                    )}
+                  </span>
+                </OptimizedLink>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <Button variant="outline" size="icon" onClick={() => setIsOpen(!isOpen)}>
+          {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      <div
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0',
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="flex items-center justify-center h-16 border-b border-border px-4">
+          <Shield className="h-8 w-8 text-primary" />
+          <span className="ml-2 text-xl font-bold">SeguraTuAuto</span>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
+        </div>
+
+        {userProfile && (
+          <div className="px-4 py-4 border-b border-border">
+            <div className="flex items-center space-x-3">
+              <div className="shrink-0">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {userProfile.first_name} {userProfile.last_name}
+                </p>
+                <p className={cn('text-xs truncate', getRoleColor(userProfile.role))}>
+                  {getRoleDisplayName(userProfile.role)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <nav className="flex-1 px-4 py-4 overflow-y-auto">
+          {renderNavigationGroup(groupedNavigation.main, 'Principal')}
+          {renderNavigationGroup(groupedNavigation.management, 'Gestión')}
+          {renderNavigationGroup(groupedNavigation.tools, 'Herramientas')}
+          {renderNavigationGroup(groupedNavigation.reports, 'Reportes')}
+          {renderNavigationGroup(groupedNavigation.admin, 'Administración')}
+          {renderNavigationGroup(groupedNavigation.general, 'General')}
+        </nav>
+
+        <div className="border-t border-border p-4">
+          <LogoutButton
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            showIcon={true}
+            iconOnly={false}
+          />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black bg-opacity-50 lg:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+    </>
+  );
+});
+
 export const CustomerSidebar = memo(function CustomerSidebar({
   userProfile,
 }: {
   userProfile: any;
 }) {
-  return <SidebarContent navigation={customerNavigation} userProfile={userProfile} />;
+  return <CustomerSidebarContent navigation={customerNavigation} userProfile={userProfile} />;
 });
 
 export const AdjusterSidebar = memo(function AdjusterSidebar({

@@ -124,12 +124,37 @@ export default function CustomerCommunicationsPage() {
                     communicationsData?.length || 0
                 );
                 setCommunications(communicationsData || []);
+                
+                // Marcar todas las comunicaciones como leídas cuando se carga la página
+                await markCommunicationsAsRead();
             }
         } catch (error) {
             console.error("Error inesperado:", error);
             setError("Error inesperado al cargar las comunicaciones");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const markCommunicationsAsRead = async () => {
+        if (!customerData) return;
+
+        try {
+            // Marcar todas las comunicaciones no leídas como leídas
+            const { error } = await supabase
+                .from('communications')
+                .update({ status: 'read' })
+                .eq('customer_id', customerData.id)
+                .eq('direction', 'outbound')
+                .neq('status', 'read');
+
+            if (error) {
+                console.error('Error marking communications as read:', error);
+            } else {
+                console.log('✅ Comunicaciones marcadas como leídas');
+            }
+        } catch (error) {
+            console.error('Error in markCommunicationsAsRead:', error);
         }
     };
 
