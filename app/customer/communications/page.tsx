@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { CommunicationsPageEffect } from "@/components/communications/communications-page-effect";
 
 interface Communication {
     id: string;
@@ -77,6 +78,9 @@ export default function CustomerCommunicationsPage() {
             fetchCommunications();
         }
     }, [customerData, customerLoading]);
+
+    // REMOVIDO: Ya no marcamos como leído automáticamente al montar
+    // El sistema de re-entrada en el hook se encarga de esto
 
     const fetchCommunications = async () => {
         if (!customerData) return;
@@ -125,8 +129,7 @@ export default function CustomerCommunicationsPage() {
                 );
                 setCommunications(communicationsData || []);
                 
-                // Marcar todas las comunicaciones como leídas cuando se carga la página
-                await markCommunicationsAsRead();
+                // REMOVIDO: Ya no marcamos como leído al cargar - solo en re-entrada
             }
         } catch (error) {
             console.error("Error inesperado:", error);
@@ -140,21 +143,37 @@ export default function CustomerCommunicationsPage() {
         if (!customerData) return;
 
         try {
-            // Marcar todas las comunicaciones no leídas como leídas
-            const { error } = await supabase
+            console.log('🔄 Marcando comunicaciones como leídas para cliente:', customerData.id);
+            
+            // Primero verificar cuántas comunicaciones no leídas hay
+            const { count: unreadCount } = await supabase
                 .from('communications')
-                .update({ status: 'read' })
+                .select('*', { count: 'exact', head: true })
                 .eq('customer_id', customerData.id)
                 .eq('direction', 'outbound')
                 .neq('status', 'read');
+            
+            console.log('📊 Comunicaciones no leídas encontradas:', unreadCount);
 
-            if (error) {
-                console.error('Error marking communications as read:', error);
+            if (unreadCount && unreadCount > 0) {
+                // Marcar todas las comunicaciones no leídas como leídas
+                const { error } = await supabase
+                    .from('communications')
+                    .update({ status: 'read' })
+                    .eq('customer_id', customerData.id)
+                    .eq('direction', 'outbound')
+                    .neq('status', 'read');
+
+                if (error) {
+                    console.error('❌ Error marking communications as read:', error);
+                } else {
+                    console.log('✅ Comunicaciones marcadas como leídas correctamente');
+                }
             } else {
-                console.log('✅ Comunicaciones marcadas como leídas');
+                console.log('ℹ️ No hay comunicaciones no leídas para marcar');
             }
         } catch (error) {
-            console.error('Error in markCommunicationsAsRead:', error);
+            console.error('💥 Error in markCommunicationsAsRead:', error);
         }
     };
 
@@ -197,47 +216,37 @@ export default function CustomerCommunicationsPage() {
     };
 
     const getStatusBadge = (status: string) => {
-        switch (status.toLowerCase()) {
-            case "sent":
-                return (
-                    <Badge
-                        variant="default"
-                        className="bg-green-100 text-green-800"
-                    >
-                        Enviado
-                    </Badge>
-                );
-            case "delivered":
-                return (
-                    <Badge
-                        variant="default"
-                        className="bg-blue-100 text-blue-800"
-                    >
-                        Entregado
-                    </Badge>
-                );
-            case "read":
-                return (
-                    <Badge
-                        variant="default"
-                        className="bg-purple-100 text-purple-800"
-                    >
-                        Leído
-                    </Badge>
-                );
-            case "failed":
-                return <Badge variant="destructive">Fallido</Badge>;
-            default:
-                return <Badge variant="outline">{status}</Badge>;
-        }
+        // Simplificado: Solo "Leído" o "No Leído"
+        const isRead = status.toLowerCase() === 'read';
+        
+        return (
+            <Badge
+                variant="default"
+                className={isRead 
+                    ? "bg-green-100 text-green-800" 
+                    : "bg-orange-100 text-orange-800"
+                }
+            >
+                {isRead ? "Leído" : "No Leído"}
+            </Badge>
+        );
     };
 
     const filteredCommunications = communications.filter((communication) => {
-        return (
-            (!filterType || communication.communication_type === filterType) &&
-            (!filterDirection || communication.direction === filterDirection) &&
-            (!filterStatus || communication.status === filterStatus)
-        );
+        const typeMatch = !filterType || communication.communication_type === filterType;
+        const directionMatch = !filterDirection || communication.direction === filterDirection;
+        
+        // Lógica simplificada para estados
+        let statusMatch = true;
+        if (filterStatus) {
+            if (filterStatus === 'read') {
+                statusMatch = communication.status.toLowerCase() === 'read';
+            } else if (filterStatus === 'unread') {
+                statusMatch = communication.status.toLowerCase() !== 'read';
+            }
+        }
+        
+        return typeMatch && directionMatch && statusMatch;
     });
 
     const handleCreateCommunication = async () => {
@@ -311,6 +320,7 @@ export default function CustomerCommunicationsPage() {
 
     return (
         <ProtectedRoute allowedRoles={["customer"]}>
+            <CommunicationsPageEffect />
             <div className="container mx-auto py-8 px-4">
                 {/* Header */}
                 <div className="mb-8 flex justify-between items-center">
@@ -358,10 +368,8 @@ export default function CustomerCommunicationsPage() {
                         onChange={(e) => setFilterStatus(e.target.value)}
                     >
                         <option value="">Todos los Estados</option>
-                        <option value="sent">Enviado</option>
-                        <option value="delivered">Entregado</option>
                         <option value="read">Leído</option>
-                        <option value="failed">Fallido</option>
+                        <option value="unread">No Leído</option>
                     </select>
                 </div>
 

@@ -145,20 +145,20 @@ export function ClaimCommunications({ claim }: ClaimCommunicationsProps) {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      draft: { label: 'Borrador', variant: 'outline' as const },
-      sent: { label: 'Enviado', variant: 'default' as const },
-      delivered: { label: 'Entregado', variant: 'secondary' as const },
-      read: { label: 'Leído', variant: 'default' as const },
-      failed: { label: 'Fallido', variant: 'destructive' as const },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || {
-      label: status,
-      variant: 'outline' as const,
-    };
-
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    // Simplificado: Solo "Leído" o "No Leído"
+    const isRead = status.toLowerCase() === 'read';
+    
+    return (
+      <Badge 
+        variant={isRead ? 'default' : 'secondary'}
+        className={isRead 
+          ? "bg-green-100 text-green-800" 
+          : "bg-orange-100 text-orange-800"
+        }
+      >
+        {isRead ? "Leído" : "No Leído"}
+      </Badge>
+    );
   };
 
   if (loading) {

@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useCustomerCommunicationsCount } from '@/hooks/use-customer-communications-count';
 import { useCustomerDataSimple } from '@/hooks/use-customer-data-simple';
+import { useForceBadgeRefresh } from '@/hooks/use-force-badge-refresh';
 
 interface NavigationItem {
   name: string;
@@ -372,6 +373,20 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
   const pathname = usePathname();
   const { customerData } = useCustomerDataSimple();
   const { count: unreadCommunications } = useCustomerCommunicationsCount(customerData?.id);
+  
+  // Hook para forzar actualización
+  useForceBadgeRefresh();
+
+  // CAMBIO: Ya no forzamos conteo a 0 inmediatamente - respetamos el sistema de re-entrada
+  const effectiveCount = unreadCommunications;
+
+  // Log para debugging
+  console.log('🎮 CustomerSidebarContent render:', {
+    customerId: customerData?.id,
+    unreadCommunications,
+    effectiveCount,
+    pathname
+  });
 
   const routesToPrefetch = useMemo(() => {
     return navigation.slice(0, 5).map(item => item.href);
@@ -443,7 +458,20 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
         <ul className="space-y-1">
           {items.map(item => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            const showBadge = item.name === 'Comunicaciones' && unreadCommunications > 0;
+            const isOnCommunicationsPage = pathname === '/customer/communications';
+            
+            // Lógica SIMPLE: Solo mostrar badge si hay comunicaciones no leídas
+            const showBadge = item.name === 'Comunicaciones' && effectiveCount > 0;
+            
+            // Log específico para el item de comunicaciones
+            if (item.name === 'Comunicaciones') {
+              console.log('📱 Badge logic SIMPLE para Comunicaciones:', {
+                unreadCommunications,
+                effectiveCount,
+                showBadge,
+                pathname
+              });
+            }
             
             return (
               <li key={item.name}>
@@ -465,12 +493,12 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
                       <item.icon className="mr-3 h-5 w-5 shrink-0" />
                       <span className="truncate">{item.name}</span>
                     </div>
-                    {showBadge && (
+                    {showBadge && effectiveCount > 0 && (
                       <Badge 
                         variant="secondary" 
                         className="ml-2 h-5 px-1.5 text-xs bg-red-500 text-white border-red-500 hover:bg-red-600"
                       >
-                        {unreadCommunications}
+                        {effectiveCount}
                       </Badge>
                     )}
                   </span>
