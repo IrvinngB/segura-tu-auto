@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/auth-provider';
 import { ClaimNotificationSystem } from '@/components/claims/claim-notification-system';
+import { AdminClaimMonitor } from '@/components/admin/admin-claim-monitor';
 import {
   FileText,
   Clock,
@@ -58,20 +59,101 @@ export function AgentDashboard() {
   const [urgentClaims, setUrgentClaims] = useState<ClaimSummary[]>([]);
   const [recentClaims, setRecentClaims] = useState<ClaimSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   const supabase = createClient();
 
   useEffect(() => {
     if (userProfile) {
       loadDashboardData();
+
+      // Suscripción en tiempo real para actualizar cuando cambien las reclamaciones
+      console.log('🔌 Estableciendo suscripción dashboard de agente...');
+      const channel = supabase
+        .channel('claims-dashboard-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Escuchar INSERT, UPDATE, DELETE
+            schema: 'public',
+            table: 'claims',
+          },
+          payload => {
+            console.log('🔄 DASHBOARD AGENTE - Cambio detectado en reclamación:', payload);
+            console.log('🔄 DASHBOARD AGENTE - Tipo de evento:', payload.eventType);
+            console.log('🔄 DASHBOARD AGENTE - Datos nuevos:', payload.new);
+            console.log('🔄 DASHBOARD AGENTE - Datos anteriores:', payload.old);
+
+            // Añadir un pequeño delay para asegurar que la base de datos se actualice completamente
+            setTimeout(() => {
+              console.log('🔄 DASHBOARD AGENTE - Recargando dashboard...');
+              loadDashboardData();
+            }, 500);
+          }
+        )
+        .subscribe(status => {
+          console.log('📡 Estado de suscripción dashboard:', status);
+        });
+
+      // Método de respaldo: polling cada 10 segundos
+      const pollInterval = setInterval(() => {
+        console.log('🔄 Polling de respaldo - verificando actualizaciones...');
+        loadDashboardData();
+      }, 10000);
+
+      return () => {
+        console.log('🔌 Desconectando suscripción dashboard de agente...');
+        supabase.removeChannel(channel);
+        clearInterval(pollInterval);
+      };
     }
   }, [userProfile]);
+
+  // Efecto para recargar datos cuando el componente vuelve a enfocarse
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 Dashboard enfocado - recargando datos...');
+      loadDashboardData();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('🔄 Página visible - recargando datos...');
+        loadDashboardData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  const getStatusLabel = (status: string) => {
+    const statusConfig = {
+      submitted: 'Enviada',
+      under_review: 'En Revisión',
+      investigating: 'En Investigación',
+      waiting_approval: 'Esperando Aprobación',
+      approved: 'Aprobada',
+      denied: 'Denegada',
+      paid: 'Pagada',
+      closed: 'Cerrada',
+    };
+    return statusConfig[status as keyof typeof statusConfig] || status;
+  };
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
+      console.log('🔄 INICIANDO CARGA DE DATOS DEL DASHBOARD...');
       await Promise.all([loadStats(), loadUrgentClaims(), loadRecentClaims()]);
+      setRefreshKey(Date.now()); // Forzar re-render
+      console.log('✅ CARGA DE DATOS COMPLETADA');
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error('❌ Error loading dashboard data:', error);
     } finally {
       setLoading(false);
     }
@@ -79,21 +161,26 @@ export function AgentDashboard() {
 
   const loadStats = async () => {
     try {
-      // Obtener estadísticas de reclamaciones asignadas al agente
-      const { data: claims, error } = await supabase
+      // Obtener estadísticas de todas las reclamaciones del sistema para el dashboard general
+      const { data: allClaims, error } = await supabase
         .from('claims')
-        .select('status, created_at, approved_amount')
-        .eq('adjuster_id', userProfile?.id);
+        .select('status, created_at, approved_amount, estimated_damage_cost');
 
       if (error) throw error;
 
+      // Calcular estadísticas basadas en el estado actual de las reclamaciones
       const stats: DashboardStats = {
-        pending_review: claims?.filter(c => c.status === 'under_review').length || 0,
-        under_investigation: claims?.filter(c => c.status === 'investigating').length || 0,
-        pending_approval: claims?.filter(c => c.status === 'waiting_approval').length || 0,
-        total_assigned: claims?.length || 0,
+        pending_review:
+          allClaims?.filter(c => c.status === 'under_review' || c.status === 'submitted').length ||
+          0,
+        under_investigation: allClaims?.filter(c => c.status === 'investigating').length || 0,
+        pending_approval: allClaims?.filter(c => c.status === 'waiting_approval').length || 0,
+        total_assigned: allClaims?.length || 0,
         avg_resolution_time: 0, // Se calcularía con lógica más compleja
-        total_amount_processed: claims?.reduce((sum, c) => sum + (c.approved_amount || 0), 0) || 0,
+        total_amount_processed:
+          allClaims
+            ?.filter(c => c.status === 'approved' || c.status === 'paid')
+            .reduce((sum, c) => sum + (c.approved_amount || c.estimated_damage_cost || 0), 0) || 0,
       };
 
       setStats(stats);
@@ -121,7 +208,13 @@ export function AgentDashboard() {
         `
         )
         .in('priority', ['urgent', 'high'])
-        .in('status', ['submitted', 'under_review', 'investigating'])
+        .in('status', [
+          'submitted',
+          'under_review',
+          'investigating',
+          'pending_documentation',
+          'waiting_approval',
+        ])
         .order('created_at', { ascending: true })
         .limit(5);
 
@@ -143,7 +236,13 @@ export function AgentDashboard() {
           estimated_damage_cost: claim.estimated_damage_cost,
         })) || [];
 
-      setUrgentClaims(formattedClaims);
+      console.log('📊 URGENTES - Reclamaciones cargadas:', formattedClaims.length);
+      formattedClaims.forEach(claim => {
+        console.log(
+          `📊 URGENTE ${claim.claim_number}: status='${claim.status}' -> label='${getStatusLabel(claim.status)}'`
+        );
+      });
+      setUrgentClaims([...formattedClaims]); // Forzar nuevo array
     } catch (error) {
       console.error('Error loading urgent claims:', error);
     }
@@ -151,7 +250,7 @@ export function AgentDashboard() {
 
   const loadRecentClaims = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('claims')
         .select(
           `
@@ -167,8 +266,11 @@ export function AgentDashboard() {
           )
         `
         )
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
+
+      // Todos los roles ven todas las reclamaciones - solo cambia el label
+
+      const { data, error } = await query.limit(10);
 
       if (error) throw error;
 
@@ -188,7 +290,13 @@ export function AgentDashboard() {
           estimated_damage_cost: claim.estimated_damage_cost,
         })) || [];
 
-      setRecentClaims(formattedClaims);
+      console.log('📊 RECIENTES - Reclamaciones cargadas:', formattedClaims.length);
+      formattedClaims.forEach(claim => {
+        console.log(
+          `📊 RECIENTE ${claim.claim_number}: status='${claim.status}' -> label='${getStatusLabel(claim.status)}'`
+        );
+      });
+      setRecentClaims([...formattedClaims]); // Forzar nuevo array
     } catch (error) {
       console.error('Error loading recent claims:', error);
     }
@@ -196,9 +304,9 @@ export function AgentDashboard() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      submitted: { label: 'Recibida', variant: 'secondary' as const },
+      submitted: { label: 'Enviada', variant: 'secondary' as const },
       under_review: { label: 'En Revisión', variant: 'default' as const },
-      investigating: { label: 'Investigando', variant: 'default' as const },
+      investigating: { label: 'En Investigación', variant: 'default' as const },
       waiting_approval: { label: 'Esperando Aprobación', variant: 'outline' as const },
       approved: { label: 'Aprobada', variant: 'default' as const },
       denied: { label: 'Denegada', variant: 'destructive' as const },
@@ -210,18 +318,25 @@ export function AgentDashboard() {
       label: status,
       variant: 'secondary' as const,
     };
+
+    console.log(`🏷️ DASHBOARD AGENTE - Badge: status='${status}' -> label='${config.label}'`);
     const getVariantStyles = (variant: string) => {
-      switch(variant) {
-        case 'secondary': return 'bg-gray-100 text-gray-900 border border-gray-200';
-        case 'default': return 'bg-blue-500 text-white';
-        case 'outline': return 'bg-transparent border border-gray-300 text-gray-700';
-        case 'destructive': return 'bg-red-500 text-white';
-        default: return 'bg-gray-100 text-gray-900';
+      switch (variant) {
+        case 'secondary':
+          return 'bg-gray-100 text-gray-900 border border-gray-200';
+        case 'default':
+          return 'bg-blue-500 text-white';
+        case 'outline':
+          return 'bg-transparent border border-gray-300 text-gray-700';
+        case 'destructive':
+          return 'bg-red-500 text-white';
+        default:
+          return 'bg-gray-100 text-gray-900';
       }
     };
-    
+
     return (
-      <div 
+      <div
         className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${getVariantStyles(config.variant)}`}
         style={{
           display: 'flex',
@@ -230,7 +345,7 @@ export function AgentDashboard() {
           textAlign: 'center',
           lineHeight: '1',
           minHeight: '24px',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
         }}
       >
         {config.label}
@@ -251,7 +366,7 @@ export function AgentDashboard() {
       className: 'bg-gray-500 text-white',
     };
     return (
-      <div 
+      <div
         className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${config.className}`}
         style={{
           display: 'flex',
@@ -260,7 +375,7 @@ export function AgentDashboard() {
           textAlign: 'center',
           lineHeight: '1',
           minHeight: '24px',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
         }}
       >
         {config.label}
@@ -298,6 +413,17 @@ export function AgentDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => {
+              console.log('🔄 Recarga manual iniciada...');
+              loadDashboardData();
+            }}
+            disabled={loading}
+          >
+            <TrendingUp className="h-4 w-4 mr-2" />
+            {loading ? 'Actualizando...' : 'Refrescar'}
+          </Button>
           <ClaimNotificationSystem />
           <Link href="/claims">
             <Button>
@@ -391,10 +517,10 @@ export function AgentDashboard() {
                   <p className="text-muted-foreground">No hay reclamaciones urgentes pendientes</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-4" key={refreshKey}>
                   {urgentClaims.map(claim => (
                     <div
-                      key={claim.id}
+                      key={`${claim.id}-${refreshKey}`}
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex-1">
@@ -456,10 +582,10 @@ export function AgentDashboard() {
               <CardDescription>Últimas reclamaciones en el sistema</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-3" key={refreshKey}>
                 {recentClaims.map(claim => (
                   <div
-                    key={claim.id}
+                    key={`${claim.id}-${refreshKey}`}
                     className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                   >
                     <div className="flex-1">
@@ -542,6 +668,13 @@ export function AgentDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Monitor de Estados - Solo para testing */}
+      {userProfile?.role === 'admin' || userProfile?.role === 'agent' ? (
+        <div className="mt-8">
+          <AdminClaimMonitor />
+        </div>
+      ) : null}
     </div>
   );
 }

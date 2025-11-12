@@ -123,7 +123,7 @@ export default function ClaimDetailPage() {
   }, [params.id]);
 
   const fetchClaimDetails = async () => {
-    console.log('Fetching claim details for ID:', params.id);
+    console.log('📡 OBTENIENDO DETALLES DE RECLAMACIÓN:', params.id);
     try {
       // Fetch claim with related data
       const { data: claimData, error: claimError } = await supabase
@@ -150,11 +150,15 @@ export default function ClaimDetailPage() {
         .single();
 
       if (claimError) {
-        console.error('Error fetching claim:', claimError);
+        console.error('❌ Error fetching claim:', claimError);
         throw claimError;
       }
 
-      console.log('Claim data fetched:', claimData);
+      console.log('📊 DATOS DE RECLAMACIÓN OBTENIDOS:');
+      console.log('📋 ID:', claimData?.id);
+      console.log('📊 Status:', claimData?.status);
+      console.log('📈 Updated at:', claimData?.updated_at);
+      console.log('📋 Claim number:', claimData?.claim_number);
       setClaim(claimData);
 
       // Fetch assessments
@@ -189,33 +193,40 @@ export default function ClaimDetailPage() {
   };
 
   const updateClaimStatus = async (newStatus: string) => {
-    console.log('Updating claim status from', claim?.status, 'to', newStatus);
+    console.log('🔄 ACTUALIZANDO STATUS RECLAMACIÓN:');
+    console.log('📋 Claim ID:', params.id);
+    console.log('📊 Status actual:', claim?.status);
+    console.log('📈 Nuevo status:', newStatus);
+    console.log('👤 Usuario:', userProfile?.role, userProfile?.id);
 
     if (!claim || !userProfile) {
-      console.log('Missing claim or user profile');
+      console.log('❌ Missing claim or user profile');
       return;
     }
 
     try {
-      const { error } = await supabase
+      console.log('💾 Ejecutando UPDATE en base de datos...');
+      const { data, error } = await supabase
         .from('claims')
         .update({
           status: newStatus,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', params.id);
+        .eq('id', params.id)
+        .select('id, status, updated_at');
 
       if (error) {
-        console.error('Error updating claim status:', error);
+        console.error('❌ Error en UPDATE:', error);
         throw error;
       }
 
-      console.log('Claim status updated successfully');
+      console.log('✅ UPDATE ejecutado correctamente:', data);
+      console.log('🔄 Status confirmado en DB:', data?.[0]?.status);
 
       // Refresh claim data
-      console.log('Refreshing claim data...');
+      console.log('🔄 Refrescando datos de la reclamación...');
       await fetchClaimDetails();
-      console.log('Claim data refreshed');
+      console.log('✅ Datos refrescados completamente');
 
       setMessageModal({
         show: true,

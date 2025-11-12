@@ -44,6 +44,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const [typeFilter, setTypeFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [forceRefreshKey, setForceRefreshKey] = useState(0);
   const supabase = createClient();
 
   useEffect(() => {
@@ -54,15 +55,38 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
     filterClaims();
   }, [claims, searchTerm, statusFilter, typeFilter, priorityFilter]);
 
+  // Detectar cuando la página vuelve a tener foco después de navegar
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 CLAIM LIST - Página enfocada, refrescando...');
+      fetchClaims();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('🔄 CLAIM LIST - Página visible, refrescando...');
+        fetchClaims();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   // Auto-refresh cada 5 segundos (tiempo real)
   useEffect(() => {
     if (!userProfile) return;
 
-    console.log('⚡ Configurando auto-refresh en tiempo real cada 5 segundos...');
+    console.log('⚡ Configurando auto-refresh en tiempo real cada 3 segundos...');
     const interval = setInterval(() => {
       console.log('🔄 Auto-refresh tiempo real de reclamaciones...');
       fetchClaims();
-    }, 5000); // 5 segundos para sensación de tiempo real
+    }, 3000); // 3 segundos para sensación de tiempo real
 
     return () => {
       console.log('🔌 Desconectando auto-refresh');
@@ -86,12 +110,21 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
           table: 'claims',
         },
         payload => {
-          console.log('🔔 Cambio detectado en reclamaciones (ClaimList):', payload);
-          // Actualizar datos cuando hay cambios
-          fetchClaims();
+          console.log('🔔 CLAIM LIST - Cambio detectado:', payload);
+          console.log('🔔 CLAIM LIST - Evento:', payload.eventType);
+          console.log('🔔 CLAIM LIST - Datos nuevos:', payload.new);
+          console.log('🔔 CLAIM LIST - Datos anteriores:', payload.old);
+
+          // Actualizar datos cuando hay cambios con un pequeño delay
+          setTimeout(() => {
+            console.log('🔄 CLAIM LIST - Refrescando lista de reclamaciones...');
+            fetchClaims();
+          }, 500);
         }
       )
-      .subscribe();
+      .subscribe(status => {
+        console.log('📡 CLAIM LIST - Estado de suscripción:', status);
+      });
 
     return () => {
       console.log('🔌 Desconectando suscripción ClaimList');
@@ -123,22 +156,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
       if (customerId) {
         // Para clientes específicos
         query = query.eq('customer_id', customerId);
-      } else if (userProfile?.role === 'agent') {
-        // Los agentes ven reclamaciones que pueden procesar (estados administrativos)
-        query = query.in('status', [
-          'submitted',
-          'under_review',
-          'pending_documentation',
-          'approved',
-          'processing_payment',
-          'paid',
-          'denied',
-        ]);
-      } else if (userProfile?.role === 'adjuster') {
-        // Los ajustadores ven reclamaciones que requieren evaluación técnica
-        query = query.in('status', ['investigating', 'waiting_approval', 'approved', 'denied']);
       }
-      // Los administradores ven todas las reclamaciones (sin filtro adicional)
+      // Todos los roles ven todas las reclamaciones - solo cambia la funcionalidad de los botones
 
       if (policyId) {
         query = query.eq('policy_id', policyId);
@@ -148,10 +167,17 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
 
       if (error) throw error;
       if (data) {
-        setClaims(data);
-        setFilteredClaims(data);
+        console.log('📊 CLAIM LIST - Datos obtenidos:', data.length);
+        data.forEach(claim => {
+          console.log(
+            `📊 CLAIM LIST ${claim.claim_number}: status='${claim.status}' -> label será calculado en render`
+          );
+        });
+        setClaims([...data]); // Forzar nuevo array
+        setFilteredClaims([...data]); // Forzar nuevo array
         setLastUpdated(new Date());
-        console.log('✅ Reclamaciones actualizadas:', data.length);
+        setForceRefreshKey(Date.now()); // Forzar re-render completo
+        console.log('✅ CLAIM LIST - Claims actualizadas en estado');
       }
     } catch (error) {
       console.error('Error fetching claims:', error);
@@ -235,13 +261,13 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         label: 'Denegada',
         classes: 'status-badge status-denied',
       },
-      closed: { 
-        label: 'Cerrada', 
-        classes: 'status-badge status-closed' 
+      closed: {
+        label: 'Cerrada',
+        classes: 'status-badge status-closed',
       },
-      paid: { 
-        label: 'Pagada', 
-        classes: 'status-badge status-paid' 
+      paid: {
+        label: 'Pagada',
+        classes: 'status-badge status-paid',
       },
     };
 
@@ -249,6 +275,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
       label: status,
       classes: 'status-badge status-submitted',
     };
+
+    console.log(`🏷️ CLAIM LIST - Badge render: status='${status}' -> label='${config.label}'`);
     return <span className={config.classes}>{config.label}</span>;
   };
 
@@ -338,6 +366,17 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               )}
             </CardDescription>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              console.log('🔄 CLAIM LIST - Recarga manual iniciada...');
+              fetchClaims();
+            }}
+            disabled={loading}
+          >
+            {loading ? 'Actualizando...' : 'Refrescar'}
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -400,7 +439,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         </div>
 
         {/* Claims Table */}
-        <div className="rounded-md border">
+        <div className="rounded-md border" key={forceRefreshKey}>
           <Table>
             <TableHeader>
               <TableRow>
@@ -424,7 +463,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                 </TableRow>
               ) : (
                 filteredClaims.map(claim => (
-                  <TableRow key={claim.id}>
+                  <TableRow key={`${claim.id}-${claim.status}-${forceRefreshKey}`}>
                     <TableCell className="font-medium">{claim.claim_number}</TableCell>
                     {!customerId && (
                       <TableCell>
