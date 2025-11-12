@@ -182,8 +182,8 @@ Gracias por su colaboración.`;
                   key={doc.id}
                   className={`flex items-center justify-between p-2 border rounded-lg cursor-pointer transition-colors ${
                     requestedDocs.includes(doc.id)
-                      ? 'bg-blue-50 border-blue-200'
-                      : 'hover:bg-gray-50'
+                      ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-700'
                   }`}
                   onClick={() => handleDocumentToggle(doc.id)}
                 >

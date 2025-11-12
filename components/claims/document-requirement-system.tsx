@@ -369,16 +369,18 @@ Cualquier consulta puede comunicarse al 0800-SEGURO (734876).
               {completionPercentage}% completado
             </span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 relative overflow-hidden">
             <div
-              className={`h-2 rounded-full transition-all duration-300 ${
+              className={`h-full transition-all duration-300 absolute top-0 left-0 ${
                 completionPercentage === 100
-                  ? 'bg-green-500 dark:bg-green-600'
+                  ? 'bg-green-500 dark:bg-green-600 rounded-full w-full'
                   : completionPercentage >= 70
-                    ? 'bg-blue-500 dark:bg-blue-600'
-                    : 'bg-orange-500 dark:bg-orange-600'
+                    ? 'bg-blue-500 dark:bg-blue-600 rounded-l-full'
+                    : 'bg-orange-500 dark:bg-orange-600 rounded-l-full'
               }`}
-              style={{ width: `${completionPercentage}%` }}
+              style={{ 
+                width: completionPercentage === 100 ? '100%' : `${completionPercentage}%`
+              }}
             />
           </div>
         </div>
