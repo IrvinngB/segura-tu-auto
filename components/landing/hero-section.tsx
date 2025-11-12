@@ -37,7 +37,7 @@ export function HeroSection() {
 
                         {/* Stats */}
                         <div className="grid grid-cols-3 gap-4">
-                            <div className="text-center">
+                            <div className="text-left">
                                 <div className="text-2xl font-bold text-primary">
                                     10K+
                                 </div>
@@ -45,7 +45,7 @@ export function HeroSection() {
                                     Clientes
                                 </div>
                             </div>
-                            <div className="text-center">
+                            <div className="text-left">
                                 <div className="text-2xl font-bold text-primary">
                                     15K+
                                 </div>
@@ -53,7 +53,7 @@ export function HeroSection() {
                                     Vehículos
                                 </div>
                             </div>
-                            <div className="text-center">
+                            <div className="text-left">
                                 <div className="text-2xl font-bold text-primary">
                                     24/7
                                 </div>
