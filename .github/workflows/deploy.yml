@@ -38,7 +38,7 @@ jobs:
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
     - name: Run tests
-      run: pnpm test --passWithNoTests
+      run: pnpm test -- --passWithNoTests
       continue-on-error: true
 
   build-and-deploy:
