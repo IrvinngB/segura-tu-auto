@@ -210,7 +210,32 @@ export function AgentDashboard() {
       label: status,
       variant: 'secondary' as const,
     };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const getVariantStyles = (variant: string) => {
+      switch(variant) {
+        case 'secondary': return 'bg-gray-100 text-gray-900 border border-gray-200';
+        case 'default': return 'bg-blue-500 text-white';
+        case 'outline': return 'bg-transparent border border-gray-300 text-gray-700';
+        case 'destructive': return 'bg-red-500 text-white';
+        default: return 'bg-gray-100 text-gray-900';
+      }
+    };
+    
+    return (
+      <div 
+        className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${getVariantStyles(config.variant)}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          lineHeight: '1',
+          minHeight: '24px',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        {config.label}
+      </div>
+    );
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -225,7 +250,22 @@ export function AgentDashboard() {
       label: priority,
       className: 'bg-gray-500 text-white',
     };
-    return <Badge className={config.className}>{config.label}</Badge>;
+    return (
+      <div 
+        className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${config.className}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          lineHeight: '1',
+          minHeight: '24px',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        {config.label}
+      </div>
+    );
   };
 
   if (!userProfile || !['admin', 'agent', 'adjuster'].includes(userProfile.role)) {
