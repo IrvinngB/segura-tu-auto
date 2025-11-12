@@ -927,3 +927,23 @@ body[data-scroll-locked] {
 [data-radix-portal]::-webkit-scrollbar {
   display: none;
 }
+
+/* NOTIFICATION BADGE FIX - TABLE CELL PERFECTO */
+.notification-badge-fix {
+  display: table-cell !important;
+  width: 20px !important;
+  height: 20px !important;
+  margin: 0 0 0 8px !important;
+  padding: 0 !important;
+  background: #ef4444 !important;
+  color: white !important;
+  border-radius: 50% !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  line-height: 20px !important;
+}

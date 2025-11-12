@@ -494,12 +494,31 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
                       <span className="truncate">{item.name}</span>
                     </div>
                     {showBadge && effectiveCount > 0 && (
-                      <Badge 
-                        variant="secondary" 
-                        className="ml-2 h-5 px-1.5 text-xs bg-red-500 text-white border-red-500 hover:bg-red-600"
+                      <div 
+                        className="BADGE-SUPER-TEST-UNIQUE"
+                        style={{
+                          display: 'grid !important',
+                          placeItems: 'center !important',
+                          width: '25px !important',
+                          height: '25px !important',
+                          marginLeft: '10px !important',
+                          backgroundColor: '#ff00ff !important',
+                          color: 'black !important',
+                          borderRadius: '50% !important',
+                          fontFamily: 'monospace !important',
+                          fontSize: '14px !important',
+                          fontWeight: 'bold !important',
+                          textAlign: 'center !important',
+                          lineHeight: '1 !important',
+                          border: '3px solid yellow !important',
+                          padding: '0 !important',
+                          margin: '0 0 0 10px !important',
+                          boxSizing: 'border-box !important',
+                          zIndex: '9999 !important'
+                        }}
                       >
-                        {effectiveCount}
-                      </Badge>
+                        XX
+                      </div>
                     )}
                   </span>
                 </OptimizedLink>

@@ -54,7 +54,13 @@ export function DocumentRequestNotification({ customerId }: DocumentRequestNotif
         {unreadCount > 0 && (
           <Badge
             variant="destructive"
-            className="ml-2 h-5 w-5 rounded-full text-xs flex items-center justify-center p-0"
+            className="ml-2 min-w-[20px] h-5 rounded-full text-xs flex items-center justify-center p-0"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center'
+            }}
           >
             {unreadCount > 9 ? '9+' : unreadCount}
           </Badge>

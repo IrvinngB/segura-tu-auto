@@ -400,12 +400,26 @@ export function ClaimNotificationSystem() {
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <Badge
-            variant="destructive"
-            className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
+          <div
+            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '20px',
+              height: '20px',
+              fontSize: '11px',
+              fontWeight: '600',
+              lineHeight: '20px',
+              margin: '0',
+              padding: '0',
+              border: 'none',
+              textAlign: 'center',
+              verticalAlign: 'middle'
+            }}
           >
             {unreadCount > 99 ? '99+' : unreadCount}
-          </Badge>
+          </div>
         )}
       </Button>
 
