@@ -327,9 +327,30 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const getDaysOld = (date: string) => {
     const claimDate = new Date(date);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - claimDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Comparar solo las fechas (sin horas)
+    const claimDateOnly = new Date(claimDate.getFullYear(), claimDate.getMonth(), claimDate.getDate());
+    const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const diffTime = nowDateOnly.getTime() - claimDateOnly.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
     return diffDays;
+  };
+  
+  const getClaimAgeDisplay = (date: string) => {
+    const days = getDaysOld(date);
+    
+    if (days === 0) {
+      // Mismo día - no mostrar etiqueta de edad
+      return null;
+    } else if (days === 1) {
+      // Un día - singular
+      return '1 día';
+    } else {
+      // Múltiples días - plural
+      return `${days} días`;
+    }
   };
 
   if (loading) {
@@ -506,10 +527,12 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                           {format(new Date(claim.incident_date), 'dd/MM/yyyy', { locale: es })}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{getDaysOld(claim.created_at)} días</span>
-                      </div>
+                      {getClaimAgeDisplay(claim.created_at) && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{getClaimAgeDisplay(claim.created_at)}</span>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">

@@ -62,6 +62,36 @@ export function AgentDashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
   const supabase = createClient();
 
+  // Funciones helper para el formateo de fechas
+  const getDaysOld = (date: string) => {
+    const claimDate = new Date(date);
+    const now = new Date();
+    
+    // Comparar solo las fechas (sin horas)
+    const claimDateOnly = new Date(claimDate.getFullYear(), claimDate.getMonth(), claimDate.getDate());
+    const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const diffTime = nowDateOnly.getTime() - claimDateOnly.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  };
+  
+  const getClaimAgeDisplay = (date: string) => {
+    const days = getDaysOld(date);
+    
+    if (days === 0) {
+      // Mismo día - no mostrar etiqueta de edad
+      return null;
+    } else if (days === 1) {
+      // Un día - singular
+      return '1 día desde creación';
+    } else {
+      // Múltiples días - plural
+      return `${days} días desde creación`;
+    }
+  };
+
   useEffect(() => {
     if (userProfile) {
       loadDashboardData();
@@ -230,9 +260,7 @@ export function AgentDashboard() {
           created_at: claim.created_at,
           customer_name:
             `${claim.customer?.user?.first_name || ''} ${claim.customer?.user?.last_name || ''}`.trim(),
-          days_since_created: Math.ceil(
-            (new Date().getTime() - new Date(claim.created_at).getTime()) / (1000 * 60 * 60 * 24)
-          ),
+          days_since_created: getDaysOld(claim.created_at),
           estimated_damage_cost: claim.estimated_damage_cost,
         })) || [];
 
@@ -284,9 +312,7 @@ export function AgentDashboard() {
           created_at: claim.created_at,
           customer_name:
             `${claim.customer?.user?.first_name || ''} ${claim.customer?.user?.last_name || ''}`.trim(),
-          days_since_created: Math.ceil(
-            (new Date().getTime() - new Date(claim.created_at).getTime()) / (1000 * 60 * 60 * 24)
-          ),
+          days_since_created: getDaysOld(claim.created_at),
           estimated_damage_cost: claim.estimated_damage_cost,
         })) || [];
 
@@ -538,10 +564,12 @@ export function AgentDashboard() {
                             <FileText className="h-3 w-3" />
                             <span>{claim.claim_type}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-3 w-3" />
-                            <span>{claim.days_since_created} días desde creación</span>
-                          </div>
+                          {getClaimAgeDisplay(claim.created_at) && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-3 w-3" />
+                              <span>{getClaimAgeDisplay(claim.created_at)}</span>
+                            </div>
+                          )}
                           {claim.estimated_damage_cost && (
                             <div className="flex items-center gap-2">
                               <DollarSign className="h-3 w-3" />
