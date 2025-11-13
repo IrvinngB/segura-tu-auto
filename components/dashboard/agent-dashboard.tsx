@@ -440,17 +440,6 @@ export function AgentDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => {
-              console.log('🔄 Recarga manual iniciada...');
-              loadDashboardData();
-            }}
-            disabled={loading}
-          >
-            <TrendingUp className="h-4 w-4 mr-2" />
-            {loading ? 'Actualizando...' : 'Refrescar'}
-          </Button>
           <ClaimNotificationSystem />
           <Link href="/claims">
             <Button>
