@@ -78,15 +78,15 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
     };
   }, []);
 
-  // Auto-refresh cada segundo (tiempo real)
+  // Auto-refresh cada 30 segundos
   useEffect(() => {
     if (!userProfile) return;
 
-    console.log('⚡ Configurando auto-refresh en tiempo real cada segundo...');
+    console.log('⚡ Configurando auto-refresh cada 30 segundos...');
     const interval = setInterval(() => {
-      console.log('🔄 Auto-refresh tiempo real de reclamaciones...');
+      console.log('🔄 Auto-refresh de reclamaciones...');
       fetchClaims();
-    }, 1000); // 1 segundo para máxima actualización
+    }, 30000); // 30 segundos
 
     return () => {
       console.log('🔌 Desconectando auto-refresh');

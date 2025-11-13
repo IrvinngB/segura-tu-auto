@@ -124,11 +124,11 @@ export function AgentDashboard() {
           console.log('📡 Estado de suscripción dashboard:', status);
         });
 
-      // Método de respaldo: polling cada 10 segundos
+      // Método de respaldo: polling cada minuto
       const pollInterval = setInterval(() => {
         console.log('🔄 Polling de respaldo - verificando actualizaciones...');
         loadDashboardData();
-      }, 10000);
+      }, 60000);
 
       return () => {
         console.log('🔌 Desconectando suscripción dashboard de agente...');
