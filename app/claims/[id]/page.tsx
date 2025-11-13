@@ -186,6 +186,18 @@ export default function ClaimDetailPage() {
 
       if (documentError) throw documentError;
       setDocuments(documentData || []);
+
+      // Fetch customer documents count
+      const { data: customerDocData, error: customerDocError } = await supabase
+        .from('claim_customer_documents')
+        .select('id')
+        .eq('claim_id', params.id);
+
+      if (customerDocError) {
+        console.error('Error fetching customer documents count:', customerDocError);
+      } else {
+        setCustomerDocumentsCount(customerDocData?.length || 0);
+      }
     } catch (error) {
       console.error('Error fetching claim details:', error);
     } finally {
