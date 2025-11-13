@@ -406,21 +406,7 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role">Tipo de Usuario</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={value => handleInputChange('role', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona tu rol" />
-                  </SelectTrigger>
-                  <SelectContent className="z-50" position="popper" side="bottom" align="start">
-                    <SelectItem value="customer">Cliente</SelectItem>
-                    {/* Solo clientes pueden registrarse públicamente */}
-                  </SelectContent>
-                </Select>
-              </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña *</Label>

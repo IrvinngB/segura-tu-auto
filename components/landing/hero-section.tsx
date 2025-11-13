@@ -36,7 +36,7 @@ export function HeroSection() {
                         </div>
 
                         {/* Stats */}
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="flex space-x-8">
                             <div className="text-left">
                                 <div className="text-2xl font-bold text-primary">
                                     10K+
