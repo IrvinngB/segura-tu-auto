@@ -868,23 +868,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="priority">Prioridad</Label>
-                <Select
-                  value={claimData.priority}
-                  onValueChange={value => handleInputChange('priority', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baja</SelectItem>
-                    <SelectItem value="medium">Media</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                    <SelectItem value="urgent">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
             </div>
 
             {/* Location and Description */}
