@@ -56,6 +56,7 @@ export default function ClaimDetailPage() {
   const [claim, setClaim] = useState<Claim | null>(null);
   const [assessments, setAssessments] = useState<DamageAssessment[]>([]);
   const [documents, setDocuments] = useState<ClaimDocument[]>([]);
+  const [customerDocumentsCount, setCustomerDocumentsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
 
@@ -1040,12 +1041,7 @@ export default function ClaimDetailPage() {
         <Tabs defaultValue={initialTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="details">Detalles</TabsTrigger>
-            <TabsTrigger value="processing">Procesamiento</TabsTrigger>
-            <TabsTrigger value="assessments">Evaluaciones ({assessments.length})</TabsTrigger>
-            <TabsTrigger value="documents">Documentos ({documents.length})</TabsTrigger>
-            <TabsTrigger value="evidence">Evidencia</TabsTrigger>
-            <TabsTrigger value="communications">Comunicaciones</TabsTrigger>
-            <TabsTrigger value="history">Historial</TabsTrigger>
+            <TabsTrigger value="documents">Documentos ({customerDocumentsCount})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details">
@@ -1252,201 +1248,7 @@ export default function ClaimDetailPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="processing">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Workflow Management */}
-              <ClaimWorkflow
-                claimId={claim.id}
-                currentStatus={claim.status}
-                priority={claim.priority}
-                onStatusUpdate={(newStatus: string) => {
-                  setClaim(prev =>
-                    prev ? { ...prev, status: newStatus as Claim['status'] } : null
-                  );
-                  fetchClaimDetails();
-                }}
-              />
 
-              {/* Original Claim Processing */}
-              <ClaimProcessing
-                claim={claim}
-                onClaimUpdated={updatedClaim => {
-                  setClaim(updatedClaim);
-                  fetchClaimDetails();
-                }}
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="assessments">
-            {showAssessmentForm ? (
-              <DamageAssessmentForm
-                claim={claim}
-                adjusterId={userProfile?.id || ''}
-                onSuccess={() => {
-                  setShowAssessmentForm(false);
-                  fetchClaimDetails();
-                }}
-                onCancel={() => setShowAssessmentForm(false)}
-              />
-            ) : (
-              <div className="space-y-6">
-                {/* Sección especializada para Ajustador */}
-                {userProfile?.role === 'adjuster' && (
-                  <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
-                        <ClipboardCheck className="h-5 w-5" />
-                        Área de Evaluación Técnica
-                      </CardTitle>
-                      <CardDescription className="text-green-700 dark:text-green-300">
-                        Como <strong>Ajustador</strong>, tu especialización es realizar evaluaciones
-                        técnicas de daños y determinar montos de reparación.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm text-green-700 dark:text-green-300">
-                          <p>• Evalúa daños técnicamente</p>
-                          <p>• Determina costos de reparación</p>
-                          <p>• Recomienda acciones técnicas</p>
-                        </div>
-                        <Button
-                          onClick={() => setShowAssessmentForm(true)}
-                          className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-                        >
-                          <ClipboardCheck className="h-4 w-4 mr-2" />
-                          Nueva Evaluación Técnica
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Información para Agente */}
-                {userProfile?.role === 'agent' && (
-                  <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                        <FileText className="h-5 w-5" />
-                        Evaluaciones Técnicas del Caso
-                      </CardTitle>
-                      <CardDescription className="text-blue-700 dark:text-blue-300">
-                        Como <strong>Agente</strong>, puedes ver las evaluaciones técnicas
-                        realizadas por los ajustadores pero no crear nuevas.
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
-                )}
-
-                {assessments.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <ClipboardCheck className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="text-muted-foreground">
-                        No hay evaluaciones de daños registradas
-                      </p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-4">
-                    {assessments.map(assessment => (
-                      <Card key={assessment.id}>
-                        <CardHeader>
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="text-lg">
-                                Evaluación -{' '}
-                                {format(new Date(assessment.assessment_date), 'dd/MM/yyyy', {
-                                  locale: es,
-                                })}
-                              </CardTitle>
-                              <CardDescription>
-                                Por: {assessment.adjuster?.first_name}{' '}
-                                {assessment.adjuster?.last_name}
-                                {assessment.is_final && <Badge className="ml-2">Final</Badge>}
-                              </CardDescription>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">
-                              Descripción de Daños
-                            </label>
-                            <p className="text-sm bg-muted p-3 rounded-md">
-                              {assessment.damage_description}
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {assessment.repair_estimate && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">
-                                  Estimado Reparación
-                                </label>
-                                <p className="text-lg font-semibold">
-                                  ${assessment.repair_estimate.toLocaleString()}
-                                </p>
-                              </div>
-                            )}
-                            {assessment.replacement_estimate && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">
-                                  Estimado Reemplazo
-                                </label>
-                                <p className="text-lg font-semibold">
-                                  ${assessment.replacement_estimate.toLocaleString()}
-                                </p>
-                              </div>
-                            )}
-                            {assessment.recommended_action && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">
-                                  Acción Recomendada
-                                </label>
-                                <p className="capitalize">
-                                  {assessment.recommended_action.replace('_', ' ')}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          {assessment.assessment_notes && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">
-                                Notas
-                              </label>
-                              <p className="text-sm">{assessment.assessment_notes}</p>
-                            </div>
-                          )}
-
-                          {assessment.photos && assessment.photos.length > 0 && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">
-                                Fotografías
-                              </label>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                                {assessment.photos.map((photo, index) => (
-                                  <img
-                                    key={index}
-                                    src={photo || '/placeholder.svg'}
-                                    alt={`Foto ${index + 1}`}
-                                    className="w-full h-24 object-cover rounded border cursor-pointer hover:opacity-80"
-                                    onClick={() => window.open(photo, '_blank')}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </TabsContent>
 
           <TabsContent value="documents">
             <div className="space-y-6">
@@ -1455,37 +1257,12 @@ export default function ClaimDetailPage() {
                 claimId={claim.id}
                 customerId={claim.customer_id}
                 currentUserRole={userProfile?.role}
+                onDocumentCountChange={setCustomerDocumentsCount}
               />
             </div>
           </TabsContent>
 
-          <TabsContent value="evidence">
-            <ClaimEvidenceSystem
-              claimId={claim.id}
-              claimType={claim.claim_type}
-              currentUserRole={userProfile?.role || 'customer'}
-              customerId={claim.customer_id}
-            />
-          </TabsContent>
 
-          <TabsContent value="communications">
-            <div className="space-y-6">
-              {/* New Communication System */}
-              <ClaimCommunication
-                claimId={claim.id}
-                customerId={claim.customer_id}
-                claimNumber={claim.claim_number}
-                currentUserRole={userProfile?.role}
-              />
-
-              {/* Original Communications */}
-              <ClaimCommunications claim={claim} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="history">
-            <ClaimStatusHistory claim={claim} />
-          </TabsContent>
         </Tabs>
       </div>
 

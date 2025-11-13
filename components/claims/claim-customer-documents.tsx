@@ -39,6 +39,7 @@ interface ClaimCustomerDocumentsProps {
   claimId: string;
   customerId: string;
   currentUserRole?: string;
+  onDocumentCountChange?: (count: number) => void;
 }
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
@@ -75,6 +76,7 @@ export function ClaimCustomerDocuments({
   claimId,
   customerId,
   currentUserRole,
+  onDocumentCountChange,
 }: ClaimCustomerDocumentsProps) {
   const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +107,10 @@ export function ClaimCustomerDocuments({
       //   url: d.file_url,
       //   docType: d.document_type
       // })), null, 2));
-      setDocuments(data || []);
+      const documentsData = data || [];
+      setDocuments(documentsData);
+      // Notificar al componente padre sobre el cambio en el conteo
+      onDocumentCountChange?.(documentsData.length);
     } catch (error) {
       console.error('Error fetching documents:', error);
     } finally {
