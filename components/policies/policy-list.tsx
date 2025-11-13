@@ -540,11 +540,25 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <span className="font-medium">
-                          ${policy.premium_amount.toLocaleString()}
+                          $
+                          {policy.payment_frequency === 'monthly'
+                            ? (policy.premium_amount / 12).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })
+                            : policy.payment_frequency === 'quarterly'
+                              ? (policy.premium_amount / 4).toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })
+                              : policy.premium_amount.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {policy.payment_frequency}
+                        {policy.payment_frequency === 'monthly' ? 'mensual' : policy.payment_frequency === 'annual' ? 'anual' : 'trimestral'}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -622,7 +636,10 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-primary">
-                ${filteredPolicies.reduce((sum, p) => sum + p.premium_amount, 0).toLocaleString()}
+                ${filteredPolicies.reduce((sum, p) => sum + p.premium_amount, 0).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </div>
               <div className="text-sm text-muted-foreground">Prima total</div>
             </CardContent>
