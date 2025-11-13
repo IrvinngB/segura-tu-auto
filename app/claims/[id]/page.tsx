@@ -1456,61 +1456,6 @@ export default function ClaimDetailPage() {
                 customerId={claim.customer_id}
                 currentUserRole={userProfile?.role}
               />
-
-              {/* Original Documents List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Documentos del Sistema
-                  </CardTitle>
-                  <CardDescription>
-                    Documentos generados automáticamente o solicitados por el sistema
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {documents.length === 0 ? (
-                    <div className="text-center py-8">
-                      <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="text-muted-foreground">No hay documentos del sistema</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {documents.map(doc => (
-                        <div
-                          key={doc.id}
-                          className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-700"
-                        >
-                          <div className="flex items-center gap-3">
-                            {doc.document_type === 'photo' ? (
-                              <Camera className="h-5 w-5 text-muted-foreground" />
-                            ) : (
-                              <FileText className="h-5 w-5 text-muted-foreground" />
-                            )}
-                            <div>
-                              <p className="font-medium">{doc.file_name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {doc.document_type === 'photo' ? 'Fotografía' : 'Documento'} •
-                                {doc.file_size &&
-                                  ` ${(doc.file_size / 1024 / 1024).toFixed(2)} MB • `}
-                                {format(new Date(doc.created_at), 'dd/MM/yyyy', {
-                                  locale: es,
-                                })}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {doc.is_verified && <Badge variant="secondary">Verificado</Badge>}
-                            <Button variant="outline" size="sm">
-                              Ver
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
 
