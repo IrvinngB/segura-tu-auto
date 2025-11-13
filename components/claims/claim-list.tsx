@@ -633,26 +633,26 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-orange-600">
-                    {filteredClaims.filter(c => c.status === 'pending_documentation').length}
+                  <div className="text-2xl font-bold text-blue-600">
+                    {filteredClaims.filter(c => c.status === 'investigating').length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Pend. docs</div>
+                  <div className="text-sm text-muted-foreground">En investigación</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-green-600">
-                    {filteredClaims.filter(c => c.status === 'approved').length}
+                  <div className="text-2xl font-bold text-gray-600">
+                    {filteredClaims.filter(c => c.status === 'closed').length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Para pago</div>
+                  <div className="text-sm text-muted-foreground">Cerradas</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {filteredClaims.filter(c => c.status === 'paid').length}
+                  <div className="text-2xl font-bold text-red-600">
+                    {filteredClaims.filter(c => c.status === 'denied').length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Pagadas</div>
+                  <div className="text-sm text-muted-foreground">Denegadas</div>
                 </CardContent>
               </Card>
             </>
