@@ -495,29 +495,17 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
                     </div>
                     {showBadge && effectiveCount > 0 && (
                       <div 
-                        className="BADGE-SUPER-TEST-UNIQUE"
+                        className="flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-bold rounded-full"
                         style={{
-                          display: 'grid !important',
-                          placeItems: 'center !important',
-                          width: '25px !important',
-                          height: '25px !important',
-                          marginLeft: '10px !important',
-                          backgroundColor: '#ff00ff !important',
-                          color: 'black !important',
-                          borderRadius: '50% !important',
-                          fontFamily: 'monospace !important',
-                          fontSize: '14px !important',
-                          fontWeight: 'bold !important',
-                          textAlign: 'center !important',
-                          lineHeight: '1 !important',
-                          border: '3px solid yellow !important',
-                          padding: '0 !important',
-                          margin: '0 0 0 10px !important',
-                          boxSizing: 'border-box !important',
-                          zIndex: '9999 !important'
+                          minWidth: '20px',
+                          fontSize: '11px',
+                          lineHeight: '1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}
                       >
-                        XX
+                        {effectiveCount > 99 ? '99+' : effectiveCount}
                       </div>
                     )}
                   </span>
