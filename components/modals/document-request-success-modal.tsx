@@ -79,31 +79,38 @@ export function DocumentRequestSuccessModal({
           </DialogDescription>
 
           {/* Documentos solicitados */}
-          <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
             <div className="flex items-center gap-2 mb-3">
-              <Send className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-900">Documentos solicitados:</span>
+              <Send className="h-4 w-4 text-blue-700 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Documentos solicitados:</span>
             </div>
             <div className="space-y-2">
-              {requestedDocuments.map((docType, index) => (
-                <div key={index} className="flex items-center gap-2 text-sm text-blue-800">
+              {requestedDocuments && requestedDocuments.length > 0 ? (
+                requestedDocuments.map((docType, index) => (
+                  <div key={index} className="flex items-center gap-2 text-sm text-blue-900 dark:text-blue-100">
+                    <FileText className="h-3 w-3" />
+                    {DOCUMENT_TYPE_NAMES[docType] || docType}
+                  </div>
+                ))
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-blue-900 dark:text-blue-100">
                   <FileText className="h-3 w-3" />
-                  {DOCUMENT_TYPE_NAMES[docType] || docType}
+                  No se especificaron documentos
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
           {/* Estado de la reclamación */}
-          <div className="text-center p-3 bg-yellow-50 rounded-lg">
-            <p className="text-sm text-yellow-800">
+          <div className="text-center p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg border border-orange-200 dark:border-orange-700">
+            <p className="text-sm text-orange-900 dark:text-orange-100">
               <strong>Estado actualizado:</strong> Pendiente de Documentación
             </p>
           </div>
 
           {/* Próximos pasos */}
-          <div className="text-sm text-muted-foreground space-y-2">
-            <p className="font-medium">Próximos pasos:</p>
+          <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+            <p className="font-medium text-gray-900 dark:text-gray-100">Próximos pasos:</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>El cliente recibirá una notificación inmediatamente</li>
               <li>Podrá subir los documentos desde su portal</li>

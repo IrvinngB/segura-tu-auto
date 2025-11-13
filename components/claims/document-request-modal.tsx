@@ -48,6 +48,7 @@ export function DocumentRequestModal({
   const [error, setError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [claimNumber, setClaimNumber] = useState('');
+  const [sentDocuments, setSentDocuments] = useState<string[]>([]);
   const supabase = createClient();
 
   const handleDocumentToggle = (docId: string) => {
@@ -128,8 +129,9 @@ Gracias por su colaboración.`;
 
       console.log('✅ Notificación enviada al cliente y estado actualizado');
 
-      // Guardar el número de reclamación para el modal de éxito
+      // Guardar el número de reclamación y documentos para el modal de éxito
       setClaimNumber(claimData.claim_number);
+      setSentDocuments([...requestedDocs]); // Guardar copia de los documentos
 
       // Llamar callback y cerrar modal principal
       onDocumentRequested();
@@ -275,9 +277,12 @@ Gracias por su colaboración.`;
       {/* Modal de éxito */}
       <DocumentRequestSuccessModal
         open={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
+        onClose={() => {
+          setShowSuccessModal(false);
+          setSentDocuments([]); // Limpiar documentos enviados cuando se cierra el modal
+        }}
         claimNumber={claimNumber}
-        requestedDocuments={requestedDocs.length > 0 ? requestedDocs : []}
+        requestedDocuments={sentDocuments}
       />
     </Dialog>
   );
