@@ -228,13 +228,32 @@ export default function ClaimDetailPage() {
       await fetchClaimDetails();
       console.log('✅ Datos refrescados completamente');
 
+      // Mapeo de estados para mostrar nombres amigables
+      const statusLabels: Record<string, string> = {
+        draft: 'Borrador',
+        submitted: 'Enviada',
+        under_review: 'En Revisión',
+        pending_documentation: 'Documentos Pendientes',
+        waiting_approval: 'Esperando Aprobación',
+        investigating: 'En Investigación',
+        approved: 'Aprobada',
+        denied: 'Denegada',
+        closed: 'Cerrada'
+      };
+
       setMessageModal({
         show: true,
         title: 'Estado Actualizado',
-        message: `Estado actualizado correctamente a: ${newStatus}`,
+        message: `Estado actualizado correctamente a: ${statusLabels[newStatus] || newStatus}`,
         type: 'success',
+        hideButton: true,
         onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
       });
+
+      // Auto-cerrar el modal después de 1.5 segundos
+      setTimeout(() => {
+        setMessageModal(prev => ({ ...prev, show: false }));
+      }, 1500);
     } catch (error) {
       console.error('Error updating claim status:', error);
       setMessageModal({

@@ -185,8 +185,9 @@ interface MessageModalProps {
   title: string;
   message: string;
   onClose: () => void;
-  type?: 'success' | 'warning' | 'error' | 'info';
+  type?: 'success' | 'error' | 'warning' | 'info';
   buttonText?: string;
+  hideButton?: boolean;
 }
 
 export function MessageModal({
@@ -196,6 +197,7 @@ export function MessageModal({
   onClose,
   type = 'info',
   buttonText = 'OK',
+  hideButton = false,
 }: MessageModalProps) {
   if (!show) return null;
 
@@ -229,14 +231,16 @@ export function MessageModal({
           <p className="text-gray-600 dark:text-gray-300 mb-6">
             {message}
           </p>
-          <div className="flex justify-center">
-            <Button
-              onClick={onClose}
-              className="min-w-[100px]"
-            >
-              {buttonText}
-            </Button>
-          </div>
+          {!hideButton && (
+            <div className="flex justify-center">
+              <Button
+                onClick={onClose}
+                className="min-w-[100px]"
+              >
+                {buttonText}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </Portal>
