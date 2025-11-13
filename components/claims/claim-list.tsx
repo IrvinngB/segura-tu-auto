@@ -220,13 +220,18 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   };
 
   const getStatusBadge = (status: string) => {
+    // Determinar el label para 'submitted' según el rol
+    const submittedLabel = (userProfile?.role === 'agent' || userProfile?.role === 'adjuster') 
+      ? 'Por revisar' 
+      : 'Enviada';
+    
     const statusConfig = {
       pending: {
         label: 'Pendiente',
         classes: 'status-badge status-pending',
       },
       submitted: {
-        label: 'Enviada',
+        label: submittedLabel,
         classes: 'status-badge status-submitted',
       },
       under_review: {
@@ -327,20 +332,24 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const getDaysOld = (date: string) => {
     const claimDate = new Date(date);
     const now = new Date();
-    
+
     // Comparar solo las fechas (sin horas)
-    const claimDateOnly = new Date(claimDate.getFullYear(), claimDate.getMonth(), claimDate.getDate());
+    const claimDateOnly = new Date(
+      claimDate.getFullYear(),
+      claimDate.getMonth(),
+      claimDate.getDate()
+    );
     const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+
     const diffTime = nowDateOnly.getTime() - claimDateOnly.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     return diffDays;
   };
-  
+
   const getClaimAgeDisplay = (date: string) => {
     const days = getDaysOld(date);
-    
+
     if (days === 0) {
       // Mismo día - no mostrar etiqueta de edad
       return null;
@@ -387,7 +396,6 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               )}
             </CardDescription>
           </div>
-
         </div>
       </CardHeader>
       <CardContent>
@@ -612,7 +620,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
 
         {/* Summary - Métricas específicas por rol */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
-          {/* Métricas para AGENTES - Panel completo con todos los estados */}
+          {/* Métricas para AGENTES - Basadas en labels de estado (igual que clientes) */}
           {userProfile?.role === 'agent' && (
             <>
               <Card>
@@ -629,14 +637,6 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                     {filteredClaims.filter(c => c.status === 'under_review').length}
                   </div>
                   <div className="text-sm text-muted-foreground">En revisión</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-orange-500">
-                    {filteredClaims.filter(c => c.status === 'pending_documentation').length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Pend. docs</div>
                 </CardContent>
               </Card>
               <Card>
@@ -661,22 +661,6 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                     {filteredClaims.filter(c => c.status === 'approved').length}
                   </div>
                   <div className="text-sm text-muted-foreground">Aprobadas</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-cyan-500">
-                    {filteredClaims.filter(c => c.status === 'processing_payment').length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Proc. pago</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-green-600">
-                    {filteredClaims.filter(c => c.status === 'paid').length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Pagadas</div>
                 </CardContent>
               </Card>
               <Card>
