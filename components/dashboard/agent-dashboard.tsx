@@ -330,83 +330,84 @@ export function AgentDashboard() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      submitted: { label: 'Enviada', variant: 'secondary' as const },
-      under_review: { label: 'En Revisión', variant: 'default' as const },
-      investigating: { label: 'En Investigación', variant: 'default' as const },
-      waiting_approval: { label: 'Esperando Aprobación', variant: 'outline' as const },
-      approved: { label: 'Aprobada', variant: 'default' as const },
-      denied: { label: 'Denegada', variant: 'destructive' as const },
-      paid: { label: 'Pagada', variant: 'default' as const },
-      closed: { label: 'Cerrada', variant: 'secondary' as const },
+      pending: {
+        label: 'Pendiente',
+        classes: 'status-badge status-pending',
+      },
+      submitted: {
+        label: 'Enviada',
+        classes: 'status-badge status-submitted',
+      },
+      under_review: {
+        label: 'En Revisión',
+        classes: 'status-badge status-under-review',
+      },
+      pending_documentation: {
+        label: 'Documentos Pendientes',
+        classes: 'status-badge status-pending',
+      },
+      waiting_approval: {
+        label: 'Esperando Aprobación',
+        classes: 'status-badge status-waiting',
+      },
+      investigating: {
+        label: 'En Investigación',
+        classes: 'status-badge status-investigating',
+      },
+      approved: {
+        label: 'Aprobada',
+        classes: 'status-badge status-approved',
+      },
+      processing_payment: {
+        label: 'Procesando Pago',
+        classes: 'status-badge status-processing',
+      },
+      rejected: {
+        label: 'Rechazada',
+        classes: 'status-badge status-denied',
+      },
+      denied: {
+        label: 'Denegada',
+        classes: 'status-badge status-denied',
+      },
+      closed: {
+        label: 'Cerrada',
+        classes: 'status-badge status-closed',
+      },
+      paid: {
+        label: 'Pagada',
+        classes: 'status-badge status-paid',
+      },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
       label: status,
-      variant: 'secondary' as const,
+      classes: 'status-badge status-submitted',
     };
 
-    console.log(`🏷️ DASHBOARD AGENTE - Badge: status='${status}' -> label='${config.label}'`);
-    const getVariantStyles = (variant: string) => {
-      switch (variant) {
-        case 'secondary':
-          return 'bg-gray-100 text-gray-900 border border-gray-200';
-        case 'default':
-          return 'bg-blue-500 text-white';
-        case 'outline':
-          return 'bg-transparent border border-gray-300 text-gray-700';
-        case 'destructive':
-          return 'bg-red-500 text-white';
-        default:
-          return 'bg-gray-100 text-gray-900';
-      }
-    };
-
-    return (
-      <div
-        className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${getVariantStyles(config.variant)}`}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          lineHeight: '1',
-          minHeight: '24px',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {config.label}
-      </div>
-    );
+    console.log(`🏷️ DASHBOARD AGENTE - Badge render: status='${status}' -> label='${config.label}'`);
+    return <span className={config.classes}>{config.label}</span>;
   };
 
   const getPriorityBadge = (priority: string) => {
     const priorityConfig = {
-      urgent: { label: 'Urgente', className: 'bg-red-500 text-white' },
-      high: { label: 'Alta', className: 'bg-orange-500 text-white' },
-      medium: { label: 'Media', className: 'bg-yellow-500 text-white' },
-      low: { label: 'Baja', className: 'bg-green-500 text-white' },
+      low: { label: 'Baja', classes: 'priority-badge priority-low' },
+      medium: {
+        label: 'Media',
+        classes: 'priority-badge priority-medium',
+      },
+      high: { label: 'Alta', classes: 'priority-badge priority-high' },
+      urgent: {
+        label: 'Urgente',
+        classes: 'priority-badge priority-urgent',
+      },
     };
 
     const config = priorityConfig[priority as keyof typeof priorityConfig] || {
       label: priority,
-      className: 'bg-gray-500 text-white',
+      classes: 'priority-badge priority-low',
     };
-    return (
-      <div
-        className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium ${config.className}`}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          lineHeight: '1',
-          minHeight: '24px',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {config.label}
-      </div>
-    );
+    return <span className={config.classes}>{config.label}</span>;
   };
 
   if (!userProfile || !['admin', 'agent', 'adjuster'].includes(userProfile.role)) {

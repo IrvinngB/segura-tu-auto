@@ -109,28 +109,62 @@ export function AdminClaimMonitor() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      submitted: { label: 'Enviada', color: 'bg-blue-500' },
-      under_review: { label: 'En Revisión', color: 'bg-yellow-500' },
-      investigating: { label: 'En Investigación', color: 'bg-green-500' },
-      waiting_approval: { label: 'Esperando Aprobación', color: 'bg-orange-500' },
-      approved: { label: 'Aprobada', color: 'bg-green-600' },
-      denied: { label: 'Denegada', color: 'bg-red-500' },
-      paid: { label: 'Pagada', color: 'bg-purple-500' },
-      closed: { label: 'Cerrada', color: 'bg-gray-500' },
+      pending: {
+        label: 'Pendiente',
+        classes: 'status-badge status-pending',
+      },
+      submitted: {
+        label: 'Enviada',
+        classes: 'status-badge status-submitted',
+      },
+      under_review: {
+        label: 'En Revisión',
+        classes: 'status-badge status-under-review',
+      },
+      pending_documentation: {
+        label: 'Documentos Pendientes',
+        classes: 'status-badge status-pending',
+      },
+      waiting_approval: {
+        label: 'Esperando Aprobación',
+        classes: 'status-badge status-waiting',
+      },
+      investigating: {
+        label: 'En Investigación',
+        classes: 'status-badge status-investigating',
+      },
+      approved: {
+        label: 'Aprobada',
+        classes: 'status-badge status-approved',
+      },
+      processing_payment: {
+        label: 'Procesando Pago',
+        classes: 'status-badge status-processing',
+      },
+      rejected: {
+        label: 'Rechazada',
+        classes: 'status-badge status-denied',
+      },
+      denied: {
+        label: 'Denegada',
+        classes: 'status-badge status-denied',
+      },
+      closed: {
+        label: 'Cerrada',
+        classes: 'status-badge status-closed',
+      },
+      paid: {
+        label: 'Pagada',
+        classes: 'status-badge status-paid',
+      },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
       label: status,
-      color: 'bg-gray-400',
+      classes: 'status-badge status-submitted',
     };
 
-    return (
-      <div
-        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white ${config.color}`}
-      >
-        {config.label}
-      </div>
-    );
+    return <span className={config.classes}>{config.label}</span>;
   };
 
   return (

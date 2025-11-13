@@ -148,6 +148,10 @@ export default function CustomerDashboard() {
 
     if (type === 'claim') {
       const config = {
+        pending: {
+          label: 'Pendiente',
+          classes: 'status-badge status-pending',
+        },
         submitted: {
           label: 'Enviada',
           classes: 'status-badge status-submitted',
@@ -156,22 +160,41 @@ export default function CustomerDashboard() {
           label: 'En Revisión',
           classes: 'status-badge status-under-review',
         },
+        pending_documentation: {
+          label: 'Documentos Pendientes',
+          classes: 'status-badge status-pending',
+        },
+        waiting_approval: {
+          label: 'Esperando Aprobación',
+          classes: 'status-badge status-waiting',
+        },
         investigating: {
-          label: 'Investigando',
+          label: 'En Investigación',
           classes: 'status-badge status-investigating',
         },
         approved: {
           label: 'Aprobada',
           classes: 'status-badge status-approved',
         },
+        processing_payment: {
+          label: 'Procesando Pago',
+          classes: 'status-badge status-processing',
+        },
+        rejected: {
+          label: 'Rechazada',
+          classes: 'status-badge status-denied',
+        },
         denied: {
           label: 'Denegada',
           classes: 'status-badge status-denied',
         },
-        paid: { label: 'Pagada', classes: 'status-badge status-paid' },
         closed: {
           label: 'Cerrada',
           classes: 'status-badge status-closed',
+        },
+        paid: {
+          label: 'Pagada',
+          classes: 'status-badge status-paid',
         },
       };
       const statusConfig = config[status as keyof typeof config] || {
