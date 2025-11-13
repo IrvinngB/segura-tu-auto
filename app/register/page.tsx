@@ -32,7 +32,7 @@ export default function RegisterPage() {
     phone: '',
     role: 'customer', // Solo customer permitido en registro público
     // Location information
-    country: 'Costa Rica',
+    country: '',
     // Driver information
     birthDate: '',
     licenseYear: '',
@@ -516,7 +516,7 @@ export default function RegisterPage() {
                       onValueChange={value => handleInputChange('country', value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona tu país *" />
+                        <SelectValue placeholder="Seleccionar país" />
                       </SelectTrigger>
                       <SelectContent className="z-50" position="popper" side="bottom" align="start">
                         <SelectItem value="Costa Rica">Costa Rica</SelectItem>
