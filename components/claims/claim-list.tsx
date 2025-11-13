@@ -611,13 +611,13 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         </div>
 
         {/* Summary - Métricas específicas por rol */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* Métricas para AGENTES */}
+        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+          {/* Métricas para AGENTES - Panel completo con todos los estados */}
           {userProfile?.role === 'agent' && (
             <>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-bold text-gray-400">
                     {filteredClaims.filter(c => c.status === 'submitted').length}
                   </div>
                   <div className="text-sm text-muted-foreground">Por revisar</div>
@@ -625,10 +625,26 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-yellow-600">
+                  <div className="text-2xl font-bold text-yellow-500">
                     {filteredClaims.filter(c => c.status === 'under_review').length}
                   </div>
                   <div className="text-sm text-muted-foreground">En revisión</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-orange-500">
+                    {filteredClaims.filter(c => c.status === 'pending_documentation').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Pend. docs</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-purple-500">
+                    {filteredClaims.filter(c => c.status === 'waiting_approval').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Para aprobación</div>
                 </CardContent>
               </Card>
               <Card>
@@ -637,6 +653,30 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                     {filteredClaims.filter(c => c.status === 'investigating').length}
                   </div>
                   <div className="text-sm text-muted-foreground">En investigación</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-500">
+                    {filteredClaims.filter(c => c.status === 'approved').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Aprobadas</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-cyan-500">
+                    {filteredClaims.filter(c => c.status === 'processing_payment').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Proc. pago</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-600">
+                    {filteredClaims.filter(c => c.status === 'paid').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Pagadas</div>
                 </CardContent>
               </Card>
               <Card>
@@ -650,7 +690,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               <Card>
                 <CardContent className="p-4">
                   <div className="text-2xl font-bold text-red-600">
-                    {filteredClaims.filter(c => c.status === 'denied').length}
+                    {filteredClaims.filter(c => ['denied', 'rejected'].includes(c.status)).length}
                   </div>
                   <div className="text-sm text-muted-foreground">Denegadas</div>
                 </CardContent>
@@ -764,12 +804,12 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
             </>
           )}
 
-          {/* Métricas para CLIENTES - Vista simplificada */}
+          {/* Métricas para CLIENTES - Basadas en labels de estado */}
           {(!userProfile?.role || userProfile?.role === 'customer') && (
             <>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-bold text-gray-400">
                     {filteredClaims.filter(c => c.status === 'submitted').length}
                   </div>
                   <div className="text-sm text-muted-foreground">Enviadas</div>
@@ -777,19 +817,31 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {
-                      filteredClaims.filter(c =>
-                        ['under_review', 'investigating'].includes(c.status)
-                      ).length
-                    }
+                  <div className="text-2xl font-bold text-yellow-500">
+                    {filteredClaims.filter(c => c.status === 'under_review').length}
                   </div>
-                  <div className="text-sm text-muted-foreground">En proceso</div>
+                  <div className="text-sm text-muted-foreground">En revisión</div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-2xl font-bold text-purple-500">
+                    {filteredClaims.filter(c => c.status === 'waiting_approval').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Esperando aprobación</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {filteredClaims.filter(c => c.status === 'investigating').length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">En investigación</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-500">
                     {filteredClaims.filter(c => c.status === 'approved').length}
                   </div>
                   <div className="text-sm text-muted-foreground">Aprobadas</div>
@@ -797,10 +849,18 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {filteredClaims.filter(c => c.status === 'paid').length}
+                  <div className="text-2xl font-bold text-gray-600">
+                    {filteredClaims.filter(c => c.status === 'closed').length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Pagadas</div>
+                  <div className="text-sm text-muted-foreground">Cerradas</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-red-600">
+                    {filteredClaims.filter(c => ['denied', 'rejected'].includes(c.status)).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Denegadas</div>
                 </CardContent>
               </Card>
             </>
