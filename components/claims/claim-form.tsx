@@ -101,20 +101,16 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
 
   // Efecto para el temporizador del modal de éxito
   useEffect(() => {
-    if (success && countdown > 0) {
+    if (success) {
       const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-        if (countdown === 1) {
-          // Cuando llegue a 0, cerrar el modal y ejecutar onSuccess
-          setSuccess('');
-          if (onSuccess) {
-            onSuccess();
-          }
+        setSuccess('');
+        if (onSuccess) {
+          onSuccess();
         }
-      }, 1000);
+      }, 1500); // Cerrar modal después de 1.5 segundos
       return () => clearTimeout(timer);
     }
-  }, [success, countdown, onSuccess]);
+  }, [success, onSuccess]);
 
   useEffect(() => {
     // Si no hay customerId (caso de agentes), cargar lista de clientes
@@ -582,7 +578,6 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
       setSuccess(
         `¡Reclamación ${claimNumber} creada exitosamente! Se han subido ${uploadedCount} de ${totalDocs} documentos. Los documentos están siendo procesados y serán revisados por nuestro equipo.`
       );
-      setCountdown(5); // Más tiempo para leer el mensaje con info de documentos
     } catch (error) {
       console.error('💥 Error creating claim:', error);
       let errorMessage = 'Error al crear la reclamación';

@@ -78,15 +78,15 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
     };
   }, []);
 
-  // Auto-refresh cada 5 segundos (tiempo real)
+  // Auto-refresh cada segundo (tiempo real)
   useEffect(() => {
     if (!userProfile) return;
 
-    console.log('⚡ Configurando auto-refresh en tiempo real cada 3 segundos...');
+    console.log('⚡ Configurando auto-refresh en tiempo real cada segundo...');
     const interval = setInterval(() => {
       console.log('🔄 Auto-refresh tiempo real de reclamaciones...');
       fetchClaims();
-    }, 3000); // 3 segundos para sensación de tiempo real
+    }, 1000); // 1 segundo para máxima actualización
 
     return () => {
       console.log('🔌 Desconectando auto-refresh');
@@ -387,17 +387,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               )}
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              console.log('🔄 CLAIM LIST - Recarga manual iniciada...');
-              fetchClaims();
-            }}
-            disabled={loading}
-          >
-            {loading ? 'Actualizando...' : 'Refrescar'}
-          </Button>
+
         </div>
       </CardHeader>
       <CardContent>
