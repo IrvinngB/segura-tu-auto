@@ -731,7 +731,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                 }}
                 disabled={!!policyId || !selectedCustomer || loadingPolicies}
               >
-                <SelectTrigger className="h-12 px-6 py-4 text-sm">
+                <SelectTrigger className="h-20 px-6 py-8 text-sm">
                   <SelectValue
                     placeholder={
                       !selectedCustomer
