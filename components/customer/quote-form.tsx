@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { NotificationModal } from '@/components/ui/notification-modal';
 import { createClient } from '@/lib/supabase/client';
@@ -43,7 +44,25 @@ interface QuoteFormProps {
 
 export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
   const { customerData, loading: customerLoading } = useCustomerDataSimple();
+
+  // Debug log para ver los datos del cliente
+  console.log('🎯 QUOTE: Customer data received:', {
+    customerData,
+    country: customerData?.country,
+    phone: customerData?.phone,
+    birth_date: customerData?.birth_date,
+    license_year: customerData?.license_year,
+    has_accidents: customerData?.has_accidents,
+    has_claims: customerData?.has_claims,
+  });
+
+  // Check if profile is incomplete
+  const isProfileIncomplete =
+    !customerData?.birth_date || !customerData?.license_year || customerData?.license_year <= 0;
   const router = useRouter();
+
+  // Debug - vamos a ver qué datos tenemos
+  console.log('🔍 DEBUG: customerData en QuoteForm:', customerData);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [selectedPlan, setSelectedPlan] = useState<string>('basica'); // Plan por defecto básico
@@ -93,15 +112,33 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         let age = '30'; // Default value
         let drivingExperience = '5'; // Default value
 
+        console.log('📊 CALC: Calculating driver data with:', {
+          customerData,
+          birth_date: customerData.birth_date,
+          license_year: customerData.license_year,
+          has_accidents: customerData.has_accidents,
+          has_claims: customerData.has_claims,
+        });
+
         // Calculate age from birth_date
         if (customerData.birth_date) {
           const birthYear = new Date(customerData.birth_date).getFullYear();
           age = (currentYear - birthYear).toString();
+          console.log('🎂 CALC: Age calculated:', { birthYear, currentYear, age });
+        } else {
+          console.log('❌ CALC: No birth_date found, using default age 30');
         }
 
-        // Calculate driving experience from license_year
-        if (customerData.license_year) {
-          drivingExperience = (currentYear - customerData.license_year).toString();
+        // Use driving experience years directly from database
+        if (customerData.license_year && customerData.license_year > 0) {
+          // license_year here actually contains the driving_experience_years from the hook
+          drivingExperience = customerData.license_year.toString();
+          console.log('🚗 CALC: Driving experience from database:', {
+            driving_experience_years: customerData.license_year,
+            drivingExperience,
+          });
+        } else {
+          console.log('❌ CALC: No driving_experience_years found, using default experience 5');
         }
 
         // Ensure we always have valid values
@@ -112,12 +149,15 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
           drivingExperience = '5';
         }
 
-        setDriverData({
+        const finalDriverData = {
           age,
           drivingExperience,
           hasAccidents: customerData.has_accidents || false,
           hasClaims: customerData.has_claims || false,
-        });
+        };
+
+        console.log('✅ CALC: Final driver data set:', finalDriverData);
+        setDriverData(finalDriverData);
       };
 
       calculateDriverData();
@@ -427,13 +467,13 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         `CORREO ELECTRÓNICO: ${customerData?.email || 'No especificado'}`,
       ],
       [
-        `TELÉFONO: ${(customerData as any)?.phone || 'No especificado'}`,
-        `PAÍS: ${(customerData as any)?.country || 'No especificado'}`,
+        `TELÉFONO: ${customerData?.phone || 'No registrado en perfil'}`,
+        `PAÍS DE RESIDENCIA: ${customerData?.country || 'No registrado en perfil'}`,
       ],
       [`EDAD: ${driverData.age} años`, `EXPERIENCIA: ${driverData.drivingExperience} años`],
       [
-        `HISTORIAL DE ACCIDENTES: ${driverData.hasAccidents ? 'SÍ' : 'NO'}`,
-        `HISTORIAL DE RECLAMOS: ${driverData.hasClaims ? 'SÍ' : 'NO'}`,
+        `ACCIDENTES PREVIOS (FORMULARIO): ${driverData.hasAccidents ? 'SÍ' : 'NO'}`,
+        `RECLAMOS PREVIOS (FORMULARIO): ${driverData.hasClaims ? 'SÍ' : 'NO'}`,
       ],
     ];
 
@@ -459,16 +499,13 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
     const vehicleInfo = [
       [`MARCA: ${vehicleData.make}`, `MODELO: ${vehicleData.model}`],
-      [
-        `AÑO: ${vehicleData.year}`,
-        `EDAD DEL VEHÍCULO: ${new Date().getFullYear() - vehicleData.year} años`,
-      ],
+      [`AÑO: ${vehicleData.year}`, `AÑO DEL VEHÍCULO: ${vehicleData.year}`],
       [
         `VALOR ASEGURADO: $${Number.parseFloat(vehicleData.estimatedValue).toLocaleString()}`,
         `USO: ${vehicleData.usageType === 'personal' ? 'Personal' : vehicleData.usageType === 'commercial' ? 'Comercial' : vehicleData.usageType}`,
       ],
       [
-        `KILOMETRAJE ANUAL: ${Number.parseInt(vehicleData.annualMileage).toLocaleString()} km`,
+        `KILOMETRAJE ACTUAL: ${Number.parseInt(vehicleData.annualMileage).toLocaleString()} km`,
         `ZONA DE CIRCULACIÓN: Urbana/Interurbana`,
       ],
     ];
@@ -846,6 +883,28 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
+          {/* Profile Completion Alert */}
+          {isProfileIncomplete && (
+            <Alert>
+              <AlertDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <strong>Perfil incompleto:</strong> Para obtener una cotización precisa,
+                    necesitas completar tu fecha de nacimiento y años de experiencia conduciendo en
+                    tu perfil.
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('/customer/profile', '_blank')}
+                  >
+                    Completar Perfil
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Vehicle Information */}
           <Card>
             <CardHeader>
@@ -987,7 +1046,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="annualMileage">Kilometraje Anual</Label>
+                          <Label htmlFor="annualMileage">Kilometraje Actual</Label>
                           <Input
                             id="annualMileage"
                             value={
