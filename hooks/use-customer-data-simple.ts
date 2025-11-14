@@ -77,12 +77,14 @@ export function useCustomerDataSimple() {
         });
 
         console.log('📊 SIMPLE: Detailed customer data:', {
-          date_of_birth: customerDetails?.date_of_birth,
-          driving_experience_years: customerDetails?.driving_experience_years,
-          has_accidents: customerDetails?.has_accidents,
-          has_claims: customerDetails?.has_claims,
-          phone: customerDetails?.phone,
-          country: customerDetails?.country,
+          'customers.date_of_birth': customerDetails?.date_of_birth,
+          'customers.driving_experience_years': customerDetails?.driving_experience_years,
+          'customers.has_accidents': customerDetails?.has_accidents,
+          'customers.has_claims': customerDetails?.has_claims,
+          'customers.phone': customerDetails?.phone,
+          'customers.country': customerDetails?.country,
+          'users.phone': userProfile.phone,
+          'users.country': userProfile.country
         });
 
         console.log(' SIMPLE: Country data:', {
@@ -93,24 +95,14 @@ export function useCustomerDataSimple() {
         // Actualizar datos faltantes con valores por defecto
         const updates: any = {};
 
-        if (!customerDetails?.country) {
+        // Solo actualizar si realmente no existen los datos (evitar sobrescribir datos reales)
+        if (!customerDetails?.country || customerDetails.country === '') {
           console.log("⚠️ SIMPLE: No country found, will update with 'Panamá'");
           updates.country = 'Panamá';
         }
 
-        if (!customerDetails?.date_of_birth) {
-          console.log('⚠️ SIMPLE: No birth_date found, will update with default date');
-          const defaultBirthDate = '1995-01-01'; // Para edad de 30 años aprox
-          updates.date_of_birth = defaultBirthDate;
-        }
-
-        if (
-          !customerDetails?.driving_experience_years ||
-          customerDetails?.driving_experience_years === 0
-        ) {
-          console.log('⚠️ SIMPLE: No driving_experience_years found, will update with 5 years');
-          updates.driving_experience_years = 5;
-        }
+        // NO actualizar automáticamente birth_date ni driving_experience_years
+        // Dejar que el usuario los complete manualmente en su perfil
 
         // Aplicar actualizaciones si hay alguna
         if (Object.keys(updates).length > 0) {
@@ -138,11 +130,11 @@ export function useCustomerDataSimple() {
           email: userProfile.email || '',
           role: userProfile.role || '',
           birth_date: customerDetails?.date_of_birth,
-          license_year: customerDetails?.driving_experience_years || 5, // Años de experiencia por defecto
+          license_year: customerDetails?.driving_experience_years || undefined, // Solo usar si existe
           has_accidents: customerDetails?.has_accidents || false,
           has_claims: customerDetails?.has_claims || false,
-          phone: customerDetails?.phone || userProfile.phone || '',
-          country: customerDetails?.country || 'Panamá',
+          phone: userProfile.phone || customerDetails?.phone || '',
+          country: customerDetails?.country || undefined, // Solo usar si existe
         };
 
         console.log('✅ SIMPLE: Final customer data:', {

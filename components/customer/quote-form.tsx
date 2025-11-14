@@ -58,7 +58,13 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
   // Check if profile is incomplete
   const isProfileIncomplete =
-    !customerData?.birth_date || !customerData?.license_year || customerData?.license_year <= 0;
+    !customerData?.birth_date || 
+    !customerData?.license_year || 
+    customerData?.license_year <= 0 || 
+    !customerData?.phone || 
+    !customerData?.country ||
+    driverData.age === '' || 
+    driverData.drivingExperience === '';
   const router = useRouter();
 
   // Debug - vamos a ver qué datos tenemos
@@ -90,8 +96,8 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     annualMileage: '15000',
   });
   const [driverData, setDriverData] = useState({
-    age: '30', // Valor por defecto
-    drivingExperience: '5', // Valor por defecto
+    age: '', // Sin valor por defecto - se calculará de los datos reales
+    drivingExperience: '', // Sin valor por defecto - se obtendrá de los datos reales
     hasAccidents: false,
     hasClaims: false,
   });
@@ -109,8 +115,8 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
       // Calculate driver data from user profile
       const calculateDriverData = () => {
         const currentYear = new Date().getFullYear();
-        let age = '30'; // Default value
-        let drivingExperience = '5'; // Default value
+        let age = ''; // No default, will be calculated or empty
+        let drivingExperience = ''; // No default, will be from database or empty
 
         console.log('📊 CALC: Calculating driver data with:', {
           customerData,
@@ -126,7 +132,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
           age = (currentYear - birthYear).toString();
           console.log('🎂 CALC: Age calculated:', { birthYear, currentYear, age });
         } else {
-          console.log('❌ CALC: No birth_date found, using default age 30');
+          console.log('❌ CALC: No birth_date found - user needs to complete profile');
         }
 
         // Use driving experience years directly from database
@@ -138,15 +144,17 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             drivingExperience,
           });
         } else {
-          console.log('❌ CALC: No driving_experience_years found, using default experience 5');
+          console.log('❌ CALC: No driving_experience_years found - user needs to complete profile');
         }
 
-        // Ensure we always have valid values
-        if (!age || age === 'NaN' || parseInt(age) < 18) {
-          age = '30';
+        // Validate calculated values (but don't force defaults)
+        if (age && (age === 'NaN' || parseInt(age) < 18 || parseInt(age) > 100)) {
+          console.warn('⚠️ CALC: Invalid age calculated, clearing value');
+          age = '';
         }
-        if (!drivingExperience || drivingExperience === 'NaN' || parseInt(drivingExperience) < 0) {
-          drivingExperience = '5';
+        if (drivingExperience && (drivingExperience === 'NaN' || parseInt(drivingExperience) < 0)) {
+          console.warn('⚠️ CALC: Invalid driving experience, clearing value');
+          drivingExperience = '';
         }
 
         const finalDriverData = {
@@ -389,6 +397,15 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
   };
 
   const generateQuotePDF = (quoteData: any) => {
+    // DEBUG: Verificar datos antes de generar PDF
+    console.log('📄 PDF: Generating PDF with data:', {
+      quoteData,
+      customerData,
+      driverData,
+      vehicleData,
+      selectedPlan
+    });
+
     const doc = new jsPDF();
     const currentDate = new Date().toLocaleDateString('es-ES');
     const selectedPlanDetails = POLICY_PLANS[selectedPlan as keyof typeof POLICY_PLANS];
@@ -460,6 +477,25 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
 
+    // DEBUG: Log exact data being used in PDF
+    console.log('📄 PDF: Data being used for PDF generation:', {
+      customerData: {
+        phone: customerData?.phone,
+        country: customerData?.country,
+        birth_date: customerData?.birth_date,
+        license_year: customerData?.license_year,
+        first_name: customerData?.first_name,
+        last_name: customerData?.last_name,
+        email: customerData?.email
+      },
+      driverData: {
+        age: driverData.age,
+        drivingExperience: driverData.drivingExperience,
+        hasAccidents: driverData.hasAccidents,
+        hasClaims: driverData.hasClaims
+      }
+    });
+
     // Customer info in two columns with better spacing
     const customerInfo = [
       [
@@ -467,10 +503,13 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
         `CORREO ELECTRÓNICO: ${customerData?.email || 'No especificado'}`,
       ],
       [
-        `TELÉFONO: ${customerData?.phone || 'No registrado en perfil'}`,
-        `PAÍS DE RESIDENCIA: ${customerData?.country || 'No registrado en perfil'}`,
+        `TELÉFONO: ${customerData?.phone || 'Completar en perfil de usuario'}`,
+        `PAÍS DE RESIDENCIA: ${customerData?.country || 'Completar en perfil de usuario'}`,
       ],
-      [`EDAD: ${driverData.age} años`, `EXPERIENCIA: ${driverData.drivingExperience} años`],
+      [
+        `EDAD: ${driverData.age ? `${driverData.age} años` : 'Completar en perfil'}`, 
+        `EXPERIENCIA: ${driverData.drivingExperience ? `${driverData.drivingExperience} años` : 'Completar en perfil'}`
+      ],
       [
         `ACCIDENTES PREVIOS (FORMULARIO): ${driverData.hasAccidents ? 'SÍ' : 'NO'}`,
         `RECLAMOS PREVIOS (FORMULARIO): ${driverData.hasClaims ? 'SÍ' : 'NO'}`,
@@ -889,9 +928,9 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
               <AlertDescription>
                 <div className="flex items-center justify-between">
                   <div>
-                    <strong>Perfil incompleto:</strong> Para obtener una cotización precisa,
-                    necesitas completar tu fecha de nacimiento y años de experiencia conduciendo en
-                    tu perfil.
+                    <strong>Perfil incompleto:</strong> Para mostrar tus datos reales en el PDF
+                    (en lugar de valores genéricos), completa tu fecha de nacimiento y años de
+                    experiencia en tu perfil.
                   </div>
                   <Button
                     variant="outline"

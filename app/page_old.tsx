@@ -1,17 +1,36 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/auth-provider';
-import { createBrowserClient } from '@supabase/ssr';
-import { useRecentClaims } from '@/hooks/use-recent-claims';
-import { AgentDashboard } from '@/components/dashboard/agent-dashboard';
+import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Car, FileText, AlertTriangle, Users, TrendingUp, Shield, Clock } from 'lucide-react';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { DashboardSkeleton } from '@/components/ui/skeleton';
+import { Sidebar } from '@/components/navigation/sidebar';
+import { LogoutButton } from '@/components/auth/logout-button';
+import { AdminQuickAccess } from '@/components/admin-quick-access';
+import type { Policy, Claim, Payment } from '@/lib/types/database';
+import {
+  Shield,
+  FileText,
+  DollarSign,
+  Car,
+  Plus,
+  Eye,
+  Calendar,
+  AlertTriangle,
+  Users,
+  BarChart3,
+  TrendingUp,
+  Bell,
+  Calculator,
+  Loader2,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import Link from 'next/link';
+import { RenewalNotificationsPanel } from '@/components/policies/renewal-notifications-panel';
 
 // Import public landing components
 import { PublicHeader } from '@/components/landing/public-header';
@@ -21,14 +40,15 @@ import { PoliciesSection } from '@/components/landing/policies-section';
 import { TestimonialsSection } from '@/components/landing/testimonials-section';
 import { PublicFooter } from '@/components/landing/public-footer';
 
-export default function HomePage() {
-  const { user, userProfile, loading: authLoading, clearAllCache } = useAuth();
-  const router = useRouter();
-
-  // Usar el hook personalizado para reclamaciones recientes
-  const { recentClaims, stats, loading: claimsLoading, lastUpdated, refresh } = useRecentClaims(3);
-
+export default function Dashboard() {
+  const { user, userProfile, authLoading } = useAuth();
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [customerId, setCustomerId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const supabase = createClient();
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -99,7 +119,7 @@ export default function HomePage() {
         {
           path: '/customer/dashboard',
           icon: Shield,
-          label: 'Mi Dashboard',
+          label: 'Dashboard',
         },
         {
           path: '/customer/policies',
@@ -114,7 +134,7 @@ export default function HomePage() {
         {
           path: '/customer/quote',
           icon: TrendingUp,
-          label: 'Solicitar Cotización',
+          label: 'Nueva Cotización',
         },
         {
           path: '/customer/profile',
@@ -251,7 +271,7 @@ export default function HomePage() {
               {userProfile?.role && (
                 <Badge
                   variant="outline"
-                  className="capitalize dark:text-purple-200 dark:border-purple-300 text-center flex items-center justify-center"
+                  className="capitalize dark:text-purple-200 dark:border-purple-300"
                 >
                   {(() => {
                     switch (userProfile.role) {
@@ -361,7 +381,7 @@ export default function HomePage() {
                     onClick={() => router.push('/customer/quote')}
                   >
                     <Car className="mr-2 h-4 w-4" />
-                    Solicitar Cotización
+                    Nueva Cotización
                   </Button>
                   <Button
                     className="w-full justify-start bg-transparent"
@@ -374,18 +394,10 @@ export default function HomePage() {
                   <Button
                     className="w-full justify-start bg-transparent"
                     variant="outline"
-                    onClick={() => router.push('/customer/policies')}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Ver Mis Pólizas
-                  </Button>
-                  <Button
-                    className="w-full justify-start bg-transparent"
-                    variant="outline"
                     onClick={() => router.push('/customer/profile')}
                   >
                     <Users className="mr-2 h-4 w-4" />
-                    Actualizar Mis Datos
+                    Mi Perfil
                   </Button>
                 </>
               ) : (
