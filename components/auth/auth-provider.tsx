@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 import type { User } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import type { User as DatabaseUser } from "@/lib/types/database"
+import { useInactivityLogout } from "@/hooks/use-inactivity-logout"
 
 interface AuthContextType {
   user: User | null
@@ -23,6 +24,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<DatabaseUser | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+
+  // Activar auto-logout por inactividad solo si hay usuario autenticado
+  useInactivityLogout({
+    enabled: !!user,
+    timeout: 10 * 60 * 1000, // 10 minutos
+    onInactivity: () => {
+      console.log('⏰ Usuario inactivo por 10 minutos');
+    },
+    onLogout: () => {
+      setUser(null);
+      setUserProfile(null);
+    },
+  });
 
   const fetchUserProfile = async (userId: string) => {
     try {

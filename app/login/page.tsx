@@ -2,8 +2,8 @@
 
 import type React from "react";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "@/lib/supabase/client";
-import { Shield, Mail, Lock, Eye, EyeOff, Home, Loader2 } from "lucide-react";
+import { Shield, Mail, Lock, Eye, EyeOff, Home, Loader2, AlertCircle } from "lucide-react";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 
 export default function LoginPage() {
@@ -29,7 +29,12 @@ export default function LoginPage() {
     const [loginSuccess, setLoginSuccess] = useState(false);
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const supabase = createClient();
+
+    // Detectar si fue deslogueado por inactividad
+    const reason = searchParams.get('reason');
+    const showInactivityMessage = reason === 'inactivity';
 
     // Función para traducir mensajes de error a español
     const getErrorMessage = (errorMessage: string) => {
@@ -212,6 +217,15 @@ export default function LoginPage() {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleLogin} className="space-y-4">
+                            {showInactivityMessage && (
+                                <Alert variant="default" className="border-amber-500 bg-amber-50 dark:bg-amber-950">
+                                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                                    <AlertDescription className="text-amber-800 dark:text-amber-200">
+                                        Tu sesión se cerró automáticamente por inactividad. Por favor, inicia sesión nuevamente.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
                             {error && (
                                 <Alert variant="destructive">
                                     <AlertDescription>{error}</AlertDescription>
