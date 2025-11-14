@@ -22,9 +22,13 @@ interface UserData {
 
 interface CustomerData {
   address: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
   phone: string;
   date_of_birth?: string;
-  driving_experience_years?: number;
+  driving_experience_years?: number | string;
 }
 
 export default function CustomerProfilePage() {
@@ -37,6 +41,10 @@ export default function CustomerProfilePage() {
   });
   const [customerData, setCustomerData] = useState<CustomerData>({
     address: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: 'Panamá',
     phone: '',
     date_of_birth: '',
     driving_experience_years: undefined,
@@ -90,7 +98,7 @@ export default function CustomerProfilePage() {
       // Obtener datos del cliente
       const { data: customer, error: customerError } = await supabase
         .from('customers')
-        .select('id, address, phone, date_of_birth, driving_experience_years')
+        .select('id, address, city, state, postal_code, country, phone, date_of_birth, driving_experience_years')
         .eq('user_id', user?.id)
         .single();
 
@@ -100,6 +108,10 @@ export default function CustomerProfilePage() {
         setCustomerId(customer.id);
         setCustomerData({
           address: customer.address || '',
+          city: customer.city || '',
+          state: customer.state || '',
+          postal_code: customer.postal_code || '',
+          country: customer.country || 'Panamá',
           phone: customer.phone || '',
           date_of_birth: customer.date_of_birth || '',
           driving_experience_years: customer.driving_experience_years || undefined,
@@ -164,9 +176,17 @@ export default function CustomerProfilePage() {
           .from('customers')
           .update({
             address: customerData.address,
+            city: customerData.city,
+            state: customerData.state,
+            postal_code: customerData.postal_code,
+            country: customerData.country,
             phone: customerData.phone,
             date_of_birth: customerData.date_of_birth || null,
-            driving_experience_years: customerData.driving_experience_years || null,
+            driving_experience_years: customerData.driving_experience_years 
+              ? typeof customerData.driving_experience_years === 'string' 
+                ? parseInt(customerData.driving_experience_years) 
+                : customerData.driving_experience_years 
+              : null,
           })
           .eq('id', customerId);
 
@@ -180,9 +200,17 @@ export default function CustomerProfilePage() {
           .insert({
             user_id: user?.id,
             address: customerData.address,
+            city: customerData.city,
+            state: customerData.state,
+            postal_code: customerData.postal_code,
+            country: customerData.country,
             phone: customerData.phone,
             date_of_birth: customerData.date_of_birth || null,
-            driving_experience_years: customerData.driving_experience_years || null,
+            driving_experience_years: customerData.driving_experience_years 
+              ? typeof customerData.driving_experience_years === 'string' 
+                ? parseInt(customerData.driving_experience_years) 
+                : customerData.driving_experience_years 
+              : null,
           })
           .select('id')
           .single();
@@ -371,13 +399,57 @@ export default function CustomerProfilePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="address">Dirección</Label>
+                    <Label htmlFor="address">Dirección Completa</Label>
                     <Input
                       id="address"
-                      placeholder="Calle, colonia, ciudad..."
+                      placeholder="Calle, número, urbanización..."
                       value={customerData.address}
                       onChange={e => handleCustomerDataChange('address', e.target.value)}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Ciudad</Label>
+                      <Input
+                        id="city"
+                        placeholder="Ciudad"
+                        value={customerData.city}
+                        onChange={e => handleCustomerDataChange('city', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="state">Provincia/Estado</Label>
+                      <Input
+                        id="state"
+                        placeholder="Provincia"
+                        value={customerData.state}
+                        onChange={e => handleCustomerDataChange('state', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="postal_code">Código Postal</Label>
+                      <Input
+                        id="postal_code"
+                        placeholder="Código postal"
+                        value={customerData.postal_code}
+                        onChange={e => handleCustomerDataChange('postal_code', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="country">País</Label>
+                      <Input
+                        id="country"
+                        placeholder="País"
+                        value={customerData.country}
+                        onChange={e => handleCustomerDataChange('country', e.target.value)}
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -402,7 +474,7 @@ export default function CustomerProfilePage() {
                       onChange={e =>
                         handleCustomerDataChange(
                           'driving_experience_years',
-                          parseInt(e.target.value) || 0
+                          e.target.value ? String(parseInt(e.target.value)) : ''
                         )
                       }
                     />

@@ -48,6 +48,10 @@ export default function EditClientPage() {
         email: "",
         phone: "",
         date_of_birth: "",
+        address: "",
+        city: "",
+        state: "",
+        postal_code: "",
         country: "Panamá",
         role: "customer" as 'customer' | 'agent' | 'adjuster' | 'admin',
     });
@@ -61,6 +65,7 @@ export default function EditClientPage() {
         if (params.id) {
             fetchCustomerData();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [params.id]);
 
     const fetchCustomerData = async () => {
@@ -85,6 +90,10 @@ export default function EditClientPage() {
                     date_of_birth: customerData.date_of_birth
                         ? format(new Date(customerData.date_of_birth), "yyyy-MM-dd")
                         : "",
+                    address: customerData.address || "",
+                    city: customerData.city || "",
+                    state: customerData.state || "",
+                    postal_code: customerData.postal_code || "",
                     country: customerData.country || "Panamá",
                     role: customerData.user?.role || "customer",
                 });
@@ -113,6 +122,25 @@ export default function EditClientPage() {
         setSaving(true);
 
         try {
+            // Verificar si el email ya está en uso por otro usuario
+            if (formData.email !== customer?.user?.email) {
+                const { data: existingUser } = await supabase
+                    .from("users")
+                    .select("id")
+                    .eq("email", formData.email)
+                    .single();
+
+                if (existingUser) {
+                    toast({
+                        title: "Error",
+                        description: "Este correo electrónico ya está registrado.",
+                        variant: "destructive",
+                    });
+                    setSaving(false);
+                    return;
+                }
+            }
+
             // Update user data
             const { error: userError } = await supabase
                 .from("users")
@@ -132,6 +160,10 @@ export default function EditClientPage() {
                 .from("customers")
                 .update({
                     date_of_birth: formData.date_of_birth || null,
+                    address: formData.address || null,
+                    city: formData.city || null,
+                    state: formData.state || null,
+                    postal_code: formData.postal_code || null,
                     country: formData.country,
                 })
                 .eq("id", customer?.id);
@@ -325,6 +357,54 @@ export default function EditClientPage() {
                                                 <SelectItem value="admin">Administrador</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                    </div>
+
+                                    {/* Address - Full Width */}
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="address">Dirección Completa</Label>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                id="address"
+                                                value={formData.address}
+                                                onChange={(e) => handleInputChange("address", e.target.value)}
+                                                placeholder="Calle, Número, Urbanización"
+                                                className="pl-10"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* City */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="city">Ciudad</Label>
+                                        <Input
+                                            id="city"
+                                            value={formData.city}
+                                            onChange={(e) => handleInputChange("city", e.target.value)}
+                                            placeholder="Ciudad"
+                                        />
+                                    </div>
+
+                                    {/* State */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="state">Provincia/Estado</Label>
+                                        <Input
+                                            id="state"
+                                            value={formData.state}
+                                            onChange={(e) => handleInputChange("state", e.target.value)}
+                                            placeholder="Provincia o Estado"
+                                        />
+                                    </div>
+
+                                    {/* Postal Code */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="postal_code">Código Postal</Label>
+                                        <Input
+                                            id="postal_code"
+                                            value={formData.postal_code}
+                                            onChange={(e) => handleInputChange("postal_code", e.target.value)}
+                                            placeholder="Código postal"
+                                        />
                                     </div>
 
                                 </div>

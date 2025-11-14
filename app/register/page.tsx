@@ -93,6 +93,7 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
 
+
     // Validation
     if (formData.password !== formData.confirmPassword) {
       handleError('Las contraseñas no coinciden');
@@ -106,6 +107,22 @@ export default function RegisterPage() {
       );
       setLoading(false);
       return;
+    }
+
+    // Validar edad mínima (mayor a 18)
+    if (formData.role === 'customer' && formData.birthDate) {
+      const birth = new Date(formData.birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        handleError('Debes ser mayor de 18 años para registrarte.');
+        setLoading(false);
+        return;
+      }
     }
 
     // Validar roles permitidos en registro público
@@ -254,6 +271,7 @@ export default function RegisterPage() {
       return emailRegex.test(email);
     };
 
+
     // Validaciones individuales para debugging
     const validations = {
       firstName: formData.firstName.trim() !== '',
@@ -277,6 +295,17 @@ export default function RegisterPage() {
         birthDate: formData.birthDate.trim() !== '',
         licenseYear: formData.licenseYear.trim() !== '',
         licenseYearLength: formData.licenseYear.trim().length >= 4,
+        ageValid: (() => {
+          if (!formData.birthDate) return false;
+          const birth = new Date(formData.birthDate);
+          const today = new Date();
+          let age = today.getFullYear() - birth.getFullYear();
+          const m = today.getMonth() - birth.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+            age--;
+          }
+          return age >= 18;
+        })(),
       };
 
       const customerFieldsComplete = Object.values(customerValidations).every(v => v === true);
