@@ -22,7 +22,7 @@ interface UserData {
 
 interface CustomerData {
   address: string;
-  phone: string;
+  phone: string; // Mantenido por compatibilidad pero no se usa
   date_of_birth?: string;
   driving_experience_years?: number;
 }
@@ -71,7 +71,7 @@ export default function CustomerProfilePage() {
       setLoading(true);
       setError('');
 
-      // Obtener datos del usuario
+      // Obtener datos del usuario autenticado
       const { data: authUser, error: authError } = await supabase.auth.getUser();
 
       if (authError) {
@@ -79,18 +79,29 @@ export default function CustomerProfilePage() {
       }
 
       if (authUser.user) {
+        // Obtener datos completos de la tabla users
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('first_name, last_name, phone')
+          .eq('id', authUser.user.id)
+          .single();
+
+        if (userError && userError.code !== 'PGRST116') {
+          console.error('Error fetching user data:', userError);
+        }
+
         setUserData({
-          first_name: userProfile?.first_name || '',
-          last_name: userProfile?.last_name || '',
+          first_name: userData?.first_name || '',
+          last_name: userData?.last_name || '',
           email: authUser.user.email || '',
-          phone: userProfile?.phone || '',
+          phone: userData?.phone || '',
         });
       }
 
       // Obtener datos del cliente
       const { data: customer, error: customerError } = await supabase
         .from('customers')
-        .select('id, address, phone, date_of_birth, driving_experience_years')
+        .select('id, address, date_of_birth, driving_experience_years')
         .eq('user_id', user?.id)
         .single();
 
@@ -100,7 +111,7 @@ export default function CustomerProfilePage() {
         setCustomerId(customer.id);
         setCustomerData({
           address: customer.address || '',
-          phone: customer.phone || '',
+          phone: '', // El teléfono ahora se maneja desde users
           date_of_birth: customer.date_of_birth || '',
           driving_experience_years: customer.driving_experience_years || undefined,
         });
@@ -137,6 +148,7 @@ export default function CustomerProfilePage() {
         data: {
           first_name: userData.first_name,
           last_name: userData.last_name,
+          phone: userData.phone,
         },
       });
 
@@ -150,6 +162,7 @@ export default function CustomerProfilePage() {
         .update({
           first_name: userData.first_name,
           last_name: userData.last_name,
+          phone: userData.phone,
         })
         .eq('id', user?.id);
 
@@ -164,7 +177,6 @@ export default function CustomerProfilePage() {
           .from('customers')
           .update({
             address: customerData.address,
-            phone: customerData.phone,
             date_of_birth: customerData.date_of_birth || null,
             driving_experience_years: customerData.driving_experience_years || null,
           })
@@ -180,7 +192,6 @@ export default function CustomerProfilePage() {
           .insert({
             user_id: user?.id,
             address: customerData.address,
-            phone: customerData.phone,
             date_of_birth: customerData.date_of_birth || null,
             driving_experience_years: customerData.driving_experience_years || null,
           })
@@ -198,10 +209,8 @@ export default function CustomerProfilePage() {
 
       setSuccess('Perfil actualizado exitosamente');
 
-      // Recargar la página después de 2 segundos para reflejar los cambios
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      // Recargar los datos sin recargar toda la página
+      await fetchProfileData();
     } catch (error: any) {
       console.error('Error updating profile:', error);
       setError(error.message || 'Error al actualizar el perfil');
@@ -362,9 +371,9 @@ export default function CustomerProfilePage() {
                       <Input
                         id="phone"
                         type="tel"
-                        placeholder="+52 55 1234 5678"
-                        value={customerData.phone}
-                        onChange={e => handleCustomerDataChange('phone', e.target.value)}
+                        placeholder="+507 1234 5678"
+                        value={userData.phone}
+                        onChange={e => handleUserDataChange('phone', e.target.value)}
                         className="pl-10"
                       />
                     </div>
