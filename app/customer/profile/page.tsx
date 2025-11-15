@@ -60,6 +60,34 @@ export default function CustomerProfilePage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
+  // Traduce errores del backend a mensajes en español para mostrar en la UI
+  const translateErrorToSpanish = (error: any, defaultMessage: string) => {
+    try {
+      if (!error) return defaultMessage;
+      const raw = typeof error === 'string' ? error : error?.message || '';
+      const lower = (raw || '').toLowerCase();
+
+      // Mapear errores comunes
+      if (error?.code === 'PGRST116' || lower.includes('no rows') || lower.includes('not found')) {
+        return 'Registro no encontrado';
+      }
+      if (lower.includes('duplicate') || lower.includes('unique') || lower.includes('23505')) {
+        return 'Ya existe un registro con ese valor';
+      }
+      if (lower.includes('password') || lower.includes('contraseña')) {
+        return 'Error con la contraseña. Revisa que cumpla los requisitos.';
+      }
+      if (lower.includes('invalid') || lower.includes('invalid input')) {
+        return 'Entrada inválida';
+      }
+
+      // Mensaje por defecto (no incluir el message original para mantener todo en español)
+      return defaultMessage;
+    } catch (e) {
+      return defaultMessage;
+    }
+  };
+
   useEffect(() => {
     if (user && userProfile) {
       fetchProfileData();
@@ -87,7 +115,7 @@ export default function CustomerProfilePage() {
           .single();
 
         if (userError && userError.code !== 'PGRST116') {
-          console.error('Error fetching user data:', userError);
+          console.error('Error al obtener datos del usuario:', userError);
         }
 
         setUserData({
@@ -106,7 +134,7 @@ export default function CustomerProfilePage() {
         .single();
 
       if (customerError && customerError.code !== 'PGRST116') {
-        console.error('Error fetching customer:', customerError);
+        console.error('Error al obtener datos del cliente:', customerError);
       } else if (customer) {
         setCustomerId(customer.id);
         setCustomerData({
@@ -117,7 +145,7 @@ export default function CustomerProfilePage() {
         });
       }
     } catch (error) {
-      console.error('Error fetching profile data:', error);
+      console.error('Error al cargar los datos del perfil:', error);
       setError('Error al cargar los datos del perfil');
     } finally {
       setLoading(false);
@@ -212,8 +240,10 @@ export default function CustomerProfilePage() {
       // Recargar los datos sin recargar toda la página
       await fetchProfileData();
     } catch (error: any) {
-      console.error('Error updating profile:', error);
-      setError(error.message || 'Error al actualizar el perfil');
+      console.error('Error al actualizar el perfil:', error);
+      // Mensaje amigable en español al usuario
+      const mensaje = translateErrorToSpanish(error, 'Error al actualizar el perfil');
+      setError(mensaje);
     } finally {
       setSaving(false);
     }
@@ -253,8 +283,9 @@ export default function CustomerProfilePage() {
         confirmPassword: '',
       });
     } catch (error: any) {
-      console.error('Error changing password:', error);
-      setError(error.message || 'Error al cambiar la contraseña');
+      console.error('Error al cambiar la contraseña:', error);
+      const mensaje = translateErrorToSpanish(error, 'Error al cambiar la contraseña');
+      setError(mensaje);
     } finally {
       setChangingPassword(false);
     }
@@ -411,7 +442,7 @@ export default function CustomerProfilePage() {
                       onChange={e =>
                         handleCustomerDataChange(
                           'driving_experience_years',
-                          parseInt(e.target.value) || 0
+                          (parseInt(e.target.value) || 0).toString()
                         )
                       }
                     />

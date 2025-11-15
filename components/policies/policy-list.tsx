@@ -141,152 +141,214 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
     const doc = new jsPDF();
     const currentDate = new Date().toLocaleDateString('es-ES');
     const selectedPlanDetails = POLICY_PLANS[policy.policy_type as keyof typeof POLICY_PLANS];
+    const pageWidth = doc.internal.pageSize.width;
 
-    // Header
-    doc.setFontSize(20);
+    // Colores
+    const primaryColor = [41, 128, 185]; // Azul
+    const secondaryColor = [52, 73, 94]; // Gris oscuro
+    const accentColor = [46, 204, 113]; // Verde
+    const lightGray = [236, 240, 241];
+
+    // Header con color de fondo
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+
+    // Título del header
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text('CONSTANCIA DE PÓLIZA DE SEGURO', 105, 25, {
-      align: 'center',
-    });
+    doc.text('CONSTANCIA DE PÓLIZA DE SEGURO', pageWidth / 2, 18, { align: 'center' });
 
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'normal');
-    doc.text('SeguraTuAuto', 105, 35, { align: 'center' });
-
-    // Policy number and date
-    doc.setFontSize(10);
-    doc.text(`Póliza No: ${policy.policy_number}`, 20, 50);
-    doc.text(`Fecha: ${format(new Date(policy.created_at), 'dd/MM/yyyy')}`, 150, 50);
-    doc.text(
-      `Estado: ${
-        policy.status === 'active'
-          ? 'ACTIVA'
-          : policy.status === 'expired'
-            ? 'VENCIDA'
-            : policy.status === 'cancelled'
-              ? 'CANCELADA'
-              : 'SUSPENDIDA'
-      }`,
-      20,
-      60
-    );
-
-    // Customer Information
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INFORMACIÓN DEL ASEGURADO', 20, 75);
-
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(
-      `Nombre: ${policy.customer?.user?.first_name || ''} ${
-        policy.customer?.user?.last_name || ''
-      }`,
-      20,
-      85
-    );
-    doc.text(`Email: ${policy.customer?.user?.email || 'No disponible'}`, 20, 95);
-    doc.text(`Teléfono: ${policy.customer?.user?.phone || 'No especificado'}`, 20, 105);
+    doc.text('SeguraTuAuto - Protección y Tranquilidad', pageWidth / 2, 30, { align: 'center' });
 
-    // Vehicle Information
-    doc.setFontSize(12);
+    // Policy Info Box
+    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    doc.rect(15, 50, 180, 30, 'F');
+    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setLineWidth(0.5);
+    doc.rect(15, 50, 180, 30);
+
+    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('VEHÍCULO ASEGURADO', 20, 120);
-
+    doc.text('PÓLIZA No:', 20, 58);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    doc.text(policy.policy_number, 60, 58);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('FECHA:', 20, 66);
+    doc.setFont('helvetica', 'normal');
+    doc.text(format(new Date(policy.created_at), 'dd/MM/yyyy'), 50, 66);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('ESTADO:', 120, 66);
+    doc.setFont('helvetica', 'normal');
+    const statusText = policy.status === 'active' ? 'ACTIVA' : policy.status === 'expired' ? 'VENCIDA' : policy.status === 'cancelled' ? 'CANCELADA' : 'SUSPENDIDA';
+    const statusColor = policy.status === 'active' ? [46, 204, 113] : policy.status === 'expired' ? [231, 76, 60] : [243, 156, 18];
+    doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.text(statusText, 150, 66);
+
+    // Customer Section
+    let yPos = 90;
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(15, yPos, 180, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INFORMACIÓN DEL ASEGURADO', 20, yPos + 6.5);
+
+    yPos += 15;
+    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    
+    doc.text(`Nombre: ${policy.customer?.user?.first_name || ''} ${policy.customer?.user?.last_name || ''}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Email: ${policy.customer?.user?.email || 'No disponible'}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Teléfono: ${policy.customer?.user?.phone || 'No especificado'}`, 20, yPos);
+    
+    if (policy.customer?.country) {
+      yPos += 7;
+      doc.text(`País: ${policy.customer.country}`, 20, yPos);
+    }
+    if (policy.customer?.address) {
+      yPos += 7;
+      doc.text(`Dirección: ${policy.customer.address}`, 20, yPos);
+    }
+
+    // Vehicle Section
+    yPos += 15;
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(15, yPos, 180, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VEHÍCULO ASEGURADO', 20, yPos + 6.5);
+
+    yPos += 15;
+    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    
     if (policy.vehicle) {
-      doc.text(
-        `Vehículo: ${policy.vehicle.year} ${policy.vehicle.make} ${policy.vehicle.model}`,
-        20,
-        130
-      );
-      doc.text(`Placa: ${policy.vehicle.license_plate || 'No especificada'}`, 20, 140);
+      doc.text(`Vehículo: ${policy.vehicle.year} ${policy.vehicle.make} ${policy.vehicle.model}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Placa: ${policy.vehicle.license_plate || 'No especificada'}`, 20, yPos);
       if (policy.vehicle.estimated_value) {
-        doc.text(`Valor Asegurado: $${policy.vehicle.estimated_value.toLocaleString()}`, 20, 150);
+        yPos += 7;
+        doc.text(`Valor Asegurado: $${policy.vehicle.estimated_value.toLocaleString()}`, 20, yPos);
       }
       if (policy.vehicle.vin) {
-        doc.text(`VIN: ${policy.vehicle.vin}`, 20, 160);
+        yPos += 7;
+        doc.text(`VIN: ${policy.vehicle.vin}`, 20, yPos);
       }
     }
 
-    // Policy Information
-    doc.setFontSize(12);
+    // Policy Information Section
+    yPos += 15;
+    doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
+    doc.rect(15, yPos, 180, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('DETALLES DE LA PÓLIZA', 20, 175);
+    doc.text('DETALLES DE LA PÓLIZA', 20, yPos + 6.5);
 
+    yPos += 15;
+    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Tipo de Póliza: ${getPolicyTypeLabel(policy.policy_type)}`, 20, 185);
+    
+    doc.text(`Tipo de Póliza: ${getPolicyTypeLabel(policy.policy_type)}`, 20, yPos);
+    yPos += 7;
     doc.text(
-      `Prima ${
-        policy.payment_frequency === 'annual'
-          ? 'Anual'
-          : policy.payment_frequency === 'monthly'
-            ? 'Mensual'
-            : 'Trimestral'
-      }: $${policy.premium_amount.toLocaleString()}`,
+      `Prima ${policy.payment_frequency === 'annual' ? 'Anual' : policy.payment_frequency === 'monthly' ? 'Mensual' : 'Trimestral'}: $${policy.premium_amount.toLocaleString()}`,
       20,
-      195
+      yPos
     );
-
-    // Coverage period
+    yPos += 7;
     doc.text(
-      `Vigencia: ${format(
-        new Date(policy.start_date),
-        'dd/MM/yyyy'
-      )} - ${format(new Date(policy.end_date), 'dd/MM/yyyy')}`,
+      `Vigencia: ${format(new Date(policy.start_date), 'dd/MM/yyyy')} - ${format(new Date(policy.end_date), 'dd/MM/yyyy')}`,
       20,
-      205
+      yPos
     );
-    doc.text(`Renovación Automática: ${policy.auto_renewal ? 'SÍ' : 'NO'}`, 20, 215);
+    yPos += 7;
+    doc.text(`Renovación Automática: ${policy.auto_renewal ? 'SÍ' : 'NO'}`, 20, yPos);
 
-    // Coverage Details (if available)
-    let yPos = 230;
+    // Coverage Details
+    yPos += 15;
     if (selectedPlanDetails?.coverages) {
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text('COBERTURAS INCLUIDAS:', 20, yPos);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      yPos += 10;
-      selectedPlanDetails.coverages
-        .filter(c => c.included)
-        .forEach(coverage => {
-          if (yPos > 270) return; // Avoid overflow
-          doc.text(`• ${coverage.name}`, 25, yPos);
+      doc.setFontSize(8);
+      yPos += 8;
+      const includedCoverages = selectedPlanDetails.coverages.filter(c => c.included);
+      const itemsPerColumn = Math.ceil(includedCoverages.length / 2);
+      
+      includedCoverages.forEach((coverage, index) => {
+        if (index < itemsPerColumn) {
+          const text = `• ${coverage.name}`;
+          doc.text(text, 20, yPos + index * 6);
           if (coverage.maxAmount) {
-            doc.text(`  Cobertura hasta: $${coverage.maxAmount.toLocaleString()}`, 35, yPos + 8);
-            yPos += 16;
-          } else {
-            yPos += 8;
+            doc.setFontSize(7);
+            doc.text(`  Hasta: $${coverage.maxAmount.toLocaleString()}`, 25, yPos + index * 6 + 3);
+            doc.setFontSize(8);
           }
-        });
+        } else {
+          const text = `• ${coverage.name}`;
+          doc.text(text, 115, yPos + (index - itemsPerColumn) * 6);
+          if (coverage.maxAmount) {
+            doc.setFontSize(7);
+            doc.text(`  Hasta: $${coverage.maxAmount.toLocaleString()}`, 120, yPos + (index - itemsPerColumn) * 6 + 3);
+            doc.setFontSize(8);
+          }
+        }
+      });
+      yPos += itemsPerColumn * 6 + 10;
     }
 
     // Total coverage limit
     if (policy.total_coverage_limit) {
-      yPos += 5;
+      doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      doc.rect(15, yPos, 180, 12, 'F');
+      doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
+      doc.rect(15, yPos, 180, 12);
+      
+      doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text(
         `Límite Total de Cobertura: $${policy.total_coverage_limit.toLocaleString()}`,
-        20,
-        yPos
+        pageWidth / 2,
+        yPos + 8,
+        { align: 'center' }
       );
+      yPos += 15;
     }
 
     // Footer
+    const footerY = 280;
+    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.line(15, footerY - 5, 195, footerY - 5);
+    
+    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(100, 100, 100);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     doc.text(
       'Esta constancia certifica que el vehículo descrito cuenta con cobertura de seguro vigente.',
-      20,
-      280
+      pageWidth / 2,
+      footerY,
+      { align: 'center' }
     );
-    doc.text('Para cualquier reclamo o consulta, comuníquese con SeguraTuAuto.', 20, 288);
-    doc.text(`Documento generado el ${currentDate}`, 105, 295, {
+    doc.text('Para cualquier reclamo o consulta, comuníquese con SeguraTuAuto.', pageWidth / 2, footerY + 5, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Documento generado el ${currentDate}`, pageWidth / 2, footerY + 10, {
       align: 'center',
     });
 

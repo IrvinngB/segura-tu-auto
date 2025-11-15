@@ -202,6 +202,7 @@ export function PolicyForm({
                 [`Nombre:`, `${customerData.user?.first_name || ''} ${customerData.user?.last_name || ''}`],
                 [`Email:`, customerData.user?.email || ''],
                 [`Teléfono:`, customerData.user?.phone || 'No especificado'],
+                [`País:`, customerData.country || 'No especificado'],
                 [`Dirección:`, customerData.address || 'No especificada'],
                 [`Fecha de Nacimiento:`, customerData.date_of_birth ? format(new Date(customerData.date_of_birth), 'dd/MM/yyyy') : 'No especificada'],
                 [`Género:`, customerData.gender || 'No especificado']

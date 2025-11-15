@@ -92,127 +92,191 @@ export function QuoteList({ customerId }: QuoteListProps) {
     const doc = new jsPDF();
     const currentDate = new Date().toLocaleDateString('es-ES');
     const selectedPlanDetails = POLICY_PLANS[quote.policy_type as keyof typeof POLICY_PLANS];
+    const pageWidth = doc.internal.pageSize.width;
+    
+    // Colores
+    const primaryColor = [41, 128, 185]; // Azul
+    const secondaryColor = [52, 73, 94]; // Gris oscuro
+    const accentColor = [46, 204, 113]; // Verde
+    const lightGray = [236, 240, 241];
 
-    // Header
-    doc.setFontSize(20);
+    // Header con color de fondo
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+
+    // Título del header
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text('CONSTANCIA DE COTIZACIÓN', 105, 25, { align: 'center' });
+    doc.text('CONSTANCIA DE COTIZACIÓN', pageWidth / 2, 18, { align: 'center' });
 
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'normal');
-    doc.text('SeguraTuAuto', 105, 35, { align: 'center' });
-
-    // Quote number and date
-    doc.setFontSize(10);
-    doc.text(`Cotización No: ${quote.quote_number}`, 20, 50);
-    doc.text(`Fecha: ${format(new Date(quote.created_at), 'dd/MM/yyyy')}`, 150, 50);
-    doc.text(
-      `Estado: ${
-        quote.status === 'approved'
-          ? 'APROBADA'
-          : quote.status === 'rejected'
-            ? 'RECHAZADA'
-            : 'PENDIENTE'
-      }`,
-      20,
-      60
-    );
-
-    // Customer Information (if available from quote)
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INFORMACIÓN DEL CLIENTE', 20, 75);
-
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(
-      `Cliente: ${quote.customer?.user?.first_name || ''} ${quote.customer?.user?.last_name || ''}`,
-      20,
-      85
-    );
-    doc.text(`Email: ${quote.customer?.user?.email || 'No disponible'}`, 20, 95);
+    doc.text('SeguraTuAuto - Tu seguridad, nuestra prioridad', pageWidth / 2, 30, { align: 'center' });
 
-    // Vehicle Information
-    doc.setFontSize(12);
+    // Quote Info Box
+    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    doc.rect(15, 50, 180, 30, 'F');
+    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setLineWidth(0.5);
+    doc.rect(15, 50, 180, 30);
+
+    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('INFORMACIÓN DEL VEHÍCULO', 20, 110);
-
+    doc.text('COTIZACIÓN No:', 20, 58);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    doc.text(quote.quote_number, 70, 58);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('FECHA:', 20, 66);
+    doc.setFont('helvetica', 'normal');
+    doc.text(format(new Date(quote.created_at), 'dd/MM/yyyy'), 50, 66);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('ESTADO:', 120, 66);
+    doc.setFont('helvetica', 'normal');
+    const statusText = quote.status === 'approved' ? 'APROBADA' : quote.status === 'rejected' ? 'RECHAZADA' : 'PENDIENTE';
+    const statusColor = quote.status === 'approved' ? [46, 204, 113] : quote.status === 'rejected' ? [231, 76, 60] : [243, 156, 18];
+    doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.text(statusText, 150, 66);
+
+    // Customer Section
+    let yPos = 90;
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(15, yPos, 180, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INFORMACIÓN DEL CLIENTE', 20, yPos + 6.5);
+
+    yPos += 15;
+    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    
+    doc.text(`Nombre: ${quote.customer?.user?.first_name || ''} ${quote.customer?.user?.last_name || ''}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Email: ${quote.customer?.user?.email || 'No disponible'}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Teléfono: ${quote.customer?.user?.phone || 'No especificado'}`, 20, yPos);
+    
+    if (quote.customer?.country) {
+      yPos += 7;
+      doc.text(`País: ${quote.customer.country}`, 20, yPos);
+    }
+
+    // Vehicle Section
+    yPos += 15;
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(15, yPos, 180, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INFORMACIÓN DEL VEHÍCULO', 20, yPos + 6.5);
+
+    yPos += 15;
+    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    
     if (quote.vehicle) {
-      doc.text(
-        `Vehículo: ${quote.vehicle.year} ${quote.vehicle.make} ${quote.vehicle.model}`,
-        20,
-        120
-      );
-      doc.text(`Placa: ${quote.vehicle.license_plate || 'No especificada'}`, 20, 130);
+      doc.text(`Vehículo: ${quote.vehicle.year} ${quote.vehicle.make} ${quote.vehicle.model}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Placa: ${quote.vehicle.license_plate || 'No especificada'}`, 20, yPos);
       if (quote.vehicle.estimated_value) {
-        doc.text(`Valor Estimado: $${quote.vehicle.estimated_value.toLocaleString()}`, 20, 140);
+        yPos += 7;
+        doc.text(`Valor Estimado: $${quote.vehicle.estimated_value.toLocaleString()}`, 20, yPos);
       }
     }
 
-    // Plan Information
-    doc.setFontSize(12);
+    // Plan Section
+    yPos += 15;
+    doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
+    doc.rect(15, yPos, 180, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('PLAN SELECCIONADO', 20, 155);
+    doc.text(`PLAN: ${selectedPlanDetails?.name || quote.policy_type}`, 20, yPos + 6.5);
 
+    yPos += 15;
+    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Plan: ${selectedPlanDetails?.name || quote.policy_type}`, 20, 165);
-    doc.text(`Prima Anual: $${quote.premium_amount.toLocaleString()}`, 20, 175);
-    doc.text(`Prima Mensual: $${Math.round(quote.premium_amount / 12).toLocaleString()}`, 20, 185);
+    doc.text(`Prima Anual: $${quote.premium_amount.toLocaleString()}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Prima Mensual: $${Math.round(quote.premium_amount / 12).toLocaleString()}`, 20, yPos);
 
-    // Coverage Details (if available)
+    // Coverage Details
+    yPos += 15;
     if (selectedPlanDetails?.coverages) {
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('COBERTURAS INCLUIDAS:', 20, 200);
+      doc.text('COBERTURAS INCLUIDAS:', 20, yPos);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      let yPos = 210;
-      selectedPlanDetails.coverages
-        .filter(c => c.included)
-        .forEach(coverage => {
-          if (yPos > 270) return; // Avoid overflow
-          doc.text(`• ${coverage.name}`, 25, yPos);
-          yPos += 8;
-        });
+      doc.setFontSize(8);
+      yPos += 8;
+      const includedCoverages = selectedPlanDetails.coverages.filter(c => c.included);
+      const itemsPerColumn = Math.ceil(includedCoverages.length / 2);
+      
+      includedCoverages.forEach((coverage, index) => {
+        if (index < itemsPerColumn) {
+          doc.text(`• ${coverage.name}`, 20, yPos + index * 6);
+        } else {
+          doc.text(`• ${coverage.name}`, 115, yPos + (index - itemsPerColumn) * 6);
+        }
+      });
+      yPos += itemsPerColumn * 6 + 10;
     }
 
     // Validity period
-    doc.setFontSize(10);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VIGENCIA:', 20, yPos);
     doc.setFont('helvetica', 'normal');
     doc.text(
-      `Vigencia: ${format(
-        new Date(quote.start_date),
-        'dd/MM/yyyy'
-      )} - ${format(new Date(quote.end_date), 'dd/MM/yyyy')}`,
-      20,
-      250
+      `${format(new Date(quote.start_date), 'dd/MM/yyyy')} - ${format(new Date(quote.end_date), 'dd/MM/yyyy')}`,
+      50,
+      yPos
     );
 
     // Agent Notes (if any)
+    yPos += 10;
     if (quote.agent_notes || quote.rejected_reason) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(quote.status === 'rejected' ? 'MOTIVO DE RECHAZO:' : 'NOTAS:', 20, 265);
-      doc.setFont('helvetica', 'normal');
+      doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      doc.rect(15, yPos, 180, 25, 'F');
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(15, yPos, 180, 25);
+      
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
       doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(quote.status === 'rejected' ? 'MOTIVO DE RECHAZO:' : 'NOTAS DEL AGENTE:', 20, yPos + 8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
       const noteText = quote.rejected_reason || quote.agent_notes || '';
       const lines = doc.splitTextToSize(noteText, 170);
-      doc.text(lines, 20, 275);
+      doc.text(lines, 20, yPos + 16);
+      yPos += 30;
     }
 
     // Footer
+    const footerY = 285;
+    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.line(15, footerY - 5, 195, footerY - 5);
+    
+    doc.setTextColor(100, 100, 100);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
     doc.text(
       'Esta cotización tiene una validez de 30 días a partir de la fecha de emisión.',
-      20,
-      285
+      pageWidth / 2,
+      footerY,
+      { align: 'center' }
     );
-    doc.text(`Generado el ${currentDate} - SeguraTuAuto`, 105, 292, {
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generado el ${currentDate} - SeguraTuAuto`, pageWidth / 2, footerY + 5, {
       align: 'center',
     });
 

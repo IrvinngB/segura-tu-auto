@@ -56,19 +56,9 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     has_claims: customerData?.has_claims,
   });
 
-  // Check if profile is incomplete
-  const isProfileIncomplete =
-    !customerData?.birth_date || 
-    !customerData?.license_year || 
-    customerData?.license_year <= 0 || 
-    !customerData?.phone || 
-    !customerData?.country ||
-    driverData.age === '' || 
-    driverData.drivingExperience === '';
   const router = useRouter();
 
-  // Debug - vamos a ver qué datos tenemos
-  console.log('🔍 DEBUG: customerData en QuoteForm:', customerData);
+ 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [selectedPlan, setSelectedPlan] = useState<string>('basica'); // Plan por defecto básico
@@ -101,6 +91,16 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     hasAccidents: false,
     hasClaims: false,
   });
+
+  // Check if profile is incomplete (después de declarar driverData)
+  const isProfileIncomplete =
+    !customerData?.birth_date || 
+    !customerData?.license_year || 
+    customerData?.license_year <= 0 || 
+    !customerData?.phone || 
+    !customerData?.country ||
+    driverData.age === '' || 
+    driverData.drivingExperience === '';
   const [calculatedQuote, setCalculatedQuote] = useState(0);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -276,7 +276,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
   };
 
   const calculateQuote = () => {
-    if (!vehicleData?.year || !driverData?.age || !selectedPlan) {
+    if (!vehicleData?.year || !selectedPlan) {
       setCalculatedQuote(0);
       return;
     }
@@ -290,13 +290,13 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
 
       let basePrice = plan.basePrice;
 
-      // Age-based adjustments
-      const age = parseInt(driverData.age);
+      // Age-based adjustments (usar edad si está disponible, sino usar valor promedio)
+      const age = driverData.age ? parseInt(driverData.age) : 35; // edad promedio por defecto
       if (age < 25) basePrice *= 1.25;
       else if (age > 65) basePrice *= 1.15;
 
-      // Experience adjustments
-      const experience = parseInt(driverData.drivingExperience || '0');
+      // Experience adjustments (usar experiencia si está disponible, sino asumir experiencia básica)
+      const experience = driverData.drivingExperience ? parseInt(driverData.drivingExperience) : 3; // experiencia promedio
       if (experience < 2) basePrice *= 1.2;
 
       // Vehicle age adjustments
@@ -367,19 +367,23 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
       errors.push('El valor estimado debe ser mayor a 0');
     }
 
-    // Validar datos del conductor
-    const age = parseInt(driverData.age);
-    if (!age || age < 18 || age > 100) {
-      errors.push('La edad del conductor debe estar entre 18 y 100 años');
+    // Validar datos del conductor (solo si están presentes)
+    if (driverData.age) {
+      const age = parseInt(driverData.age);
+      if (isNaN(age) || age < 18 || age > 100) {
+        errors.push('La edad del conductor debe estar entre 18 y 100 años');
+      }
     }
 
-    const experience = parseInt(driverData.drivingExperience);
-    // Validación temporalmente deshabilitada - se implementará en el registro
-    // if (experience < 0 || experience > age - 16) {
-    //     errors.push(
-    //         "La experiencia de manejo no puede ser negativa o mayor a la edad menos 16 años"
-    //     );
-    // }
+    if (driverData.drivingExperience) {
+      const experience = parseInt(driverData.drivingExperience);
+      // Validación temporalmente deshabilitada - se implementará en el registro
+      // if (experience < 0 || experience > age - 16) {
+      //     errors.push(
+      //         "La experiencia de manejo no puede ser negativa o mayor a la edad menos 16 años"
+      //     );
+      // }
+    }
 
     // Validar que se haya seleccionado un plan
     if (!selectedPlan) {
@@ -496,23 +500,23 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
       }
     });
 
-    // Customer info in two columns with better spacing
+    // Customer info in two columns with better spacing - usando datos reales
     const customerInfo = [
       [
         `NOMBRE COMPLETO: ${customerData?.first_name || ''} ${customerData?.last_name || ''}`,
         `CORREO ELECTRÓNICO: ${customerData?.email || 'No especificado'}`,
       ],
       [
-        `TELÉFONO: ${customerData?.phone || 'Completar en perfil de usuario'}`,
-        `PAÍS DE RESIDENCIA: ${customerData?.country || 'Completar en perfil de usuario'}`,
+        `TELÉFONO: ${customerData?.phone || 'No especificado'}`,
+        `PAÍS DE RESIDENCIA: ${customerData?.country || 'No especificado'}`,
       ],
       [
-        `EDAD: ${driverData.age ? `${driverData.age} años` : 'Completar en perfil'}`, 
-        `EXPERIENCIA: ${driverData.drivingExperience ? `${driverData.drivingExperience} años` : 'Completar en perfil'}`
+        `EDAD: ${driverData.age ? `${driverData.age} años` : 'No especificado'}`, 
+        `EXPERIENCIA DE MANEJO: ${driverData.drivingExperience ? `${driverData.drivingExperience} años` : 'No especificado'}`
       ],
       [
-        `ACCIDENTES PREVIOS (FORMULARIO): ${driverData.hasAccidents ? 'SÍ' : 'NO'}`,
-        `RECLAMOS PREVIOS (FORMULARIO): ${driverData.hasClaims ? 'SÍ' : 'NO'}`,
+        `ACCIDENTES PREVIOS: ${customerData?.has_accidents ? 'SÍ' : 'NO'}`,
+        `RECLAMOS PREVIOS: ${customerData?.has_claims ? 'SÍ' : 'NO'}`,
       ],
     ];
 
@@ -922,19 +926,20 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {/* Profile Completion Alert */}
+          {/* Profile Completion Warning */}
           {isProfileIncomplete && (
-            <Alert>
+            <Alert variant="default" className="border-yellow-500 bg-yellow-50">
               <AlertDescription>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <strong>Perfil incompleto:</strong> Para mostrar tus datos reales en el PDF
+                  <div className="text-yellow-800">
+                    <strong>⚠️ Advertencia:</strong> Para mostrar tus datos reales en el PDF
                     (en lugar de valores genéricos), completa tu fecha de nacimiento y años de
-                    experiencia en tu perfil.
+                    experiencia en tu perfil. Puedes continuar con la cotización de todos modos.
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="border-yellow-600 text-yellow-700 hover:bg-yellow-100"
                     onClick={() => window.open('/customer/profile', '_blank')}
                   >
                     Completar Perfil
