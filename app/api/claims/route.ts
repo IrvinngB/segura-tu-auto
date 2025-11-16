@@ -37,6 +37,18 @@ export async function GET(request: NextRequest) {
           damage_description,
           repair_estimate,
           assessment_date
+        ),
+        adjuster:users!claims_adjuster_id_fkey(
+          id,
+          first_name,
+          last_name,
+          email
+        ),
+        agent:users!claims_agent_id_fkey(
+          id,
+          first_name,
+          last_name,
+          email
         )
       `)
       .order("created_at", { ascending: false })

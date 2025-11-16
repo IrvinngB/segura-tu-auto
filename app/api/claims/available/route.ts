@@ -1,0 +1,68 @@
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userProfile?.role !== 'adjuster') {
+      return NextResponse.json({ 
+        error: 'Solo ajustadores pueden ver reclamaciones disponibles' 
+      }, { status: 403 });
+    }
+
+    const { data: claims, error } = await supabase
+      .from('claims')
+      .select(`
+        *,
+        policy:policies(
+          *,
+          vehicle:vehicles(*)
+        ),
+        customer:customers(
+          *,
+          user:users(*)
+        ),
+        adjuster:users!claims_adjuster_id_fkey(*)
+      `)
+      .is('adjuster_id', null)
+      .in('status', ['submitted', 'investigating'])
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ claims: claims || [] });
+
+  } catch (error) {
+    console.error('Error fetching available claims:', error);
+    return NextResponse.json({ 
+      error: 'Error interno del servidor' 
+    }, { status: 500 });
+  }
+}

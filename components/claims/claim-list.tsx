@@ -52,8 +52,10 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const debouncedSearch = useDebouncedValue(searchTerm, 300);
 
   useEffect(() => {
-    fetchClaims();
-  }, [customerId, policyId]);
+    if (userProfile) {
+      fetchClaims();
+    }
+  }, [customerId, policyId, userProfile]);
 
   useEffect(() => {
     filterClaims();
@@ -123,49 +125,119 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
 
   const fetchClaims = async () => {
     try {
-      let query = supabase
-        .from('claims')
-        .select(
-          `
-          *,
-          policy:policies(
-            *,
-            vehicle:vehicles(*)
-          ),
-          customer:customers(
-            *,
-            user:users(*)
-          ),
-          adjuster:users(*)
-        `
-        )
-        .order('created_at', { ascending: false });
+      console.log('🔍 FETCH CLAIMS - Iniciando...', {
+        userRole: userProfile?.role,
+        customerId,
+        policyId
+      });
 
-      // Filtrar según el rol del usuario
+      let data = null;
+      let error = null;
+
       if (customerId) {
-        // Para clientes específicos
-        query = query.eq('customer_id', customerId);
+        const result = await supabase
+          .from('claims')
+          .select(`
+            *,
+            policy:policies(*,vehicle:vehicles(*)),
+            customer:customers(*,user:users(*)),
+            adjuster:users!claims_adjuster_id_fkey(*)
+          `)
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false });
+        data = result.data;
+        error = result.error;
+      } else if (policyId) {
+        const result = await supabase
+          .from('claims')
+          .select(`
+            *,
+            policy:policies(*,vehicle:vehicles(*)),
+            customer:customers(*,user:users(*)),
+            adjuster:users!claims_adjuster_id_fkey(*)
+          `)
+          .eq('policy_id', policyId)
+          .order('created_at', { ascending: false });
+        data = result.data;
+        error = result.error;
+      } else if (userProfile?.role === 'adjuster') {
+        const [availableRes, myClaimsRes] = await Promise.all([
+          fetch('/api/claims/available'),
+          fetch('/api/claims/my-claims')
+        ]);
+        
+        const availableData = await availableRes.json();
+        const myClaimsData = await myClaimsRes.json();
+        
+        data = [
+          ...(myClaimsData.claims || []),
+          ...(availableData.claims || [])
+        ];
+      } else if (userProfile?.role === 'agent') {
+        const [unassignedRes, myClaimsRes] = await Promise.all([
+          supabase
+            .from('claims')
+            .select(`
+              *,
+              policy:policies(*,vehicle:vehicles(*)),
+              customer:customers(*,user:users(*)),
+              adjuster:users!claims_adjuster_id_fkey(*)
+            `)
+            .is('adjuster_id', null)
+            .eq('status', 'submitted')
+            .order('created_at', { ascending: false }),
+          fetch('/api/claims/my-claims')
+        ]);
+        
+        const myClaimsData = await myClaimsRes.json();
+        
+        data = [
+          ...(myClaimsData.claims || []),
+          ...(unassignedRes.data || [])
+        ];
+        error = unassignedRes.error;
+      } else if (userProfile?.role === 'admin') {
+        const result = await supabase
+          .from('claims')
+          .select(`
+            *,
+            policy:policies(*,vehicle:vehicles(*)),
+            customer:customers(*,user:users(*)),
+            adjuster:users!claims_adjuster_id_fkey(*),
+            agent:users!claims_agent_id_fkey(*)
+          `)
+          .order('created_at', { ascending: false });
+        data = result.data;
+        error = result.error;
+      } else {
+        // Para clientes o usuarios sin rol específico
+        const result = await supabase
+          .from('claims')
+          .select(`
+            *,
+            policy:policies(*,vehicle:vehicles(*)),
+            customer:customers(*,user:users(*)),
+            adjuster:users!claims_adjuster_id_fkey(*)
+          `)
+          .order('created_at', { ascending: false });
+        data = result.data;
+        error = result.error;
       }
-      // Todos los roles ven todas las reclamaciones - solo cambia la funcionalidad de los botones
 
-      if (policyId) {
-        query = query.eq('policy_id', policyId);
+      if (error) {
+        console.error('❌ FETCH CLAIMS - Error:', error);
+        throw error;
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      
+      console.log('📦 FETCH CLAIMS - Data recibida:', data?.length || 0, 'reclamaciones');
+      
       if (data) {
-        console.log('📊 CLAIM LIST - Datos obtenidos:', data.length);
-        data.forEach(claim => {
-          console.log(
-            `📊 CLAIM LIST ${claim.claim_number}: status='${claim.status}' -> label será calculado en render`
-          );
-        });
-        setClaims([...data]); // Forzar nuevo array
-        setFilteredClaims([...data]); // Forzar nuevo array
+        const uniqueClaims = Array.from(new Map(data.map(c => [c.id, c])).values());
+        console.log('📊 CLAIM LIST - Datos únicos obtenidos:', uniqueClaims.length);
+        setClaims([...uniqueClaims]);
+        setFilteredClaims([...uniqueClaims]);
         setLastUpdated(new Date());
-        setForceRefreshKey(Date.now()); // Forzar re-render completo
+        setForceRefreshKey(Date.now());
         console.log('✅ CLAIM LIST - Claims actualizadas en estado');
       }
     } catch (error) {
@@ -446,6 +518,42 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
           </Select>
         </div>
 
+        {/* Alert informativo por rol */}
+        {userProfile?.role === 'adjuster' && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="font-semibold text-blue-900 mb-2">💼 Panel de Ajustador</h3>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• <strong>Mis Reclamaciones:</strong> Solo ves las que están asignadas a ti</li>
+              <li>• <strong>Evaluar:</strong> Botón azul "Evaluar" en tus reclamaciones activas</li>
+              <li>• <strong>Estados:</strong> Investigating (evaluando) y Waiting Approval (esperando aprobación)</li>
+              <li>• <strong>Nota:</strong> No verás reclamaciones de otros ajustadores</li>
+            </ul>
+          </div>
+        )}
+
+        {userProfile?.role === 'agent' && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <h3 className="font-semibold text-green-900 mb-2">📋 Panel de Agente</h3>
+            <ul className="text-sm text-green-800 space-y-1">
+              <li>• <strong>Nuevas:</strong> Reclamaciones recién enviadas (estado: Submitted) sin ajustador</li>
+              <li>• <strong>Asignar:</strong> Botón verde "Asignar" para asignar ajustador rápidamente</li>
+              <li>• <strong>Mis Asignaciones:</strong> Ves las reclamaciones que tú asignaste</li>
+              <li>• <strong>Gestión:</strong> Botón azul para procesar documentación y estados</li>
+            </ul>
+          </div>
+        )}
+
+        {userProfile?.role === 'admin' && (
+          <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <h3 className="font-semibold text-purple-900 mb-2">👑 Panel de Administrador</h3>
+            <ul className="text-sm text-purple-800 space-y-1">
+              <li>• <strong>Control Total:</strong> Acceso completo a todas las reclamaciones</li>
+              <li>• <strong>Gestionar:</strong> Modifica cualquier estado o asignación</li>
+              <li>• <strong>Supervisar:</strong> Monitorea el flujo completo de trabajo</li>
+            </ul>
+          </div>
+        )}
+
         {/* Claims Table */}
         <div className="rounded-md border" key={forceRefreshKey}>
           <Table>
@@ -457,6 +565,9 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-center">Estado</TableHead>
                 <TableHead className="text-center">Prioridad</TableHead>
+                {(userProfile?.role === 'agent' || userProfile?.role === 'admin') && (
+                  <TableHead>Ajustador</TableHead>
+                )}
                 <TableHead>Fecha</TableHead>
                 <TableHead>Monto</TableHead>
                 <TableHead>Acciones</TableHead>
@@ -507,6 +618,24 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                         )}
                       </div>
                     </TableCell>
+                    {(userProfile?.role === 'agent' || userProfile?.role === 'admin') && (
+                      <TableCell>
+                        {claim.adjuster ? (
+                          <div className="text-sm">
+                            <div className="font-medium">
+                              {claim.adjuster.first_name} {claim.adjuster.last_name}
+                            </div>
+                            <Badge variant="secondary" className="text-xs mt-1">
+                              Asignado
+                            </Badge>
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            Sin asignar
+                          </Badge>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm">
                         <Calendar className="h-3 w-3" />
@@ -538,19 +667,44 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        {/* Botón Ver - Siempre visible */}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onViewClaim?.(claim)}
+                          onClick={() => {
+                            console.log('👁️ Ver reclamación:', claim.id);
+                            if (onViewClaim) {
+                              onViewClaim(claim);
+                            }
+                          }}
                           title="Ver detalles"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
 
-                        {/* Botones específicos por rol */}
+                        {/* AGENTE: Botón de asignar rápido para reclamaciones sin ajustador */}
+                        {userProfile?.role === 'agent' && !claim.adjuster_id && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              console.log('✅ Asignar reclamación:', claim.id);
+                              if (onEditClaim) {
+                                onEditClaim(claim);
+                              } else if (onViewClaim) {
+                                onViewClaim(claim);
+                              }
+                            }}
+                            title="Asignar Ajustador"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            Asignar
+                          </Button>
+                        )}
 
-                        {/* AGENTE: Solo puede procesar estados administrativos */}
+                        {/* AGENTE: Botón de gestión para reclamaciones ya asignadas */}
                         {userProfile?.role === 'agent' &&
+                          claim.adjuster_id &&
                           [
                             'submitted',
                             'under_review',
@@ -564,7 +718,14 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => onEditClaim?.(claim)}
+                              onClick={() => {
+                                console.log('⚙️ Gestión administrativa:', claim.id);
+                                if (onEditClaim) {
+                                  onEditClaim(claim);
+                                } else if (onViewClaim) {
+                                  onViewClaim(claim);
+                                }
+                              }}
                               title="Gestión Administrativa"
                               className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200"
                             >
@@ -572,18 +733,35 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                             </Button>
                           )}
 
-                        {/* AJUSTADOR: Solo puede procesar evaluaciones técnicas */}
+                        {/* AJUSTADOR: Botón de evaluar */}
                         {userProfile?.role === 'adjuster' &&
+                          claim.adjuster_id === userProfile.id &&
                           ['investigating', 'waiting_approval'].includes(claim.status) && (
                             <Button
-                              variant="outline"
+                              variant="default"
                               size="sm"
-                              onClick={() => onEditClaim?.(claim)}
-                              title="Evaluación Técnica"
-                              className="bg-green-50 hover:bg-green-100 text-green-600 border-green-200"
+                              onClick={() => {
+                                console.log('🔍 Evaluar reclamación:', claim.id);
+                                if (onEditClaim) {
+                                  onEditClaim(claim);
+                                } else if (onViewClaim) {
+                                  onViewClaim(claim);
+                                }
+                              }}
+                              title="Evaluar Reclamación"
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
-                              <Settings className="h-4 w-4" />
+                              Evaluar
                             </Button>
+                          )}
+
+                        {/* AJUSTADOR: Indicador de reclamación de otro ajustador */}
+                        {userProfile?.role === 'adjuster' &&
+                          claim.adjuster_id &&
+                          claim.adjuster_id !== userProfile.id && (
+                            <Badge variant="outline" className="text-xs">
+                              Asignada a otro
+                            </Badge>
                           )}
 
                         {/* ADMINISTRADOR: Acceso completo */}
@@ -591,7 +769,14 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => onEditClaim?.(claim)}
+                            onClick={() => {
+                              console.log('👑 Admin - Gestionar:', claim.id);
+                              if (onEditClaim) {
+                                onEditClaim(claim);
+                              } else if (onViewClaim) {
+                                onViewClaim(claim);
+                              }
+                            }}
                             title="Control Total"
                             className="bg-purple-50 hover:bg-purple-100 text-purple-600 border-purple-200"
                           >

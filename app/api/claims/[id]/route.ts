@@ -35,7 +35,19 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           )
         ),
         damage_assessments (*),
-        claim_documents (*)
+        claim_documents (*),
+        adjuster:users!claims_adjuster_id_fkey(
+          id,
+          first_name,
+          last_name,
+          email
+        ),
+        agent:users!claims_agent_id_fkey(
+          id,
+          first_name,
+          last_name,
+          email
+        )
       `)
       .eq("id", params.id)
       .single()

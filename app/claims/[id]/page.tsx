@@ -144,7 +144,8 @@ export default function ClaimDetailPage() {
             *,
             user:users(*)
           ),
-          adjuster:users(*)
+          adjuster:users!claims_adjuster_id_fkey(*),
+          agent:users!claims_agent_id_fkey(*)
         `
         )
         .eq('id', params.id)
@@ -168,7 +169,7 @@ export default function ClaimDetailPage() {
         .select(
           `
           *,
-          adjuster:users(*)
+          adjuster:users!damage_assessments_adjuster_id_fkey(*)
         `
         )
         .eq('claim_id', params.id)
