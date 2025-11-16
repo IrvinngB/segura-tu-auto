@@ -62,11 +62,11 @@ export function useCustomerDataSimple() {
           return;
         }
 
-        // Obtener datos adicionales del customer
+        // Obtener datos adicionales del customer (sin phone, ese está en users)
         const { data: customerDetails, error: customerDetailsError } = await supabase
           .from('customers')
           .select(
-            'date_of_birth, driving_experience_years, has_accidents, has_claims, phone, country'
+            'date_of_birth, driving_experience_years, has_accidents, has_claims, country'
           )
           .eq('id', customer.id)
           .single();
@@ -81,13 +81,11 @@ export function useCustomerDataSimple() {
           'customers.driving_experience_years': customerDetails?.driving_experience_years,
           'customers.has_accidents': customerDetails?.has_accidents,
           'customers.has_claims': customerDetails?.has_claims,
-          'customers.phone': customerDetails?.phone,
           'customers.country': customerDetails?.country,
           'users.phone': userProfile.phone,
-          'users.country': userProfile.country
         });
 
-        console.log(' SIMPLE: Country data:', {
+        console.log('🌍 SIMPLE: Country data:', {
           customerCountry: customerDetails?.country,
           finalCountry: customerDetails?.country || 'Panamá',
         });
@@ -95,8 +93,8 @@ export function useCustomerDataSimple() {
         // Actualizar datos faltantes con valores por defecto
         const updates: any = {};
 
-        // Solo actualizar si realmente no existen los datos (evitar sobrescribir datos reales)
-        if (!customerDetails?.country || customerDetails.country === '') {
+        // Asegurar que country siempre tenga un valor (Panamá por defecto)
+        if (!customerDetails?.country || customerDetails.country === '' || customerDetails.country === null) {
           console.log("⚠️ SIMPLE: No country found, will update with 'Panamá'");
           updates.country = 'Panamá';
         }
@@ -115,9 +113,11 @@ export function useCustomerDataSimple() {
           if (updateError) {
             console.error('❌ SIMPLE: Error updating customer:', updateError);
           } else {
-            console.log('✅ SIMPLE: Customer updated successfully');
+            console.log('✅ SIMPLE: Customer updated successfully with:', updates);
             // Actualizar customerDetails con los nuevos valores
-            Object.assign(customerDetails || {}, updates);
+            if (customerDetails) {
+              Object.assign(customerDetails, updates);
+            }
           }
         }
 
@@ -133,8 +133,8 @@ export function useCustomerDataSimple() {
           license_year: customerDetails?.driving_experience_years || undefined, // Solo usar si existe
           has_accidents: customerDetails?.has_accidents || false,
           has_claims: customerDetails?.has_claims || false,
-          phone: userProfile.phone || customerDetails?.phone || '',
-          country: customerDetails?.country || undefined, // Solo usar si existe
+          phone: userProfile.phone || '', // El teléfono SOLO está en users
+          country: customerDetails?.country || 'Panamá', // Usar valor por defecto si no existe
         };
 
         console.log('✅ SIMPLE: Final customer data:', {

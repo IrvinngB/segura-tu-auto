@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,13 +48,16 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const [forceRefreshKey, setForceRefreshKey] = useState(0);
   const supabase = createClient();
 
+  // ✅ OPTIMIZACIÓN: Debounce de búsqueda para evitar filtrado en cada keystroke
+  const debouncedSearch = useDebouncedValue(searchTerm, 300);
+
   useEffect(() => {
     fetchClaims();
   }, [customerId, policyId]);
 
   useEffect(() => {
     filterClaims();
-  }, [claims, searchTerm, statusFilter, typeFilter, priorityFilter]);
+  }, [claims, debouncedSearch, statusFilter, typeFilter, priorityFilter]);
 
   // Detectar cuando la página vuelve a tener foco después de navegar
   useEffect(() => {
@@ -78,22 +82,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
     };
   }, []);
 
-  // Auto-refresh cada 30 segundos
-  useEffect(() => {
-    if (!userProfile) return;
-
-    console.log('⚡ Configurando auto-refresh cada 30 segundos...');
-    const interval = setInterval(() => {
-      console.log('🔄 Auto-refresh de reclamaciones...');
-      fetchClaims();
-    }, 30000); // 30 segundos
-
-    return () => {
-      console.log('🔌 Desconectando auto-refresh');
-      clearInterval(interval);
-    };
-  }, [customerId, policyId, userProfile]);
-
+  // ✅ OPTIMIZACIÓN: Polling eliminado, solo suscripción realtime
   // Suscripción en tiempo real a cambios en reclamaciones
   useEffect(() => {
     if (!userProfile) return;
@@ -189,15 +178,15 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const filterClaims = () => {
     let filtered = claims;
 
-    // Search filter
-    if (searchTerm) {
+    // Search filter con debounce
+    if (debouncedSearch) {
       filtered = filtered.filter(
         claim =>
-          claim.claim_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          claim.customer?.user?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          claim.customer?.user?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          claim.policy?.policy_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          claim.incident_description.toLowerCase().includes(searchTerm.toLowerCase())
+          claim.claim_number.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          claim.customer?.user?.first_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          claim.customer?.user?.last_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          claim.policy?.policy_number?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+          claim.incident_description.toLowerCase().includes(debouncedSearch.toLowerCase())
       );
     }
 

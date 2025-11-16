@@ -4,6 +4,7 @@ import { AuthProvider } from "@/components/auth/auth-provider";
 import { IdleTimer } from "@/components/auth/idle-timer";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppLayout } from "@/components/layout/app-layout";
+import { ReactQueryProvider } from "@/lib/react-query-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -57,8 +58,10 @@ export default function RootLayout({
                     disableTransitionOnChange
                 >
                     <AuthProvider>
-                        <IdleTimer />
-                        <AppLayout>{children}</AppLayout>
+                        <ReactQueryProvider>
+                            <IdleTimer />
+                            <AppLayout>{children}</AppLayout>
+                        </ReactQueryProvider>
                     </AuthProvider>
                 </ThemeProvider>
             </body>

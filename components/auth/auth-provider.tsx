@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react"
 import type { User } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
 import type { User as DatabaseUser } from "@/lib/types/database"
@@ -22,9 +22,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<DatabaseUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = useCallback(async (userId: string) => {
     try {
       const cacheKey = `user_profile_${userId}`
       const cached = sessionStorage.getItem(cacheKey)
@@ -65,9 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Error fetching user profile:", error)
       return null
     }
-  }
+  }, [supabase])
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -79,9 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setUserProfile(null)
     }
-  }
+  }, [supabase, fetchUserProfile])
 
-  const clearAllCache = () => {
+  const clearAllCache = useCallback(() => {
     try {
       // Clear sessionStorage cache
       const keysToRemove = []
@@ -121,9 +121,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error clearing cache:", error)
     }
-  }
+  }, [])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       // Sign out from Supabase first
       await supabase.auth.signOut()
@@ -142,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       setUserProfile(null)
     }
-  }
+  }, [supabase, clearAllCache])
 
   useEffect(() => {
     let mounted = true
@@ -210,10 +210,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [])
+  }, [supabase, fetchUserProfile, clearAllCache])
+
+  const value = useMemo(
+    () => ({ user, userProfile, loading, signOut, refreshUser, clearAllCache }),
+    [user, userProfile, loading, signOut, refreshUser, clearAllCache]
+  )
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, signOut, refreshUser, clearAllCache }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )
