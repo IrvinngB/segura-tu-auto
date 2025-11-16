@@ -39,6 +39,10 @@ import {
   FileText,
   TrendingUp,
   BarChart3,
+  Edit,
+  Trash2,
+  Save,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { PolicyExpirationManager } from '@/components/policies/policy-expiration-manager';
@@ -74,6 +78,11 @@ export default function AdminDashboard() {
     admins: 0,
   });
   const [loading, setLoading] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; userId: string | null }>({
+    show: false,
+    userId: null,
+  });
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -92,9 +101,14 @@ export default function AdminDashboard() {
     message: '',
   });
   const [systemStats, setSystemStats] = useState({
-    vehicles: { total: 247, insured: 189, uninsured: 58 },
-    claims: { total: 156, pending: 23, approved: 98, rejected: 35 },
+    vehicles: { total: 0, insured: 0, uninsured: 0 },
+    claims: { total: 0, pending: 0, approved: 0, rejected: 0 },
+    policies: { total: 0, active: 0, expired: 0 },
   });
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [claims, setClaims] = useState<any[]>([]);
+  const [policies, setPolicies] = useState<any[]>([]);
+  const [loadingStats, setLoadingStats] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -145,6 +159,10 @@ export default function AdminDashboard() {
   // Cargar estadísticas al inicio
   useEffect(() => {
     fetchUsers();
+    fetchSystemStats();
+    fetchVehicles();
+    fetchClaims();
+    fetchPolicies();
   }, []);
 
   // Función para validar la contraseña
@@ -296,6 +314,175 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setFormData({
+      email: user.email,
+      password: '',
+      confirmPassword: '',
+      firstName: user.first_name,
+      lastName: user.last_name,
+      phone: user.phone || '',
+      role: user.role,
+      country: 'Costa Rica',
+      birthDate: '',
+      licenseYear: '',
+    });
+    setActiveUserTab('create');
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          role: formData.role,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al actualizar usuario');
+      }
+
+      toast({
+        title: 'Usuario actualizado',
+        description: `${formData.firstName} ${formData.lastName} ha sido actualizado exitosamente.`,
+      });
+
+      setEditingUser(null);
+      setFormData({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        firstName: '',
+        lastName: '',
+        phone: '',
+        role: 'customer',
+        country: 'Costa Rica',
+        birthDate: '',
+        licenseYear: '',
+      });
+      
+      fetchUsers();
+      setActiveUserTab('list');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteConfirm.userId) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/users/${deleteConfirm.userId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al eliminar usuario');
+      }
+
+      toast({
+        title: 'Usuario eliminado',
+        description: 'El usuario ha sido eliminado exitosamente.',
+      });
+
+      setDeleteConfirm({ show: false, userId: null });
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingUser(null);
+    setFormData({
+      email: '',
+      password: '',
+      confirmPassword: '',
+      firstName: '',
+      lastName: '',
+      phone: '',
+      role: 'customer',
+      country: 'Costa Rica',
+      birthDate: '',
+      licenseYear: '',
+    });
+  };
+
+  const fetchSystemStats = async () => {
+    try {
+      const response = await fetch('/api/admin/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setSystemStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching system stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  const fetchVehicles = async () => {
+    try {
+      const response = await fetch('/api/vehicles');
+      if (response.ok) {
+        const data = await response.json();
+        setVehicles(data.vehicles || []);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+    }
+  };
+
+  const fetchClaims = async () => {
+    try {
+      const response = await fetch('/api/claims');
+      if (response.ok) {
+        const data = await response.json();
+        setClaims(data.claims?.slice(0, 10) || []);
+      }
+    } catch (error) {
+      console.error('Error fetching claims:', error);
+    }
+  };
+
+  const fetchPolicies = async () => {
+    try {
+      const response = await fetch('/api/policies');
+      if (response.ok) {
+        const data = await response.json();
+        setPolicies(data.policies || []);
+      }
+    } catch (error) {
+      console.error('Error fetching policies:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4">
@@ -306,7 +493,7 @@ export default function AdminDashboard() {
             <div>
               <h1 className="text-3xl font-bold">Panel de Administración</h1>
               <p className="text-muted-foreground">
-                Gestiona usuarios, pólizas y configuraciones del sistema
+                Gestiona usuarios, pólizas y configuraciones del sistema xd
               </p>
             </div>
           </div>
@@ -354,7 +541,7 @@ export default function AdminDashboard() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users" className="flex items-center space-x-2">
               <Users className="h-4 w-4" />
               <span>Usuarios</span>
@@ -371,10 +558,6 @@ export default function AdminDashboard() {
               <FileText className="h-4 w-4" />
               <span>Reclamaciones</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center space-x-2">
-              <Settings className="h-4 w-4" />
-              <span>Configuración</span>
-            </TabsTrigger>
           </TabsList>
 
           {/* Users Tab */}
@@ -389,16 +572,26 @@ export default function AdminDashboard() {
               <TabsContent value="create">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <UserPlus className="h-5 w-5" />
-                      <span>Crear Nuevo Usuario</span>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {editingUser ? <Edit className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                        <span>{editingUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'}</span>
+                      </div>
+                      {editingUser && (
+                        <Button variant="outline" size="sm" onClick={cancelEdit}>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancelar
+                        </Button>
+                      )}
                     </CardTitle>
                     <CardDescription>
-                      Agrega un nuevo usuario al sistema con el rol correspondiente
+                      {editingUser 
+                        ? 'Modifica la información del usuario' 
+                        : 'Agrega un nuevo usuario al sistema con el rol correspondiente'}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-8">
+                    <form onSubmit={editingUser ? handleUpdateUser : handleSubmit} className="space-y-8">
                       {/* Información Básica */}
                       <div className="space-y-4">
                         <h3 className="text-lg font-medium text-foreground border-b pb-2">
@@ -715,12 +908,16 @@ export default function AdminDashboard() {
                             loading ||
                             !formData.firstName.trim() ||
                             !formData.lastName.trim() ||
-                            !validateEmail(formData.email) ||
-                            !validatePassword(formData.password) ||
-                            formData.password !== formData.confirmPassword
+                            (!editingUser && (!formData.email.trim() ||
+                            !formData.password.trim() ||
+                            !isPasswordValid(formData.password) ||
+                            formData.password !== formData.confirmPassword))
                           }
+                          className="min-w-[120px]"
                         >
-                          {loading ? 'Creando...' : 'Crear Usuario'}
+                          {loading 
+                            ? (editingUser ? 'Actualizando...' : 'Creando...') 
+                            : (editingUser ? 'Actualizar Usuario' : 'Crear Usuario')}
                         </Button>
                       </div>
                     </form>
@@ -753,6 +950,7 @@ export default function AdminDashboard() {
                             <TableHead>Rol</TableHead>
                             <TableHead>Fecha de Registro</TableHead>
                             <TableHead>Estado</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -770,7 +968,7 @@ export default function AdminDashboard() {
                                       ? 'default'
                                       : user.role === 'agent'
                                         ? 'secondary'
-                                        : user.role === 'evaluator'
+                                        : user.role === 'adjuster'
                                           ? 'outline'
                                           : 'secondary'
                                   }
@@ -779,8 +977,8 @@ export default function AdminDashboard() {
                                     ? 'Administrador'
                                     : user.role === 'agent'
                                       ? 'Agente'
-                                      : user.role === 'evaluator'
-                                        ? 'Evaluador'
+                                      : user.role === 'adjuster'
+                                        ? 'Ajustador'
                                         : 'Cliente'}
                                 </Badge>
                               </TableCell>
@@ -792,6 +990,28 @@ export default function AdminDashboard() {
                                   <CheckCircle className="h-3 w-3 mr-1" />
                                   Activo
                                 </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditUser(user)}
+                                    title="Editar usuario"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeleteConfirm({ show: true, userId: user.id })}
+                                    title="Eliminar usuario"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    disabled={user.id === user?.id}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -806,15 +1026,118 @@ export default function AdminDashboard() {
 
           {/* Other Tabs - Placeholder */}
           <TabsContent value="policies">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestión de Pólizas</CardTitle>
-                <CardDescription>Administra las pólizas de seguro</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PolicyExpirationManager />
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              {/* Policy Statistics */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Pólizas</CardTitle>
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.policies.total}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Activas</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.policies.active}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Expiradas</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{systemStats.policies.expired}</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Policies Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Shield className="h-5 w-5" />
+                    <span>Pólizas Registradas</span>
+                  </CardTitle>
+                  <CardDescription>Lista de todas las pólizas en el sistema</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Número de Póliza</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Vehículo</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Prima</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Vencimiento</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {policies.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            No hay pólizas registradas
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        policies.slice(0, 10).map((policy) => (
+                          <TableRow key={policy.id}>
+                            <TableCell className="font-medium">{policy.policy_number}</TableCell>
+                            <TableCell>
+                              {policy.customers?.first_name || 'N/A'}{' '}
+                              {policy.customers?.last_name || ''}
+                            </TableCell>
+                            <TableCell>
+                              {policy.vehicle?.make} {policy.vehicle?.model} ({policy.vehicle?.year})
+                            </TableCell>
+                            <TableCell className="capitalize">{policy.policy_type?.replace('_', ' ')}</TableCell>
+                            <TableCell>${policy.premium_amount?.toLocaleString()}</TableCell>
+                            <TableCell>
+                              {policy.status === 'active' && (
+                                <Badge variant="outline" className="text-green-600">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Activa
+                                </Badge>
+                              )}
+                              {policy.status === 'expired' && (
+                                <Badge variant="destructive">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  Expirada
+                                </Badge>
+                              )}
+                              {policy.status === 'cancelled' && (
+                                <Badge variant="outline" className="text-gray-600">
+                                  Cancelada
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>{new Date(policy.end_date).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => window.location.href = `/policies/${policy.id}`}
+                              >
+                                Ver Detalles
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="vehicles">
@@ -872,40 +1195,47 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">ABC-123</TableCell>
-                        <TableCell>Toyota Corolla</TableCell>
-                        <TableCell>2020</TableCell>
-                        <TableCell>Juan Pérez</TableCell>
-                        <TableCell>
-                          <Badge className="text-green-600">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Asegurado
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm">
-                            Ver Detalles
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">XYZ-789</TableCell>
-                        <TableCell>Honda Civic</TableCell>
-                        <TableCell>2019</TableCell>
-                        <TableCell>María González</TableCell>
-                        <TableCell>
-                          <Badge variant="destructive">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Sin Seguro
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm">
-                            Ver Detalles
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      {vehicles.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            No hay vehículos registrados
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        vehicles.slice(0, 10).map((vehicle) => (
+                          <TableRow key={vehicle.id}>
+                            <TableCell className="font-medium">{vehicle.license_plate}</TableCell>
+                            <TableCell>{vehicle.make} {vehicle.model}</TableCell>
+                            <TableCell>{vehicle.year}</TableCell>
+                            <TableCell>
+                              {vehicle.policies?.[0]?.customers?.first_name || 'N/A'}{' '}
+                              {vehicle.policies?.[0]?.customers?.last_name || ''}
+                            </TableCell>
+                            <TableCell>
+                              {vehicle.policies?.length > 0 ? (
+                                <Badge variant="outline" className="text-green-600">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Asegurado
+                                </Badge>
+                              ) : (
+                                <Badge variant="destructive">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  Sin Seguro
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => window.location.href = `/vehicles/${vehicle.id}`}
+                              >
+                                Ver Detalles
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -979,201 +1309,70 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">#12345</TableCell>
-                        <TableCell>Juan Pérez</TableCell>
-                        <TableCell>ABC-123</TableCell>
-                        <TableCell>Colisión</TableCell>
-                        <TableCell>$2,500</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-yellow-600">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Pendiente
-                          </Badge>
-                        </TableCell>
-                        <TableCell>2024-10-28</TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button variant="outline" size="sm">
-                              Ver
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              Procesar
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">#12344</TableCell>
-                        <TableCell>María González</TableCell>
-                        <TableCell>XYZ-789</TableCell>
-                        <TableCell>Robo</TableCell>
-                        <TableCell>$15,000</TableCell>
-                        <TableCell>
-                          <Badge className="text-green-600">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Aprobada
-                          </Badge>
-                        </TableCell>
-                        <TableCell>2024-10-25</TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button variant="outline" size="sm">
-                              Ver
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              Pagar
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                      {claims.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            No hay reclamaciones registradas
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        claims.map((claim) => (
+                          <TableRow key={claim.id}>
+                            <TableCell className="font-medium">#{claim.claim_number || claim.id.slice(0, 8)}</TableCell>
+                            <TableCell>
+                              {claim.customer?.first_name || claim.policy?.customers?.first_name || 'N/A'}{' '}
+                              {claim.customer?.last_name || claim.policy?.customers?.last_name || ''}
+                            </TableCell>
+                            <TableCell>{claim.policy?.vehicle?.license_plate || 'N/A'}</TableCell>
+                            <TableCell className="capitalize">{claim.claim_type?.replace('_', ' ') || 'N/A'}</TableCell>
+                            <TableCell>${claim.estimated_damage_cost?.toLocaleString() || '0'}</TableCell>
+                            <TableCell>
+                              {claim.status === 'submitted' && (
+                                <Badge variant="outline" className="text-gray-600">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Enviada
+                                </Badge>
+                              )}
+                              {claim.status === 'under_review' && (
+                                <Badge variant="outline" className="text-blue-600">
+                                  En Revisión
+                                </Badge>
+                              )}
+                              {claim.status === 'investigating' && (
+                                <Badge variant="outline" className="text-yellow-600">
+                                  <AlertCircle className="h-3 w-3 mr-1" />
+                                  Investigando
+                                </Badge>
+                              )}
+                              {claim.status === 'approved' && (
+                                <Badge variant="outline" className="text-green-600">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Aprobada
+                                </Badge>
+                              )}
+                              {claim.status === 'denied' && (
+                                <Badge variant="destructive">
+                                  Denegada
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>{new Date(claim.incident_date).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => window.location.href = `/claims/${claim.id}`}
+                                >
+                                  Ver
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <div className="space-y-6">
-              {/* System Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Settings className="h-5 w-5" />
-                    <span>Configuración General</span>
-                  </CardTitle>
-                  <CardDescription>Ajustes generales de la aplicación</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="companyName">Nombre de la Empresa</Label>
-                      <Input id="companyName" defaultValue="SeguraTuAuto" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="currency">Moneda</Label>
-                      <Select defaultValue="CRC">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="CRC">Colones (₡)</SelectItem>
-                          <SelectItem value="USD">Dólares ($)</SelectItem>
-                          <SelectItem value="EUR">Euros (€)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="language">Idioma</Label>
-                      <Select defaultValue="es">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="es">Español</SelectItem>
-                          <SelectItem value="en">English</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="timezone">Zona Horaria</Label>
-                      <Select defaultValue="America/Costa_Rica">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="America/Costa_Rica">Costa Rica</SelectItem>
-                          <SelectItem value="America/New_York">New York</SelectItem>
-                          <SelectItem value="Europe/Madrid">Madrid</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button>Guardar Configuración</Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Security Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Lock className="h-5 w-5" />
-                    <span>Configuración de Seguridad</span>
-                  </CardTitle>
-                  <CardDescription>Ajustes de seguridad y autenticación</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="sessionTimeout">Tiempo de Sesión (minutos)</Label>
-                      <Input id="sessionTimeout" type="number" defaultValue="30" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="passwordLength">Longitud Mínima de Contraseña</Label>
-                      <Input id="passwordLength" type="number" defaultValue="8" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="maxLoginAttempts">Intentos Máximos de Login</Label>
-                      <Input id="maxLoginAttempts" type="number" defaultValue="3" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="twoFactorAuth">Autenticación de Dos Factores</Label>
-                      <Select defaultValue="optional">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="required">Obligatorio</SelectItem>
-                          <SelectItem value="optional">Opcional</SelectItem>
-                          <SelectItem value="disabled">Deshabilitado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button>Actualizar Seguridad</Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Notification Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Mail className="h-5 w-5" />
-                    <span>Configuración de Notificaciones</span>
-                  </CardTitle>
-                  <CardDescription>Ajustes de notificaciones y correos</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpServer">Servidor SMTP</Label>
-                      <Input id="smtpServer" defaultValue="smtp.gmail.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpPort">Puerto SMTP</Label>
-                      <Input id="smtpPort" type="number" defaultValue="587" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fromEmail">Email Remitente</Label>
-                      <Input id="fromEmail" type="email" defaultValue="admin@seguratuauto.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="replyToEmail">Email de Respuesta</Label>
-                      <Input
-                        id="replyToEmail"
-                        type="email"
-                        defaultValue="support@seguratuauto.com"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button>Guardar Notificaciones</Button>
-                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -1181,15 +1380,52 @@ export default function AdminDashboard() {
         </Tabs>
       </div>
 
-      {/* Modal de éxito */}
+      {/* Success Modal */}
       <MessageModal
         show={successModal.show}
         title={successModal.title}
         message={successModal.message}
+        onClose={() => setSuccessModal({ show: false, title: '', message: '' })}
         type="success"
-        onClose={() => setSuccessModal(prev => ({ ...prev, show: false }))}
-        buttonText="¡Excelente!"
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                Confirmar Eliminación
+              </CardTitle>
+              <CardDescription>
+                Esta acción no se puede deshacer. El usuario será eliminado permanentemente del sistema.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                ¿Estás seguro de que deseas eliminar este usuario?
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteConfirm({ show: false, userId: null })}
+                  disabled={loading}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteUser}
+                  disabled={loading}
+                >
+                  {loading ? 'Eliminando...' : 'Eliminar Usuario'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
