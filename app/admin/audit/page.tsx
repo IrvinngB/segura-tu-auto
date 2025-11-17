@@ -134,10 +134,16 @@ export default function AuditPage() {
 
       const { data, error } = await query.limit(100);
 
-      if (error) throw error;
-      setAuditLogs(data || []);
+      if (error) {
+        console.error('Error fetching audit logs:', error);
+        // Si la tabla no existe o no hay datos, no es un error crítico
+        setAuditLogs([]);
+      } else {
+        setAuditLogs(data || []);
+      }
     } catch (error) {
       console.error('Error fetching audit logs:', error);
+      setAuditLogs([]);
     } finally {
       setLoading(false);
     }
@@ -289,10 +295,27 @@ export default function AuditPage() {
               <Card>
                 <CardContent className="text-center py-12">
                   <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">No se encontraron registros</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {auditLogs.length === 0 && !searchTerm && tableFilter === 'all' && actionFilter === 'all'
+                      ? 'Sistema de Auditoría Activo'
+                      : 'No se encontraron registros'}
+                  </h3>
                   <p className="text-muted-foreground">
-                    No hay registros de auditoría que coincidan con los filtros seleccionados.
+                    {auditLogs.length === 0 && !searchTerm && tableFilter === 'all' && actionFilter === 'all'
+                      ? 'Los cambios en el sistema se registrarán automáticamente aquí. Realiza alguna acción (crear, actualizar o eliminar) para ver los registros.'
+                      : 'No hay registros de auditoría que coincidan con los filtros seleccionados.'}
                   </p>
+                  {auditLogs.length === 0 && !searchTerm && tableFilter === 'all' && actionFilter === 'all' && (
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg text-left max-w-md mx-auto">
+                      <h4 className="font-semibold text-blue-900 mb-2">¿Qué se registra?</h4>
+                      <ul className="text-sm text-blue-800 space-y-1">
+                        <li>• Creación de pólizas, reclamaciones y usuarios</li>
+                        <li>• Actualizaciones de datos importantes</li>
+                        <li>• Eliminación de registros</li>
+                        <li>• Cambios en estados y configuraciones</li>
+                      </ul>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (

@@ -174,13 +174,6 @@ const navigationItems: NavigationItem[] = [
     roles: ['admin', 'agent'],
     description: 'Sistema de renovación automática',
   },
-  {
-    name: 'Gestión de Documentos',
-    href: '/admin/documents',
-    icon: Archive,
-    roles: ['admin', 'agent', 'adjuster'],
-    description: 'Gestión avanzada de documentos',
-  },
 
   // Funcionalidades comunes para todos los usuarios
   {
@@ -260,8 +253,9 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
         ['Análisis', 'Reportes Avanzados'].includes(item.name)
       ),
       admin: filteredNavigation.filter(item =>
-        ['Auditoría', 'Renovaciones', 'Gestión de Documentos'].includes(item.name)
+        ['Auditoría', 'Renovaciones'].includes(item.name)
       ),
+      
       common: filteredNavigation.filter(item =>
         ['Notificaciones', 'Configuración'].includes(item.name)
       ),

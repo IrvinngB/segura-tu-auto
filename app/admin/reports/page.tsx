@@ -28,6 +28,7 @@ import {
 import { Download, TrendingUp, Users, DollarSign, Shield, FileText } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { ProtectedRoute } from '@/components/auth/protected-route';
 
 interface ReportData {
   totalPolicies: number;
@@ -83,8 +84,9 @@ export default function ReportsPage() {
           supabase.from('claims').select('id, status, created_at'),
           supabase
             .from('payments')
-            .select('amount, payment_date')
-            .gte('payment_date', startDate.toISOString()),
+            .select('amount, created_at, status')
+            .eq('status', 'completed')
+            .gte('created_at', startDate.toISOString()),
           supabase
             .from('customers')
             .select('id, created_at')
@@ -101,7 +103,7 @@ export default function ReportsPage() {
 
       // Monthly revenue
       const currentMonth = startOfMonth(new Date());
-      const monthlyPayments = payments?.filter(p => new Date(p.payment_date) >= currentMonth) || [];
+      const monthlyPayments = payments?.filter(p => new Date(p.created_at) >= currentMonth) || [];
       const monthlyRevenue = monthlyPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
       // Customer growth
@@ -143,7 +145,7 @@ export default function ReportsPage() {
         const monthEnd = endOfMonth(monthStart);
         const monthPayments =
           payments?.filter(p => {
-            const paymentDate = new Date(p.payment_date);
+            const paymentDate = new Date(p.created_at);
             return paymentDate >= monthStart && paymentDate <= monthEnd;
           }) || [];
         const monthRevenue = monthPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
@@ -183,7 +185,8 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <ProtectedRoute allowedRoles={['admin']}>
+      <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -359,6 +362,7 @@ export default function ReportsPage() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }

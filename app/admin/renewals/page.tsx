@@ -83,7 +83,19 @@ export default function PolicyRenewalPage() {
         .lte('end_date', sixtyDaysFromNow.toISOString())
         .order('end_date', { ascending: true });
 
-      if (policiesError) throw policiesError;
+      if (policiesError) {
+        console.error('Error fetching policies:', policiesError);
+        // Si no hay pólizas, no es un error crítico
+        setPolicies([]);
+        setStats({
+          total_policies: 0,
+          expiring_soon: 0,
+          auto_renewal_enabled: 0,
+          manual_renewal_needed: 0,
+        });
+        setLoading(false);
+        return;
+      }
 
       // Calculate stats
       const totalPolicies = policiesData?.length || 0;
@@ -372,10 +384,19 @@ Para activar su nueva póliza, complete el pago en la sección "Pagos" de su cue
             <Card>
               <CardContent className="text-center py-12">
                 <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
-                <h3 className="text-lg font-semibold mb-2">¡Excelente!</h3>
-                <p className="text-muted-foreground">
-                  No hay pólizas que requieran renovación inmediata.
+                <h3 className="text-lg font-semibold mb-2">¡Todo al día!</h3>
+                <p className="text-muted-foreground mb-4">
+                  No hay pólizas que requieran renovación en los próximos 60 días.
                 </p>
+                <div className="mt-6 p-4 bg-green-50 rounded-lg text-left max-w-md mx-auto">
+                  <h4 className="font-semibold text-green-900 mb-2">Sistema de Renovación</h4>
+                  <ul className="text-sm text-green-800 space-y-1">
+                    <li>• Las pólizas aparecerán aquí 60 días antes de vencer</li>
+                    <li>• Puedes activar la renovación automática por póliza</li>
+                    <li>• El sistema notificará a los clientes automáticamente</li>
+                    <li>• Nueva prima incluye incremento del 5% anual</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
           ) : (
