@@ -411,7 +411,7 @@ export default function CustomerCommunicationsPage() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                                     {communication.content}
                                 </p>
                             </CardContent>
