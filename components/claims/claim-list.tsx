@@ -165,10 +165,10 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
           fetch('/api/claims/available'),
           fetch('/api/claims/my-claims')
         ]);
-        
+
         const availableData = await availableRes.json();
         const myClaimsData = await myClaimsRes.json();
-        
+
         data = [
           ...(myClaimsData.claims || []),
           ...(availableData.claims || [])
@@ -188,9 +188,9 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
             .order('created_at', { ascending: false }),
           fetch('/api/claims/my-claims')
         ]);
-        
+
         const myClaimsData = await myClaimsRes.json();
-        
+
         data = [
           ...(myClaimsData.claims || []),
           ...(unassignedRes.data || [])
@@ -228,9 +228,9 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         console.error('❌ FETCH CLAIMS - Error:', error);
         throw error;
       }
-      
+
       console.log('📦 FETCH CLAIMS - Data recibida:', data?.length || 0, 'reclamaciones');
-      
+
       if (data) {
         const uniqueClaims = Array.from(new Map(data.map(c => [c.id, c])).values());
         console.log('📊 CLAIM LIST - Datos únicos obtenidos:', uniqueClaims.length);
@@ -282,10 +282,10 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
 
   const getStatusBadge = (status: string) => {
     // Determinar el label para 'submitted' según el rol
-    const submittedLabel = (userProfile?.role === 'agent' || userProfile?.role === 'adjuster') 
-      ? 'Por revisar' 
+    const submittedLabel = (userProfile?.role === 'agent' || userProfile?.role === 'adjuster')
+      ? 'Por revisar'
       : 'Enviada';
-    
+
     const statusConfig = {
       pending: {
         label: 'Pendiente',
@@ -582,7 +582,14 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                 </TableRow>
               ) : (
                 filteredClaims.map(claim => (
-                  <TableRow key={`${claim.id}-${claim.status}-${forceRefreshKey}`}>
+                  <TableRow
+                    key={`${claim.id}-${claim.status}-${forceRefreshKey}`}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => {
+                      console.log('👆 Row click:', claim.id);
+                      if (onViewClaim) onViewClaim(claim);
+                    }}
+                  >
                     <TableCell className="font-medium">{claim.claim_number}</TableCell>
                     {!customerId && (
                       <TableCell>
@@ -666,20 +673,23 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        {/* Botón Ver - Siempre visible */}
+                      <div className="flex gap-2 justify-end">
+                        {/* Botón Ver - Mejorado y Visible */}
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          onClick={() => {
-                            console.log('👁️ Ver reclamación:', claim.id);
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log('👁️ Ver reclamación (botón):', claim.id);
                             if (onViewClaim) {
                               onViewClaim(claim);
                             }
                           }}
                           title="Ver detalles"
+                          className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary"
                         >
                           <Eye className="h-4 w-4" />
+                          <span className="hidden lg:inline">Ver</span>
                         </Button>
 
                         {/* AGENTE: Botón de asignar rápido para reclamaciones sin ajustador */}
@@ -687,7 +697,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                           <Button
                             variant="default"
                             size="sm"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               console.log('✅ Asignar reclamación:', claim.id);
                               if (onEditClaim) {
                                 onEditClaim(claim);
@@ -718,7 +729,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 console.log('⚙️ Gestión administrativa:', claim.id);
                                 if (onEditClaim) {
                                   onEditClaim(claim);
@@ -740,7 +752,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                             <Button
                               variant="default"
                               size="sm"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 console.log('🔍 Evaluar reclamación:', claim.id);
                                 if (onEditClaim) {
                                   onEditClaim(claim);
@@ -769,7 +782,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               console.log('👑 Admin - Gestionar:', claim.id);
                               if (onEditClaim) {
                                 onEditClaim(claim);
