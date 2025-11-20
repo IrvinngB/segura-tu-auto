@@ -56,8 +56,12 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
     setError('');
 
     try {
-      // Generar nuevo número de póliza
-      const newPolicyNumber = `${policy.policy_number}-R${new Date().getFullYear()}`;
+      // Generar nuevo número de póliza único
+      const year = new Date().getFullYear();
+      const random = Math.floor(Math.random() * 1000000)
+        .toString()
+        .padStart(6, '0');
+      const newPolicyNumber = `${policy.policy_number}-R${year}-${random}`;
 
       // Crear nueva póliza renovada (aprobada, pendiente de pago)
       const { data: newPolicy, error: policyError } = await supabase
@@ -211,7 +215,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Número:</span>
                     <span className="font-medium">
-                      {policy.policy_number}-R{new Date().getFullYear()}
+                      {policy.policy_number}-R{new Date().getFullYear()}-XXXXXX
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -295,7 +299,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
                   <div className="flex justify-between font-medium">
                     <span>Nueva póliza:</span>
                     <span>
-                      {policy.policy_number}-R{new Date().getFullYear()}
+                      {policy.policy_number}-R{new Date().getFullYear()}-XXXXXX
                     </span>
                   </div>
                   <div className="flex justify-between">
