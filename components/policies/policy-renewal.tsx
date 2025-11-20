@@ -59,7 +59,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
       // Generar nuevo número de póliza
       const newPolicyNumber = `${policy.policy_number}-R${new Date().getFullYear()}`;
 
-      // Crear nueva póliza renovada
+      // Crear nueva póliza renovada (aprobada, pendiente de pago)
       const { data: newPolicy, error: policyError } = await supabase
         .from('policies')
         .insert({
@@ -68,7 +68,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
           vehicle_id: policy.vehicle_id,
           agent_id: policy.agent_id,
           policy_type: policy.policy_type,
-          status: 'active',
+          status: 'approved',
           start_date: format(newStartDate, 'yyyy-MM-dd'),
           end_date: format(newEndDate, 'yyyy-MM-dd'),
           premium_amount: renewalPremium,
@@ -129,7 +129,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
         communication_type: 'email',
         direction: 'outbound',
         subject: `Póliza Renovada - ${newPolicyNumber}`,
-        content: `Su póliza ha sido renovada exitosamente. Nueva vigencia: ${format(newStartDate, 'dd/MM/yyyy', { locale: es })} al ${format(newEndDate, 'dd/MM/yyyy', { locale: es })}. Prima anual: $${renewalPremium.toLocaleString('es-CO')}`,
+        content: `Su póliza ha sido renovada y está pendiente de pago. Complete el pago para activarla. Nueva vigencia: ${format(newStartDate, 'dd/MM/yyyy', { locale: es })} al ${format(newEndDate, 'dd/MM/yyyy', { locale: es })}. Prima anual: $${renewalPremium.toLocaleString('es-CO')}`,
         status: 'sent',
       });
 
@@ -330,7 +330,7 @@ export function PolicyRenewal({ policy, onRenewalSuccess, onClose }: PolicyRenew
           <div className="text-center space-y-4 py-8">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto" />
             <h3 className="text-lg font-semibold text-green-600">¡Renovación Exitosa!</h3>
-            <p className="text-muted-foreground">Su póliza ha sido renovada exitosamente.</p>
+            <p className="text-muted-foreground">Su póliza ha sido renovada. Complete el pago para activarla.</p>
             {renewedPolicy && (
               <Card className="border-green-200">
                 <CardContent className="pt-6">

@@ -163,20 +163,31 @@ export default function DocumentManagementPage() {
 
   const updateDocumentStatus = async (documentId: string, newStatus: string) => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error('Usuario no autenticado');
+      const response = await fetch('/api/claim-documents/update-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documentId,
+          newStatus,
+        }),
+      });
 
-      const { error } = await supabase
-        .from('claim_customer_documents')
-        .update({
-          status: newStatus,
-          reviewed_by: userData.user.id,
-          reviewed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', documentId);
+      if (!response.ok) {
+        let errorMessage = 'Error al actualizar el estado del documento';
 
-      if (error) throw error;
+        try {
+          const data = await response.json();
+          if (data?.error) {
+            errorMessage = data.error;
+          }
+        } catch {
+          // Ignorar errores al parsear la respuesta
+        }
+
+        throw new Error(errorMessage);
+      }
 
       setMessage({
         type: 'success',

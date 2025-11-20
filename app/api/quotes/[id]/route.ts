@@ -79,14 +79,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         );
       }
 
-      // Create policy with active status (cuando el agente aprueba la cotización)
+      // Create policy with approved status (esperando pago del cliente)
       const policyData = {
         policy_number: policyNumber,
         customer_id: existingQuote.customer_id,
         vehicle_id: existingQuote.vehicle_id,
         agent_id: user.id,
         policy_type: existingQuote.policy_type,
-        status: 'active', // Póliza activa inmediatamente cuando es aprobada por agente
+        status: 'approved', // Póliza aprobada, esperando pago del cliente para activarse
         start_date: existingQuote.start_date,
         end_date: existingQuote.end_date,
         premium_amount: existingQuote.premium_amount,
@@ -156,7 +156,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({
         quote: updatedQuote,
         policy,
-        message: 'Cotización aprobada y póliza creada exitosamente',
+        message: 'Cotización aprobada. La póliza está pendiente de pago del cliente para activarse.',
       });
     } else {
       // Reject the quote

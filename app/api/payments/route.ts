@@ -129,8 +129,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Si la póliza estaba pendiente de pago (draft o pending_payment), activarla
-        if (policy.status === "draft" || policy.status === "pending_payment") {
+        // Si la póliza estaba pendiente de pago (draft, approved o pending_payment), activarla
+        if (policy.status === "draft" || policy.status === "approved" || policy.status === "pending_payment") {
             console.log("🔄 Activating policy after payment...");
             
             const { error: activationError } = await supabase
