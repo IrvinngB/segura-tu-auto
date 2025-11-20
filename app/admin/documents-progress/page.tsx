@@ -151,8 +151,11 @@ export default function ClaimDocumentProgressPage() {
           };
 
           const requiredDocs = getRequiredDocuments(claim.claim_type);
-          const uploadedDocTypes = (documents || []).map(doc => doc.document_type);
-          const missingDocs = requiredDocs.filter(docType => !uploadedDocTypes.includes(docType));
+          // Solo considerar documentos aprobados para el progreso
+          const approvedDocs = (documents || []).filter(doc => doc.status === 'approved');
+          const approvedDocTypes = approvedDocs.map(doc => doc.document_type);
+
+          const missingDocs = requiredDocs.filter(docType => !approvedDocTypes.includes(docType));
           
           const totalRequired = requiredDocs.length;
           const completed = totalRequired - missingDocs.length;

@@ -435,16 +435,32 @@ export function ClaimCustomerDocuments({
     notes?: string
   ) => {
     try {
-      const { error } = await supabase
-        .from('claim_customer_documents')
-        .update({
-          status: newStatus,
+      const response = await fetch('/api/claim-documents/update-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documentId: docId,
+          newStatus,
           notes,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq('id', docId);
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        let errorMessage = 'Error al actualizar el estado';
+
+        try {
+          const data = await response.json();
+          if (data?.error) {
+            errorMessage = data.error;
+          }
+        } catch {
+          // Ignorar errores al parsear la respuesta
+        }
+
+        throw new Error(errorMessage);
+      }
 
       toast.success(`Documento ${newStatus === 'approved' ? 'aprobado' : 'rechazado'}`);
       fetchDocuments();
