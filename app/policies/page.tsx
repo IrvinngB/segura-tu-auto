@@ -1,12 +1,20 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { PolicyList } from "@/components/policies/policy-list"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { Plus } from "lucide-react"
+import type { Policy } from "@/lib/types/database"
 
 export default function PoliciesPage() {
+  const router = useRouter()
+
+  const handleEditPolicy = (policy: Policy) => {
+    router.push(`/policies/${policy.id}/edit`)
+  }
+
   return (
     <ProtectedRoute allowedRoles={["admin", "agent"]}>
       <div className="container mx-auto py-8 px-4">
@@ -23,7 +31,7 @@ export default function PoliciesPage() {
           </Button>
         </div>
 
-        <PolicyList />
+        <PolicyList onEditPolicy={handleEditPolicy} />
       </div>
     </ProtectedRoute>
   )

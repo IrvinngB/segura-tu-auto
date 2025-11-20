@@ -28,6 +28,7 @@ import {
   Archive,
   Bell,
   Settings,
+  FileX,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -111,6 +112,12 @@ const agentNavigation: NavigationItem[] = [
     href: '/claims',
     icon: AlertTriangle,
     description: 'Gestión de reclamos',
+  },
+  {
+    name: 'Solicitudes',
+    href: '/agent/requests',
+    icon: FileX,
+    description: 'Solicitudes de cancelación',
   },
   {
     name: 'Progreso de Documentos',
@@ -365,15 +372,15 @@ export const AgentSidebar = memo(function AgentSidebar({ userProfile }: { userPr
   return <SidebarContent navigation={agentNavigation} userProfile={userProfile} />;
 });
 
-const CustomerSidebarContent = memo(function CustomerSidebarContent({ 
-  navigation, 
-  userProfile 
+const CustomerSidebarContent = memo(function CustomerSidebarContent({
+  navigation,
+  userProfile
 }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { customerData } = useCustomerDataSimple();
   const { count: unreadCommunications } = useCustomerCommunicationsCount(customerData?.id);
-  
+
   // Hook para forzar actualización
   useForceBadgeRefresh();
 
@@ -459,10 +466,10 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
           {items.map(item => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             const isOnCommunicationsPage = pathname === '/customer/communications';
-            
+
             // Lógica SIMPLE: Solo mostrar badge si hay comunicaciones no leídas
             const showBadge = item.name === 'Comunicaciones' && effectiveCount > 0;
-            
+
             // Log específico para el item de comunicaciones
             if (item.name === 'Comunicaciones') {
               console.log('📱 Badge logic SIMPLE para Comunicaciones:', {
@@ -472,7 +479,7 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
                 pathname
               });
             }
-            
+
             return (
               <li key={item.name}>
                 <OptimizedLink
@@ -494,7 +501,7 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
                       <span className="truncate">{item.name}</span>
                     </div>
                     {showBadge && effectiveCount > 0 && (
-                      <div 
+                      <div
                         className="flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-bold rounded-full"
                         style={{
                           minWidth: '20px',

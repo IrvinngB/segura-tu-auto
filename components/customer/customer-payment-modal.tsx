@@ -283,6 +283,7 @@ export function CustomerPaymentModal({
     };
 
     const handlePayment = async () => {
+        // Simplificar validación - solo verificar que haya algo seleccionado o nuevo
         if (paymentStep === "select" && !selectedPaymentMethod) {
             toast({
                 title: "Error",
@@ -292,86 +293,64 @@ export function CustomerPaymentModal({
             return;
         }
 
-        if (paymentStep === "new" && !validateNewPaymentMethod()) {
-            return;
-        }
-
         setPaymentStep("processing");
         setProcessingPayment(true);
 
         try {
-            const result = await simulatePaymentProcessing();
+            // Simular procesamiento de pago (siempre exitoso en desarrollo)
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
-            if (result.success && result.paymentId) {
-                // Si es un método nuevo y el usuario quiere guardarlo
-                if (paymentStep === "new" && saveMethod) {
-                    try {
-                        const response = await fetch("/api/payment-methods", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                type: newPaymentMethod.type,
-                                name: newPaymentMethod.type === "credit_card" ? "Visa" : 
-                                      newPaymentMethod.type === "debit_card" ? "Mastercard" : 
-                                      newPaymentMethod.bankName || "Banco",
-                                last_four: newPaymentMethod.cardNumber.slice(-4) || 
-                                          newPaymentMethod.accountNumber?.slice(-4) || "****",
-                                expiry_date: newPaymentMethod.expiryDate || null,
-                                is_primary: paymentMethods.length === 0, // Primary si es el primero
-                            }),
-                        });
+            // Determinar método de pago para el registro
+            let paymentMethodId = selectedPaymentMethod;
+            let paymentMethodType = "credit_card";
 
-                        if (!response.ok) {
-                            console.error("Error saving payment method");
-                        }
-                    } catch (error) {
-                        console.error("Error saving payment method:", error);
-                        // No fallar el pago si falla guardar el método
-                    }
+            if (paymentStep === "new") {
+                paymentMethodType = newPaymentMethod.type;
+                // Si es nuevo, usar el primero disponible o crear uno temporal
+                if (paymentMethods.length > 0) {
+                    paymentMethodId = paymentMethods[0].id;
+                } else {
+                    paymentMethodId = "temp_" + Date.now();
                 }
-
-                // Procesar el pago usando el endpoint
-                const selectedPaymentMethodId = paymentStep === "new" 
-                    ? paymentMethods[0]?.id // Usar el primer método disponible o crear uno temporal
-                    : selectedPaymentMethod;
-
-                if (!selectedPaymentMethodId) {
-                    throw new Error("No se encontró método de pago válido");
-                }
-
-                const paymentResponse = await fetch("/api/payments", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        policy_id: policyId,
-                        payment_method_id: selectedPaymentMethodId,
-                        amount: amount,
-                        payment_type: paymentType === "Prima Mensual" ? "premium" : "fee",
-                    }),
-                });
-
-                if (!paymentResponse.ok) {
-                    const errorData = await paymentResponse.json();
-                    throw new Error(errorData.error || "Error procesando el pago");
-                }
-
-                const paymentData = await paymentResponse.json();
-
-                setPaymentStep("success");
-                
-                setTimeout(() => {
-                    onPaymentSuccess();
-                    onOpenChange(false);
-                    setPaymentStep("select");
-                }, 2000);
-
-                toast({
-                    title: "¡Pago Exitoso!",
-                    description: `El pago de $${amount.toLocaleString()} ha sido procesado correctamente.`,
-                });
             } else {
-                throw new Error(result.error || "Error procesando el pago");
+                const method = paymentMethods.find(m => m.id === selectedPaymentMethod);
+                if (method) {
+                    paymentMethodType = method.type;
+                }
             }
+
+            // Procesar el pago usando el endpoint
+            const paymentResponse = await fetch("/api/payments", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    policy_id: policyId,
+                    payment_method_id: paymentMethodId,
+                    amount: amount,
+                    payment_type: paymentType.includes("Inicial") || paymentType.includes("Activación") ? "premium" : "premium",
+                    payment_method: paymentMethodType,
+                }),
+            });
+
+            if (!paymentResponse.ok) {
+                const errorData = await paymentResponse.json();
+                throw new Error(errorData.error || "Error procesando el pago");
+            }
+
+            const paymentData = await paymentResponse.json();
+
+            setPaymentStep("success");
+            
+            setTimeout(() => {
+                onPaymentSuccess();
+                onOpenChange(false);
+                setPaymentStep("select");
+            }, 2000);
+
+            toast({
+                title: "¡Pago Exitoso!",
+                description: `El pago de $${amount.toLocaleString()} ha sido procesado correctamente.`,
+            });
         } catch (error) {
             console.error("Error procesando pago:", error);
             setPaymentStep("select");

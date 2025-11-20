@@ -29,6 +29,8 @@ import {
   Activity,
   RefreshCw,
   Archive,
+  FileX,
+  DollarSign,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
@@ -78,6 +80,20 @@ const navigationItems: NavigationItem[] = [
     icon: AlertTriangle,
     roles: ['admin', 'agent', 'adjuster'],
     description: 'Gestión de reclamos',
+  },
+  {
+    name: 'Solicitudes de Cancelación',
+    href: '/agent/requests',
+    icon: FileX,
+    roles: ['admin', 'agent'],
+    description: 'Gestión de solicitudes de cancelación',
+  },
+  {
+    name: 'Pagos',
+    href: '/admin/payments',
+    icon: DollarSign,
+    roles: ['admin', 'agent'],
+    description: 'Gestión y simulación de pagos',
   },
   {
     name: 'Evaluación de Riesgo',
@@ -239,6 +255,8 @@ export const RoleBasedSidebar = memo(function RoleBasedSidebar() {
           'Cotizaciones',
           'Mis Reclamaciones',
           'Reclamaciones',
+          'Solicitudes de Cancelación',
+          'Pagos',
         ].includes(item.name)
       ),
       management: filteredNavigation.filter(item =>

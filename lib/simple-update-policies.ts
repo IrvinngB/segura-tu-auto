@@ -131,19 +131,19 @@ export async function debugPolicyStatuses() {
   }
 }
 
-// Función para activar pólizas que están en estado "draft" pero fueron aprobadas por un agente
+// Función para cambiar pólizas de draft a approved cuando el agente las aprueba
 export async function activateDraftPolicies() {
   const supabase = createClient();
 
   try {
-    console.log("🔄 Activando pólizas en estado 'draft'...");
+    console.log("🔄 Aprobando pólizas en estado 'draft'...");
 
     // Buscar pólizas en estado "draft" que tienen agent_id (fueron aprobadas)
     const { data: draftPolicies, error: fetchError } = await supabase
       .from('policies')
       .select('id, policy_number, status, agent_id, start_date, end_date')
       .eq('status', 'draft')
-      .not('agent_id', 'is', null); // Solo las que tienen agente asignado (aprobadas)
+      .not('agent_id', 'is', null);
 
     if (fetchError) {
       console.error('❌ Error al obtener pólizas en draft:', fetchError);
@@ -156,11 +156,11 @@ export async function activateDraftPolicies() {
       return {
         success: true,
         updatedCount: 0,
-        message: 'No hay pólizas en draft para activar',
+        message: 'No hay pólizas en draft para aprobar',
       };
     }
 
-    // Verificar que las pólizas no hayan expirado antes de activarlas
+    // Verificar que las pólizas no hayan expirado
     const today = new Date().toISOString().split('T')[0];
     const validPolicies = draftPolicies.filter(policy => {
       const endDate = policy.end_date;
@@ -169,48 +169,92 @@ export async function activateDraftPolicies() {
       return isValid;
     });
 
-    console.log(`📊 Pólizas válidas para activar: ${validPolicies.length}`);
+    console.log(`📊 Pólizas válidas para aprobar: ${validPolicies.length}`);
 
     if (validPolicies.length === 0) {
       return {
         success: true,
         updatedCount: 0,
-        message: 'No hay pólizas válidas en draft para activar',
+        message: 'No hay pólizas válidas en draft para aprobar',
       };
     }
 
-    // Actualizar cada póliza a estado "active"
+    // Actualizar cada póliza a estado "approved" (esperando pago)
     const updatePromises = validPolicies.map(async policy => {
       const { data, error } = await supabase
         .from('policies')
         .update({
-          status: 'active',
+          status: 'approved',
           updated_at: new Date().toISOString(),
         })
         .eq('id', policy.id)
         .select('policy_number, status');
 
       if (error) {
-        console.error(`❌ Error activando póliza ${policy.policy_number}:`, error);
+        console.error(`❌ Error aprobando póliza ${policy.policy_number}:`, error);
         return null;
       }
 
-      console.log(`✅ Póliza ${policy.policy_number} activada correctamente`);
+      console.log(`✅ Póliza ${policy.policy_number} aprobada (esperando pago)`);
       return data?.[0] || null;
     });
 
-    // Esperar a que todas las actualizaciones terminen
     const results = await Promise.all(updatePromises);
     const successfulUpdates = results.filter(result => result !== null);
 
     return {
       success: true,
       updatedCount: successfulUpdates.length,
-      message: `${successfulUpdates.length} pólizas activadas exitosamente`,
+      message: `${successfulUpdates.length} pólizas aprobadas (esperando pago)`,
       details: successfulUpdates,
     };
   } catch (error) {
-    console.error('❌ Error activando pólizas en draft:', error);
+    console.error('❌ Error aprobando pólizas en draft:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    };
+  }
+}
+
+// Función para activar póliza cuando el cliente paga
+export async function activatePolicyAfterPayment(policyId: string) {
+  const supabase = createClient();
+
+  try {
+    console.log(`💳 Activando póliza ${policyId} después del pago...`);
+
+    const { data, error } = await supabase
+      .from('policies')
+      .update({
+        status: 'active',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', policyId)
+      .eq('status', 'approved')
+      .select('policy_number, status');
+
+    if (error) {
+      console.error('❌ Error activando póliza:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data || data.length === 0) {
+      return {
+        success: false,
+        error: 'Póliza no encontrada o no está en estado approved',
+      };
+    }
+
+    console.log(`✅ Póliza ${data[0].policy_number} activada exitosamente`);
+
+    return {
+      success: true,
+      policy: data[0],
+      message: 'Póliza activada correctamente',
+    };
+  } catch (error) {
+    console.error('❌ Error activando póliza después del pago:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',

@@ -222,7 +222,7 @@ CREATE TABLE public.policies (
   vehicle_id uuid,
   agent_id uuid,
   policy_type character varying NOT NULL CHECK (policy_type::text = ANY (ARRAY['basica'::character varying, 'limitada'::character varying, 'amplia'::character varying]::text[])),
-  status character varying NOT NULL DEFAULT 'draft'::character varying CHECK (status::text = ANY (ARRAY['draft'::character varying, 'active'::character varying, 'suspended'::character varying, 'cancelled'::character varying, 'expired'::character varying]::text[])),
+  status character varying NOT NULL DEFAULT 'draft'::character varying CHECK (status::text = ANY (ARRAY['draft'::character varying, 'approved'::character varying, 'active'::character varying, 'suspended'::character varying, 'cancelled'::character varying, 'expired'::character varying]::text[])),
   start_date date NOT NULL,
   end_date date NOT NULL,
   premium_amount numeric NOT NULL,

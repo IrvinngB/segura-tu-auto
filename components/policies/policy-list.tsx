@@ -23,7 +23,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { simpleUpdateExpiredPolicies, activateDraftPolicies } from '@/lib/simple-update-policies';
 import type { Policy } from '@/lib/types/database';
-import { Search, Eye, Edit, FileText, Calendar, Download, Car, RefreshCw } from 'lucide-react';
+import { Search, Eye, Edit, FileText, Calendar, Download, Car, RefreshCw, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -37,6 +37,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { PolicyRenewal } from '@/components/policies/policy-renewal';
+import { PolicyCancellationModal } from '@/components/policies/policy-cancellation-modal';
+import { Trash2 } from 'lucide-react';
 
 interface PolicyListProps {
   customerId?: string;
@@ -55,6 +57,9 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showRenewalModal, setShowRenewalModal] = useState(false);
   const [renewalPolicy, setRenewalPolicy] = useState<Policy | null>(null);
+  const [showCancellationModal, setShowCancellationModal] = useState(false);
+  const [policyToCancel, setPolicyToCancel] = useState<Policy | null>(null);
+  const [cancellationRequests, setCancellationRequests] = useState<any[]>([]);
   const supabase = createClient();
 
   useEffect(() => {
@@ -100,6 +105,21 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
       if (data) {
         setPolicies(data);
         setFilteredPolicies(data);
+      }
+
+      // Fetch cancellation requests
+      // Fetch cancellation requests for the fetched policies
+      if (data && data.length > 0) {
+        const policyIds = data.map(p => p.id);
+        const { data: requests } = await supabase
+          .from('policy_cancellation_requests')
+          .select('policy_id, status')
+          .in('policy_id', policyIds)
+          .in('status', ['pending']);
+
+        if (requests) {
+          setCancellationRequests(requests);
+        }
       }
     } catch (error) {
       console.error('Error fetching policies:', error);
@@ -203,13 +223,13 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
     doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    
+
     doc.text(`Nombre: ${policy.customer?.user?.first_name || ''} ${policy.customer?.user?.last_name || ''}`, 20, yPos);
     yPos += 7;
     doc.text(`Email: ${policy.customer?.user?.email || 'No disponible'}`, 20, yPos);
     yPos += 7;
     doc.text(`Teléfono: ${policy.customer?.user?.phone || 'No especificado'}`, 20, yPos);
-    
+
     if (policy.customer?.country) {
       yPos += 7;
       doc.text(`País: ${policy.customer.country}`, 20, yPos);
@@ -232,7 +252,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
     doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    
+
     if (policy.vehicle) {
       doc.text(`Vehículo: ${policy.vehicle.year} ${policy.vehicle.make} ${policy.vehicle.model}`, 20, yPos);
       yPos += 7;
@@ -260,7 +280,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
     doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    
+
     doc.text(`Tipo de Póliza: ${getPolicyTypeLabel(policy.policy_type)}`, 20, yPos);
     yPos += 7;
     doc.text(
@@ -289,7 +309,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
       yPos += 8;
       const includedCoverages = selectedPlanDetails.coverages.filter(c => c.included);
       const itemsPerColumn = Math.ceil(includedCoverages.length / 2);
-      
+
       includedCoverages.forEach((coverage, index) => {
         if (index < itemsPerColumn) {
           const text = `• ${coverage.name}`;
@@ -318,7 +338,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
       doc.rect(15, yPos, 180, 12, 'F');
       doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
       doc.rect(15, yPos, 180, 12);
-      
+
       doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
@@ -335,7 +355,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
     const footerY = 280;
     doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.line(15, footerY - 5, 195, footerY - 5);
-    
+
     doc.setTextColor(100, 100, 100);
     doc.setTextColor(100, 100, 100);
     doc.setFontSize(8);
@@ -371,8 +391,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
     if (onEditPolicy) {
       onEditPolicy(policy);
     } else {
-      // Default edit behavior - could redirect to edit page
-      console.log('Editing policy:', policy.id);
+      window.location.href = `/policies/${policy.id}/edit`;
     }
   };
 
@@ -401,10 +420,15 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      active: { 
-        label: 'Activa', 
+      active: {
+        label: 'Activa',
         classes: 'status-badge status-active',
         tooltip: 'Tu póliza está activa y te protege en este momento. Recuerda renovarla antes de que expire.'
+      },
+      approved: {
+        label: 'Aprobada',
+        classes: 'status-badge status-approved',
+        tooltip: 'Tu póliza fue aprobada por el agente. Completa el pago para activarla.'
       },
       expired: {
         label: 'Vencida',
@@ -421,10 +445,10 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
         classes: 'status-badge status-suspended',
         tooltip: 'La póliza está suspendida por falta de pago. Contacta a tu agente para reactivarla.'
       },
-      draft: { 
-        label: 'Borrador', 
+      draft: {
+        label: 'Borrador',
         classes: 'status-badge status-draft',
-        tooltip: 'Esta póliza aún no está activa. Debes completar el pago para activarla y obtener cobertura.'
+        tooltip: 'Esta póliza está en revisión. El agente debe aprobarla antes de que puedas pagarla.'
       },
     };
 
@@ -433,7 +457,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
       classes: 'status-badge status-active',
       tooltip: ''
     };
-    
+
     return (
       <div className="flex items-center gap-1.5">
         <span className={config.classes}>{config.label}</span>
@@ -467,6 +491,15 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
     const daysUntilExpiry = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     // Mostrar "vence pronto" si vence en 30 días o menos, O si ya venció (daysUntilExpiry <= 0)
     return daysUntilExpiry <= 30;
+  };
+
+  const hasPendingCancellation = (policyId: string) => {
+    return cancellationRequests.some(req => req.policy_id === policyId && req.status === 'pending');
+  };
+
+  const handleRequestCancellation = (policy: Policy) => {
+    setPolicyToCancel(policy);
+    setShowCancellationModal(true);
   };
 
   if (loading) {
@@ -509,6 +542,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
             <SelectContent>
               <SelectItem value="all">Todos los estados</SelectItem>
               <SelectItem value="active">Activa</SelectItem>
+              <SelectItem value="approved">Aprobada</SelectItem>
               <SelectItem value="expired">Vencida</SelectItem>
               <SelectItem value="cancelled">Cancelada</SelectItem>
               <SelectItem value="suspended">Suspendida</SelectItem>
@@ -605,18 +639,18 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                           $
                           {policy.payment_frequency === 'monthly'
                             ? (policy.premium_amount / 12).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })
+                            : policy.payment_frequency === 'quarterly'
+                              ? (policy.premium_amount / 4).toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })
-                            : policy.payment_frequency === 'quarterly'
-                              ? (policy.premium_amount / 4).toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })
                               : policy.premium_amount.toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -652,14 +686,37 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                             <RefreshCw className="h-4 w-4" />
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditPolicy(policy)}
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        {!customerId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditPolicy(policy)}
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {policy.status?.toLowerCase() === 'active' && !hasPendingCancellation(policy.id) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRequestCancellation(policy)}
+                            title={customerId ? "Solicitar Cancelación" : "Cancelar Póliza"}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            {customerId ? <Trash2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                          </Button>
+                        )}
+                        {hasPendingCancellation(policy.id) && (
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs border-yellow-500 text-yellow-600 cursor-pointer hover:bg-yellow-50"
+                            onClick={() => window.location.href = '/agent/requests'}
+                            title="Ir a solicitudes de cancelación"
+                          >
+                            Cancelación Pendiente
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -708,6 +765,17 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
           </Card>
         </div>
       </CardContent>
+
+      <PolicyCancellationModal
+        policy={policyToCancel}
+        open={showCancellationModal}
+        onOpenChange={setShowCancellationModal}
+        onSuccess={() => {
+          fetchPolicies();
+          setShowCancellationModal(false);
+          setPolicyToCancel(null);
+        }}
+      />
 
       {/* Details Modal */}
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>

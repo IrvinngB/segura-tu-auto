@@ -210,18 +210,14 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         data = result.data;
         error = result.error;
       } else {
-        // Para clientes o usuarios sin rol específico
-        const result = await supabase
-          .from('claims')
-          .select(`
-            *,
-            policy:policies(*,vehicle:vehicles(*)),
-            customer:customers(*,user:users(*)),
-            adjuster:users!claims_adjuster_id_fkey(*)
-          `)
-          .order('created_at', { ascending: false });
-        data = result.data;
-        error = result.error;
+        // Default fallback for security - do not fetch all claims
+        console.warn('ClaimList: No specific fetch logic for this state', {
+          hasCustomerId: !!customerId,
+          hasPolicyId: !!policyId,
+          role: userProfile?.role
+        });
+        data = [];
+        error = null;
       }
 
       if (error) {

@@ -139,6 +139,7 @@ interface Policy {
 
 interface UpcomingPayment {
     id: string;
+    policy_id: string;
     policy_number: string;
     amount: number;
     due_date: string;
@@ -224,7 +225,7 @@ export default function CustomerPaymentsPage() {
 
             setCustomerId(customer.id);
 
-            // Cargar pólizas del cliente con vehículos
+            // Cargar pólizas del cliente con vehículos (ordenar por estado: approved primero)
             const { data: policiesData, error: policiesError } = await supabase
                 .from("policies")
                 .select(
@@ -237,11 +238,24 @@ export default function CustomerPaymentsPage() {
                 .eq("customer_id", customer.id)
                 .order("created_at", { ascending: false });
 
+            // Ordenar pólizas: approved primero, luego active, luego el resto
+            const sortedPolicies = policiesData?.sort((a, b) => {
+                const statusOrder: Record<string, number> = {
+                    'approved': 0,
+                    'active': 1,
+                    'expired': 2,
+                    'cancelled': 3,
+                    'suspended': 4,
+                    'draft': 5
+                };
+                return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
+            });
+
             console.log("📋 Policies loaded:", policiesData);
             console.log("❌ Policies error:", policiesError);
 
-            if (policiesData) {
-                setPolicies(policiesData);
+            if (sortedPolicies) {
+                setPolicies(sortedPolicies);
             } else {
                 setPolicies([]);
             }
@@ -311,11 +325,27 @@ export default function CustomerPaymentsPage() {
                 setPayments([]);
             }
 
-            // Calcular próximos pagos basados en pólizas activas
-            if (policiesData) {
+            // Calcular próximos pagos basados en pólizas activas y aprobadas
+            if (sortedPolicies) {
                 const upcomingPaymentsData: UpcomingPayment[] = [];
 
-                policiesData
+                // Agregar pólizas aprobadas como próximos pagos (pendientes de pago inicial)
+                sortedPolicies
+                    .filter((policy) => policy.status === "approved")
+                    .forEach((policy) => {
+                        upcomingPaymentsData.push({
+                            id: `approved_${policy.id}`,
+                            policy_id: policy.id,
+                            policy_number: policy.policy_number,
+                            amount: policy.premium_amount,
+                            due_date: policy.start_date,
+                            payment_type: "Pago Inicial (Activación)",
+                            status: "upcoming",
+                        });
+                    });
+
+                // Agregar pólizas activas con renovación automática
+                sortedPolicies
                     .filter(
                         (policy) =>
                             policy.status === "active" && policy.auto_renewal
@@ -340,6 +370,7 @@ export default function CustomerPaymentsPage() {
 
                             upcomingPaymentsData.push({
                                 id: `upcoming_${policy.id}`,
+                                policy_id: policy.id,
                                 policy_number: policy.policy_number,
                                 amount: monthlyAmount,
                                 due_date: endDate.toISOString().split("T")[0],
@@ -530,17 +561,6 @@ export default function CustomerPaymentsPage() {
             description: "Todos los pagos al corriente",
             color: "text-green-600 dark:text-green-400"
         };
-    };
-
-    const handlePayment = (paymentId: string, paymentType: string, amount: number, policyNumber: string) => {
-        // Abrir modal de pago con los datos
-        setPendingPayment({
-            amount,
-            policyNumber,
-            policyId: paymentId, // En este caso usamos paymentId como policyId temporal
-            paymentType,
-        });
-        setShowPaymentModal(true);
     };
 
     const handlePaymentSuccess = () => {
@@ -772,7 +792,15 @@ export default function CustomerPaymentsPage() {
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            onClick={() => handlePayment(payment.id, payment.payment_type, payment.amount, payment.policy_number)}
+                                                            onClick={() => {
+                                                                setPendingPayment({
+                                                                    amount: payment.amount,
+                                                                    policyNumber: payment.policy_number,
+                                                                    policyId: payment.policy_id,
+                                                                    paymentType: payment.payment_type,
+                                                                });
+                                                                setShowPaymentModal(true);
+                                                            }}
                                                             disabled={loading}
                                                         >
                                                             Pagar Ahora
@@ -889,12 +917,15 @@ export default function CustomerPaymentsPage() {
                                                                         </div>
                                                                         <Button
                                                                             size="sm"
-                                                                            onClick={() => handlePayment(
-                                                                                policy.id, 
-                                                                                "Prima Mensual", 
-                                                                                monthlyAmount, 
-                                                                                policy.policy_number
-                                                                            )}
+                                                                            onClick={() => {
+                                                                                setPendingPayment({
+                                                                                    amount: monthlyAmount,
+                                                                                    policyNumber: policy.policy_number,
+                                                                                    policyId: policy.id,
+                                                                                    paymentType: "Prima Mensual",
+                                                                                });
+                                                                                setShowPaymentModal(true);
+                                                                            }}
                                                                             disabled={loading}
                                                                             className="w-full"
                                                                         >
@@ -909,6 +940,67 @@ export default function CustomerPaymentsPage() {
 
 
                                             
+                                                {/* Mostrar pólizas aprobadas pendientes de pago */}
+                                                {policies.filter(p => p.status === 'approved').length > 0 && (
+                                                    <div className="mt-6">
+                                                        <h3 className="text-lg font-semibold mb-4 text-orange-600 dark:text-orange-400 flex items-center gap-2">
+                                                            <AlertTriangle className="h-5 w-5" />
+                                                            Pólizas Aprobadas - Pendientes de Pago
+                                                        </h3>
+                                                        {policies.filter(p => p.status === 'approved').map((policy) => {
+                                                            return (
+                                                                <div key={policy.id} className="border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-3 bg-orange-50 dark:bg-orange-950">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <div className="space-y-1 flex-1">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <h4 className="font-semibold">
+                                                                                    Póliza {policy.policy_type === 'basica' ? 'Básica' : 
+                                                                                           policy.policy_type === 'limitada' ? 'Limitada' : 
+                                                                                           'Todo Riesgo'}
+                                                                                </h4>
+                                                                                <Badge className="bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200">
+                                                                                    Aprobada
+                                                                                </Badge>
+                                                                            </div>
+                                                                            <p className="text-sm text-muted-foreground">
+                                                                                {policy.policy_number}
+                                                                                {policy.vehicle && ` • ${policy.vehicle.make} ${policy.vehicle.model}`}
+                                                                            </p>
+                                                                            <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                                                                                ⚠️ Completa el pago para activar tu póliza
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="text-right flex flex-col gap-2">
+                                                                            <div>
+                                                                                <p className="text-sm text-muted-foreground">Monto a Pagar</p>
+                                                                                <p className="text-lg font-semibold text-orange-600">
+                                                                                    ${policy.premium_amount.toLocaleString()}
+                                                                                </p>
+                                                                            </div>
+                                                                            <Button
+                                                                                size="sm"
+                                                                                className="bg-orange-600 hover:bg-orange-700"
+                                                                                onClick={() => {
+                                                                                    setPendingPayment({
+                                                                                        amount: policy.premium_amount,
+                                                                                        policyNumber: policy.policy_number,
+                                                                                        policyId: policy.id,
+                                                                                        paymentType: "Pago Inicial",
+                                                                                    });
+                                                                                    setShowPaymentModal(true);
+                                                                                }}
+                                                                            >
+                                                                                <CreditCard className="h-4 w-4 mr-2" />
+                                                                                Pagar Ahora
+                                                                            </Button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+
                                                 {/* Mostrar pólizas activas */}
                                                 {policies.filter(p => p.status === 'active').length > 0 && (
                                                     <div className="mt-6">
@@ -954,15 +1046,26 @@ export default function CustomerPaymentsPage() {
                                         ) : (
                                             <div className="text-center py-8 text-muted-foreground">
                                                 <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                                <p className="text-lg font-medium mb-2">No tienes pólizas activas</p>
-                                                <p className="text-sm">Contacta a tu agente para crear una nueva póliza</p>
+                                                <p className="text-lg font-medium mb-2">No tienes pólizas</p>
+                                                <p className="text-sm">Contacta a tu agente para solicitar una cotización</p>
                                             </div>
                                         )}
                                         {/* Fin de sección de pólizas reales */}
                                     </div>
 
                                     {/* Resumen de Pólizas */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t">
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-6 border-t">
+                                        <Card className="bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800">
+                                            <CardContent className="pt-4">
+                                                <div className="text-center">
+                                                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                                                        {policies.filter(p => p.status === 'approved').length}
+                                                    </div>
+                                                    <p className="text-sm text-orange-700 dark:text-orange-300">Pendientes de Pago</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+
                                         <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
                                             <CardContent className="pt-4">
                                                 <div className="text-center">
@@ -1065,7 +1168,18 @@ export default function CustomerPaymentsPage() {
                                                     <div className="mt-2 space-x-2">
                                                         <Button 
                                                             size="sm"
-                                                            onClick={() => handlePayment(payment.id, payment.payment_type, payment.amount, "policy_id_placeholder")}
+                                                            onClick={() => {
+                                                                const policy = policies.find(p => p.id === payment.policy_id);
+                                                                if (policy) {
+                                                                    setPendingPayment({
+                                                                        amount: payment.amount,
+                                                                        policyNumber: payment.policy_number,
+                                                                        policyId: payment.policy_id,
+                                                                        paymentType: payment.payment_type,
+                                                                    });
+                                                                    setShowPaymentModal(true);
+                                                                }
+                                                            }}
                                                             disabled={loading}
                                                         >
                                                             Pagar Ahora
