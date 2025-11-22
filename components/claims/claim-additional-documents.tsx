@@ -200,21 +200,32 @@ export function ClaimAdditionalDocuments({
     );
   };
 
-  // Helper para encontrar el documento correspondiente a un label solicitado
-  const findMatchingDocument = (label: string) => {
-    // Buscar primero por coincidencia exacta en extra_document_label
-    let match = documents.find(d => d.is_extra_document && d.extra_document_label === label);
-    
-    // Si no, buscar por coincidencia parcial en el nombre del archivo (fallback para legacy)
-    if (!match) {
+  // Helper para obtener el estado del documento solicitado
+  const getRequestedDocStatus = (label: string) => {
+    // 1. Filtrar documentos que coincidan con el label
+    const docsForLabel = documents.filter(d => {
+      // Coincidencia exacta por label (prioridad)
+      if (d.is_extra_document && d.extra_document_label === label) return true;
+      
+      // Fallback: coincidencia por nombre de archivo (legacy)
       const normalizedLabel = label.toLowerCase().replace(/[^a-z0-9]/g, '');
-      match = documents.find(d => {
-        const normalizedName = d.file_name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        return normalizedName.includes(normalizedLabel);
-      });
+      const normalizedName = d.file_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return normalizedName.includes(normalizedLabel);
+    });
+
+    if (docsForLabel.length === 0) {
+      return { state: 'missing' as const, doc: null };
     }
-    
-    return match;
+
+    // 2. Ordenar por fecha (más reciente primero) y tomar el último
+    const lastDoc = docsForLabel.sort((a, b) => 
+      new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime()
+    )[0];
+
+    return { 
+      state: lastDoc.status, // 'pending' | 'approved' | 'rejected'
+      doc: lastDoc 
+    };
   };
 
   if (loading) return null;
@@ -243,35 +254,63 @@ export function ClaimAdditionalDocuments({
           </div>
         </div>
 
-        {/* Vista para AGENTE: Lista con estados */}
+        {/* Vista para AGENTE: Lista con estados dinámicos */}
         {isAgent ? (
           <div className="space-y-3">
             <h4 className="font-medium mb-2 text-sm text-muted-foreground">Estado de documentos solicitados:</h4>
             <div className="grid gap-3">
-              {requestedDocs.map((doc, index) => {
-                const matchingDoc = findMatchingDocument(doc.label);
+              {requestedDocs.map((docItem, index) => {
+                const { state, doc } = getRequestedDocStatus(docItem.label);
                 
+                // Configuración de badges según estado
+                const statusConfig = {
+                  missing: {
+                    label: 'Pendiente de carga',
+                    variant: 'outline',
+                    className: 'bg-orange-50 text-orange-700 border-orange-200',
+                    icon: Clock
+                  },
+                  pending: {
+                    label: 'Pendiente',
+                    variant: 'default',
+                    className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200',
+                    icon: Clock
+                  },
+                  approved: {
+                    label: 'Aprobado',
+                    variant: 'default',
+                    className: 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-200',
+                    icon: CheckCircle
+                  },
+                  rejected: {
+                    label: 'Rechazado',
+                    variant: 'destructive',
+                    className: 'bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900 dark:text-red-200',
+                    icon: AlertCircle
+                  }
+                };
+
+                const config = statusConfig[state as keyof typeof statusConfig] || statusConfig.missing;
+                const StatusIcon = config.icon;
+
                 return (
                   <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-md border">
                     <div className="flex items-center gap-3">
                       <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">{doc.label}</span>
+                      <span className="font-medium text-sm">{docItem.label}</span>
                     </div>
                     
-                    <div>
-                      {matchingDoc ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground hidden sm:inline">
-                            Subido el {new Date(matchingDoc.upload_date).toLocaleDateString()}
-                          </span>
-                          {getStatusBadge(matchingDoc.status)}
-                        </div>
-                      ) : (
-                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pendiente de carga
-                        </Badge>
+                    <div className="flex items-center gap-3">
+                      {doc && (
+                        <span className="text-xs text-muted-foreground hidden sm:inline">
+                          Subido el {new Date(doc.upload_date).toLocaleDateString()}
+                        </span>
                       )}
+                      
+                      <Badge variant={config.variant as any} className={config.className}>
+                        <StatusIcon className="h-3 w-3 mr-1" />
+                        {config.label}
+                      </Badge>
                     </div>
                   </div>
                 );
@@ -284,69 +323,94 @@ export function ClaimAdditionalDocuments({
             <div className="mb-6 ml-11">
               <h4 className="font-medium mb-2 text-sm text-muted-foreground">Documentos solicitados:</h4>
               <ul className="list-disc list-inside space-y-1">
-                {requestedDocs.map((doc, index) => (
-                  <li key={index} className="text-sm font-medium">
-                    {doc.label}
-                  </li>
-                ))}
+                {requestedDocs.map((doc, index) => {
+                  const { state } = getRequestedDocStatus(doc.label);
+                  const isUploaded = state !== 'missing';
+                  return (
+                    <li key={index} className={`text-sm font-medium ${isUploaded ? 'text-green-600 dark:text-green-400 line-through' : ''}`}>
+                      {doc.label}
+                      {isUploaded && <span className="ml-2 text-xs no-underline">(Subido)</span>}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
-              <div className="flex flex-col sm:flex-row gap-4 items-end">
-                <div className="w-full sm:w-1/2">
-                  <label className="text-sm font-medium mb-2 block">Seleccione el documento a subir</label>
-                  <Select
-                    value={selectedLabel}
-                    onValueChange={setSelectedLabel}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar documento..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {requestedDocs.map((doc, index) => (
-                        <SelectItem key={index} value={doc.label}>
-                          {doc.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            {(() => {
+              const pendingRequestedDocs = requestedDocs.filter(doc => {
+                 const { state } = getRequestedDocStatus(doc.label);
+                 return state === 'missing';
+              });
+              
+              if (pendingRequestedDocs.length === 0) {
+                return (
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800 text-center">
+                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
+                    <p className="text-green-800 dark:text-green-200 font-medium">
+                      ¡Todo listo! No tienes documentos adicionales pendientes por subir.
+                    </p>
+                  </div>
+                );
+              }
 
-                <div className="w-full sm:w-1/2">
-                  <div className="relative">
-                    <input
-                      type="file"
-                      id="extra-file-upload"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleFileUpload}
-                      disabled={uploading || !selectedLabel}
-                    />
-                    <label htmlFor="extra-file-upload" className="w-full">
-                      <Button
-                        className="w-full cursor-pointer"
-                        disabled={uploading || !selectedLabel}
-                        asChild
+              return (
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
+                  <div className="flex flex-col sm:flex-row gap-4 items-end">
+                    <div className="w-full sm:w-1/2">
+                      <label className="text-sm font-medium mb-2 block">Seleccione el documento a subir</label>
+                      <Select
+                        value={selectedLabel}
+                        onValueChange={setSelectedLabel}
                       >
-                        <span>
-                          {uploading ? (
-                            <>
-                              <span className="animate-spin mr-2">⏳</span> Subiendo...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Subir Documento
-                            </>
-                          )}
-                        </span>
-                      </Button>
-                    </label>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar documento..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pendingRequestedDocs.map((doc, index) => (
+                            <SelectItem key={index} value={doc.label}>
+                              {doc.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="w-full sm:w-1/2">
+                      <div className="relative">
+                        <input
+                          type="file"
+                          id="extra-file-upload"
+                          className="hidden"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={handleFileUpload}
+                          disabled={uploading || !selectedLabel}
+                        />
+                        <label htmlFor="extra-file-upload" className="w-full">
+                          <Button
+                            className="w-full cursor-pointer"
+                            disabled={uploading || !selectedLabel}
+                            asChild
+                          >
+                            <span>
+                              {uploading ? (
+                                <>
+                                  <span className="animate-spin mr-2">⏳</span> Subiendo...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Subir Documento
+                                </>
+                              )}
+                            </span>
+                          </Button>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </>
         )}
       </div>
