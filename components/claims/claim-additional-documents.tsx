@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Upload, AlertCircle, CheckCircle, Clock, Info } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle, Clock, Info, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ClaimCustomerDocument } from '@/lib/types/database';
 
@@ -17,6 +17,8 @@ interface ClaimAdditionalDocumentsProps {
   claimId: string;
   customerId: string;
   onUploadComplete?: (doc: ClaimCustomerDocument) => void;
+  documents?: ClaimCustomerDocument[];
+  currentUserRole?: string;
 }
 
 interface RequestedDocument {
@@ -27,6 +29,8 @@ export function ClaimAdditionalDocuments({
   claimId,
   customerId,
   onUploadComplete,
+  documents = [],
+  currentUserRole,
 }: ClaimAdditionalDocumentsProps) {
   const [loading, setLoading] = useState(true);
   const [requestedDocs, setRequestedDocs] = useState<RequestedDocument[]>([]);
@@ -193,14 +197,27 @@ export function ClaimAdditionalDocuments({
     );
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  // Helper para encontrar el documento correspondiente a un label solicitado
+  const findMatchingDocument = (label: string) => {
+    // Buscar primero por coincidencia exacta en extra_document_label
+    let match = documents.find(d => d.is_extra_document && d.extra_document_label === label);
+    
+    // Si no, buscar por coincidencia parcial en el nombre del archivo (fallback para legacy)
+    if (!match) {
+      const normalizedLabel = label.toLowerCase().replace(/[^a-z0-9]/g, '');
+      match = documents.find(d => {
+        const normalizedName = d.file_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normalizedName.includes(normalizedLabel);
+      });
+    }
+    
+    return match;
   };
 
   if (loading) return null;
   if (!hasRequest || requestedDocs.length === 0) return null;
+
+  const isAgent = currentUserRole !== 'customer';
 
   return (
     <div className="mb-6 border-l-4 border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 rounded-r-lg overflow-hidden shadow-sm">
@@ -216,79 +233,119 @@ export function ClaimAdditionalDocuments({
             </h3>
             <p className="text-blue-700 dark:text-blue-300 mt-1">
               El agente ha solicitado documentos adicionales para esta reclamación. 
-              Por favor suba aquí los documentos indicados.
+              {isAgent 
+                ? " Revise el estado de los documentos solicitados a continuación."
+                : " Por favor suba aquí los documentos indicados."}
             </p>
           </div>
         </div>
 
-        {/* Lista de documentos solicitados */}
-        <div className="mb-6 ml-11">
-          <h4 className="font-medium mb-2 text-sm text-muted-foreground">Documentos solicitados:</h4>
-          <ul className="list-disc list-inside space-y-1">
-            {requestedDocs.map((doc, index) => (
-              <li key={index} className="text-sm font-medium">
-                {doc.label}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Formulario de carga */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="w-full sm:w-1/2">
-              <label className="text-sm font-medium mb-2 block">Seleccione el documento a subir</label>
-              <Select
-                value={selectedLabel}
-                onValueChange={setSelectedLabel}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar documento..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {requestedDocs.map((doc, index) => (
-                    <SelectItem key={index} value={doc.label}>
-                      {doc.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="w-full sm:w-1/2">
-              <div className="relative">
-                <input
-                  type="file"
-                  id="extra-file-upload"
-                  className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={handleFileUpload}
-                  disabled={uploading || !selectedLabel}
-                />
-                <label htmlFor="extra-file-upload" className="w-full">
-                  <Button
-                    className="w-full cursor-pointer"
-                    disabled={uploading || !selectedLabel}
-                    asChild
-                  >
-                    <span>
-                      {uploading ? (
-                        <>
-                          <span className="animate-spin mr-2">⏳</span> Subiendo...
-                        </>
+        {/* Vista para AGENTE: Lista con estados */}
+        {isAgent ? (
+          <div className="space-y-3">
+            <h4 className="font-medium mb-2 text-sm text-muted-foreground">Estado de documentos solicitados:</h4>
+            <div className="grid gap-3">
+              {requestedDocs.map((doc, index) => {
+                const matchingDoc = findMatchingDocument(doc.label);
+                
+                return (
+                  <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-md border">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">{doc.label}</span>
+                    </div>
+                    
+                    <div>
+                      {matchingDoc ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground hidden sm:inline">
+                            Subido el {new Date(matchingDoc.upload_date).toLocaleDateString()}
+                          </span>
+                          {getStatusBadge(matchingDoc.status)}
+                        </div>
                       ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Subir Documento
-                        </>
+                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pendiente de carga
+                        </Badge>
                       )}
-                    </span>
-                  </Button>
-                </label>
-              </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
+        ) : (
+          /* Vista para CLIENTE: Lista simple + Formulario de carga */
+          <>
+            <div className="mb-6 ml-11">
+              <h4 className="font-medium mb-2 text-sm text-muted-foreground">Documentos solicitados:</h4>
+              <ul className="list-disc list-inside space-y-1">
+                {requestedDocs.map((doc, index) => (
+                  <li key={index} className="text-sm font-medium">
+                    {doc.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm">
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="w-full sm:w-1/2">
+                  <label className="text-sm font-medium mb-2 block">Seleccione el documento a subir</label>
+                  <Select
+                    value={selectedLabel}
+                    onValueChange={setSelectedLabel}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar documento..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {requestedDocs.map((doc, index) => (
+                        <SelectItem key={index} value={doc.label}>
+                          {doc.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-full sm:w-1/2">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="extra-file-upload"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleFileUpload}
+                      disabled={uploading || !selectedLabel}
+                    />
+                    <label htmlFor="extra-file-upload" className="w-full">
+                      <Button
+                        className="w-full cursor-pointer"
+                        disabled={uploading || !selectedLabel}
+                        asChild
+                      >
+                        <span>
+                          {uploading ? (
+                            <>
+                              <span className="animate-spin mr-2">⏳</span> Subiendo...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Subir Documento
+                            </>
+                          )}
+                        </span>
+                      </Button>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

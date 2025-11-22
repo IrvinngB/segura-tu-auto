@@ -19,24 +19,7 @@ import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { ClaimAdditionalDocuments } from './claim-additional-documents';
-
-interface ClaimCustomerDocument {
-  id: string;
-  claim_id: string;
-  customer_id: string;
-  document_type: 'license' | 'id' | 'invoice' | 'police_report' | 'photos' | 'other';
-  file_name: string;
-  file_url: string;
-  file_size: number;
-  mime_type: string;
-  upload_date: string;
-  status: 'pending' | 'approved' | 'rejected';
-  notes?: string;
-  reviewed_by?: string;
-  reviewed_at?: string;
-  is_extra_document?: boolean;
-  extra_document_label?: string;
-}
+import type { ClaimCustomerDocument } from '@/lib/types/database';
 
 interface ClaimCustomerDocumentsProps {
   claimId: string;
@@ -571,6 +554,8 @@ export function ClaimCustomerDocuments({
         claimId={claimId} 
         customerId={customerId} 
         onUploadComplete={handleExtraDocUpload}
+        documents={documents}
+        currentUserRole={currentUserRole}
       />
 
       <Card>
@@ -591,6 +576,63 @@ export function ClaimCustomerDocuments({
                 </CardDescription>
               </div>
             </div>
+
+            {/* Controles de subida solo para clientes */}
+            {currentUserRole === 'customer' && (
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="w-full sm:w-1/3">
+                  <label className="text-sm font-medium mb-2 block">Tipo de Documento</label>
+                  <Select
+                    value={selectedDocumentType}
+                    onValueChange={(value: any) => setSelectedDocumentType(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-full sm:w-2/3">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="file-upload"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleFileUpload}
+                      disabled={uploading}
+                    />
+                    <label htmlFor="file-upload" className="w-full">
+                      <Button
+                        className="w-full cursor-pointer"
+                        disabled={uploading}
+                        asChild
+                      >
+                        <span>
+                          {uploading ? (
+                            <>
+                              <span className="animate-spin mr-2">⏳</span> Subiendo...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Subir Documento
+                            </>
+                          )}
+                        </span>
+                      </Button>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
