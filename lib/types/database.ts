@@ -264,4 +264,6 @@ export interface ClaimCustomerDocument {
   customer?: Customer;
   claim?: Claim;
   reviewer?: User;
+  is_extra_document?: boolean;
+  extra_document_label?: string;
 }

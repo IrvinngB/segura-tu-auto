@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { ClaimAdditionalDocuments } from './claim-additional-documents';
 
 interface ClaimCustomerDocument {
   id: string;
@@ -33,6 +34,8 @@ interface ClaimCustomerDocument {
   notes?: string;
   reviewed_by?: string;
   reviewed_at?: string;
+  is_extra_document?: boolean;
+  extra_document_label?: string;
 }
 
 interface ClaimCustomerDocumentsProps {
@@ -101,13 +104,10 @@ export function ClaimCustomerDocuments({
 
       if (error) throw error;
       console.log('✅ Documentos cargados desde BD:', data?.length || 0, 'documentos');
-      // console.log('📋 Datos de documentos completos:', JSON.stringify(data?.map(d => ({
-      //   id: d.id,
-      //   fileName: d.file_name,
-      //   url: d.file_url,
-      //   docType: d.document_type
-      // })), null, 2));
+      
+      // Mostrar TODOS los documentos, incluyendo los extra
       const documentsData = data || [];
+      
       setDocuments(documentsData);
       // Notificar al componente padre sobre el cambio en el conteo
       onDocumentCountChange?.(documentsData.length);
@@ -116,6 +116,20 @@ export function ClaimCustomerDocuments({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExtraDocUpload = (newDoc: ClaimCustomerDocument) => {
+    console.log('✨ Nuevo documento extra subido:', newDoc);
+    
+    // Actualización optimista del estado
+    setDocuments(prev => {
+      // Evitar duplicados por si acaso
+      if (prev.some(d => d.id === newDoc.id)) return prev;
+      return [newDoc, ...prev];
+    });
+
+    // También recargar para asegurar consistencia
+    fetchDocuments();
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -553,6 +567,12 @@ export function ClaimCustomerDocuments({
 
   return (
     <>
+      <ClaimAdditionalDocuments 
+        claimId={claimId} 
+        customerId={customerId} 
+        onUploadComplete={handleExtraDocUpload}
+      />
+
       <Card>
         <CardHeader>
           <div className="space-y-4">
@@ -562,7 +582,7 @@ export function ClaimCustomerDocuments({
                   <FileText className="h-5 w-5" />
                   Documentos del Cliente
                   <InfoTooltip
-                    content="Sube los documentos solicitados por tu ajustador. Los archivos permitidos son JPG, PNG y PDF (máximo 10MB). Una vez revisados, verás su estado como Aprobado o Rechazado."
+                    content="Lista de todos los documentos subidos para esta reclamación."
                     side="right"
                   />
                 </CardTitle>
@@ -571,24 +591,17 @@ export function ClaimCustomerDocuments({
                 </CardDescription>
               </div>
             </div>
-
-
           </div>
         </CardHeader>
         <CardContent>
           {documents.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">No hay documentos adicionales</p>
+              <p className="text-muted-foreground">No hay documentos subidos</p>
             </div>
           ) : (
             <div className="space-y-3">
               {documents.map(doc => {
-                // console.log('🎨 Renderizando doc:', {
-                //   id: doc.id,
-                //   url: doc.url,
-                //   fileName: doc.fileName
-                // });
                 return (
                   <div
                     key={doc.id}
@@ -601,7 +614,11 @@ export function ClaimCustomerDocuments({
                           {translateFileName(doc.file_name)}
                         </p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
-                          <span>{DOCUMENT_TYPE_LABELS[doc.document_type]}</span>
+                          <span>
+                            {doc.is_extra_document 
+                              ? `Tipo: ${doc.extra_document_label}` 
+                              : DOCUMENT_TYPE_LABELS[doc.document_type] || 'Otro Documento'}
+                          </span>
                           <span>•</span>
                           <span>{formatFileSize(doc.file_size)}</span>
                           <span>•</span>
@@ -685,7 +702,8 @@ export function ClaimCustomerDocuments({
                         <Download className="h-4 w-4" />
                       </Button>
 
-                      {currentUserRole === 'customer' && (
+                      {/* Reemplazo solo si NO es extra (o si se permite reemplazar extra desde aquí también) */}
+                      {currentUserRole === 'customer' && !doc.is_extra_document && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -699,6 +717,10 @@ export function ClaimCustomerDocuments({
                           <Upload className="h-4 w-4" />
                         </Button>
                       )}
+                      
+                      {/* Si es extra, tal vez queramos permitir reemplazar también, pero el usuario pidió centralizar subida arriba. 
+                          Sin embargo, el botón de reemplazar es útil. Lo dejaré solo para standard por ahora para seguir la instrucción de "centralizar subida". 
+                          Aunque "reemplazar" es una acción sobre un documento existente. */}
 
                       {['admin', 'agent', 'adjuster'].includes(currentUserRole || '') &&
                         doc.status === 'pending' && (
