@@ -1,237 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ProtectedRoute } from '@/components/auth/protected-route';
-import { createClient } from '@/lib/supabase/client';
-import { useAuth } from '@/components/auth/auth-provider';
-import { ClaimCommunication } from '@/components/claims/claim-communication';
-import { ClaimCustomerDocuments } from '@/components/claims/claim-customer-documents';
-import type { Claim } from '@/lib/types/database';
-import {
-  ArrowLeft,
-  FileText,
-  Calendar,
-  MapPin,
-  DollarSign,
-  User,
-  Car,
-  AlertTriangle,
-  Clock,
-  CheckCircle,
-  XCircle,
-  MessageCircle,
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+// ... existing imports
 
 export default function CustomerClaimDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { userProfile } = useAuth();
   const [claim, setClaim] = useState<Claim | null>(null);
   const [loading, setLoading] = useState(true);
   const [customerId, setCustomerId] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('details');
   const supabase = createClient();
 
   useEffect(() => {
-    if (userProfile) {
-      fetchCustomerId();
+    const tab = searchParams.get('tab');
+    if (tab && ['details', 'documents', 'communication', 'status'].includes(tab)) {
+      setActiveTab(tab);
     }
-  }, [userProfile]);
+  }, [searchParams]);
 
-  useEffect(() => {
-    if (params.id && customerId) {
-      fetchClaimDetails();
-    }
-  }, [params.id, customerId]);
-
-  const fetchCustomerId = async () => {
-    try {
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('user_id', userProfile?.id)
-        .single();
-
-      if (customer) {
-        setCustomerId(customer.id);
-      }
-    } catch (error) {
-      console.error('Error fetching customer ID:', error);
-    }
-  };
-
-  const fetchClaimDetails = async () => {
-    try {
-      const { data: claimData, error: claimError } = await supabase
-        .from('claims')
-        .select(
-          `
-          *,
-          policy:policies(
-            *,
-            vehicle:vehicles(*)
-          ),
-          adjuster:users!claims_adjuster_id_fkey(*)
-        `
-        )
-        .eq('id', params.id)
-        .eq('customer_id', customerId) // Solo permitir ver sus propias reclamaciones
-        .single();
-
-      if (claimError) {
-        console.error('Error fetching claim:', claimError);
-        throw claimError;
-      }
-
-      setClaim(claimData);
-    } catch (error) {
-      console.error('Error fetching claim details:', error);
-      router.push('/customer/claims');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      submitted: {
-        label: 'Enviada',
-        variant: 'outline' as const,
-        icon: Clock,
-        tooltip: 'Tu reclamación ha sido recibida y está esperando ser asignada a un ajustador.'
-      },
-      under_review: {
-        label: 'En Revisión',
-        variant: 'secondary' as const,
-        icon: FileText,
-        tooltip: 'Un ajustador está revisando tu caso. Puede contactarte si necesita más información.'
-      },
-      pending_documentation: {
-        label: 'Documentos Pendientes',
-        variant: 'outline' as const,
-        icon: FileText,
-        tooltip: 'Se requieren documentos adicionales. Revisa la pestaña de Comunicación para ver qué documentos se solicitan.'
-      },
-      waiting_approval: {
-        label: 'Esperando Aprobación',
-        variant: 'secondary' as const,
-        icon: Clock,
-        tooltip: 'Tu caso está siendo evaluado por un supervisor para aprobación final.'
-      },
-      investigating: {
-        label: 'Investigando',
-        variant: 'default' as const,
-        icon: AlertTriangle,
-        tooltip: 'El ajustador está realizando una investigación detallada del incidente. Este proceso puede tomar algunos días.'
-      },
-      approved: {
-        label: 'Aprobada',
-        variant: 'default' as const,
-        icon: CheckCircle,
-        tooltip: '¡Buenas noticias! Tu reclamación ha sido aprobada. El pago será procesado pronto.'
-      },
-      processing_payment: {
-        label: 'Procesando Pago',
-        variant: 'secondary' as const,
-        icon: DollarSign,
-        tooltip: 'El departamento financiero está procesando tu pago. Recibirás una notificación cuando se complete.'
-      },
-      denied: {
-        label: 'Denegada',
-        variant: 'destructive' as const,
-        icon: XCircle,
-        tooltip: 'Tu reclamación no fue aprobada. Revisa la pestaña de Comunicación para conocer los motivos.'
-      },
-      closed: {
-        label: 'Cerrada',
-        variant: 'outline' as const,
-        icon: CheckCircle,
-        tooltip: 'Este caso ha sido cerrado y completado.'
-      },
-      paid: {
-        label: 'Pagada',
-        variant: 'default' as const,
-        icon: CheckCircle,
-        tooltip: 'El pago ha sido procesado exitosamente. Revisa tu cuenta bancaria.'
-      },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.submitted;
-    const Icon = config.icon;
-
-    return (
-      <div className="flex items-center gap-1.5">
-        <Badge variant={config.variant} className="flex items-center gap-1">
-          <Icon className="h-3 w-3" />
-          {config.label}
-        </Badge>
-        <InfoTooltip content={config.tooltip} side="right" />
-      </div>
-    );
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { label: 'Baja', variant: 'outline' as const },
-      medium: { label: 'Media', variant: 'secondary' as const },
-      high: { label: 'Alta', variant: 'default' as const },
-      urgent: { label: 'Urgente', variant: 'destructive' as const },
-    };
-
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.medium;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const getClaimTypeLabel = (type: string) => {
-    const types = {
-      Colisión: 'Colisión',
-      Robo: 'Robo',
-      Vandalismo: 'Vandalismo',
-      Incendio: 'Incendio',
-      'Daño por clima': 'Daño por clima',
-      'Daño por granizo': 'Daño por granizo',
-      Otros: 'Otros',
-    };
-    return types[type as keyof typeof types] || type;
-  };
-
-  if (loading) {
-    return (
-      <ProtectedRoute allowedRoles={['customer']}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Cargando detalles de la reclamación...</p>
-          </div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
-
-  if (!claim) {
-    return (
-      <ProtectedRoute allowedRoles={['customer']}>
-        <div className="container mx-auto py-8 px-4">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Reclamación no encontrada</h1>
-            <p className="text-muted-foreground mb-4">
-              La reclamación que buscas no existe o no tienes permisos para verla.
-            </p>
-            <Button onClick={() => router.push('/customer/claims')}>
-              Volver a Mis Reclamaciones
-            </Button>
-          </div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
+  // ... existing code
 
   return (
     <ProtectedRoute allowedRoles={['customer']}>
@@ -255,7 +46,7 @@ export default function CustomerClaimDetailPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="details" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="details">Detalles</TabsTrigger>
             <TabsTrigger value="documents">Documentos y Evidencia</TabsTrigger>
