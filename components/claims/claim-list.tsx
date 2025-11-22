@@ -46,6 +46,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [forceRefreshKey, setForceRefreshKey] = useState(0);
+  const [rejectedClaimsMap, setRejectedClaimsMap] = useState<Record<string, boolean>>({});
   const supabase = createClient();
 
   // ✅ OPTIMIZACIÓN: Debounce de búsqueda para evitar filtrado en cada keystroke
@@ -147,6 +148,24 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
           .order('created_at', { ascending: false });
         data = result.data;
         error = result.error;
+
+        // Fetch rejected documents for this customer to update UI status
+        if (data) {
+          const { data: rejectedDocs } = await supabase
+            .from('claim_customer_documents')
+            .select('claim_id')
+            .eq('customer_id', customerId)
+            .eq('status', 'rejected');
+
+          if (rejectedDocs) {
+            const rejectedMap: Record<string, boolean> = {};
+            rejectedDocs.forEach(doc => {
+              rejectedMap[doc.claim_id] = true;
+            });
+            setRejectedClaimsMap(rejectedMap);
+          }
+        }
+
       } else if (policyId) {
         const result = await supabase
           .from('claims')
@@ -276,7 +295,12 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
     setFilteredClaims(filtered);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, claimId?: string) => {
+    // Si es cliente y tiene documentos rechazados, mostrar estado especial
+    if (userProfile?.role === 'customer' && claimId && rejectedClaimsMap[claimId]) {
+      return <span className="status-badge status-denied">Documento inválido</span>;
+    }
+
     // Determinar el label para 'submitted' según el rol
     const submittedLabel = (userProfile?.role === 'agent' || userProfile?.role === 'adjuster')
       ? 'Por revisar'
@@ -609,7 +633,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                       </div>
                     </TableCell>
                     <TableCell>{getClaimTypeLabel(claim.claim_type)}</TableCell>
-                    <TableCell className="text-center">{getStatusBadge(claim.status)}</TableCell>
+                    <TableCell className="text-center">{getStatusBadge(claim.status, claim.id)}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex flex-col gap-1 items-center">
                         {getPriorityBadge(claim.priority)}
