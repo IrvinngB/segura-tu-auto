@@ -67,8 +67,7 @@ export function ClaimCustomerDocuments({
   const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [selectedDocumentType, setSelectedDocumentType] =
-    useState<ClaimCustomerDocument['document_type']>('other');
+
 
   const supabase = createClient();
 
@@ -115,139 +114,7 @@ export function ClaimCustomerDocuments({
     fetchDocuments();
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    // Validar tamaño (10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast.error('El archivo no debe superar los 10MB');
-      return;
-    }
-
-    // Validar tipo
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('Solo se permiten archivos JPG, PNG o PDF');
-      return;
-    }
-
-    setUploading(true);
-
-    try {
-      // Obtener extensión del archivo original
-      const fileExt = file.name.split('.').pop();
-
-      // Generar nombre limpio usando la función centralizada
-      const newFileName = generateCleanFileName(selectedDocumentType, fileExt || 'pdf');
-      const storagePath = `drafts/${newFileName}`;
-
-      console.log('🆕🆕🆕 SUBIDA NUEVA - Tipo seleccionado:', selectedDocumentType);
-      console.log('🆕🆕🆕 SUBIDA NUEVA - Archivo generado:', newFileName);
-      console.log('🆕🆕🆕 SUBIDA NUEVA - Path completo:', storagePath);
-
-      // Subir a Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('clientes-adjuntos')
-        .upload(storagePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type,
-        });
-
-      if (uploadError) {
-        console.error('❌ Error en upload:', uploadError);
-        throw new Error(`Error al subir archivo: ${uploadError.message}`);
-      }
-
-      console.log('✅ Archivo subido:', uploadData);
-
-      // Verificar que el archivo existe listando la carpeta
-      const { data: listData, error: listError } = await supabase.storage
-        .from('clientes-adjuntos')
-        .list('drafts');
-
-      console.log('📁 Archivos en carpeta drafts:', listData);
-
-      // Obtener URL pública
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('clientes-adjuntos').getPublicUrl(storagePath);
-
-      console.log('🔗 URL pública generada:', publicUrl);
-
-      // Verificar accesibilidad del archivo
-      try {
-        const response = await fetch(publicUrl, { method: 'HEAD' });
-        console.log('🌐 Status de verificación:', response.status, response.statusText);
-      } catch (fetchError) {
-        console.warn('⚠️ Error verificando archivo:', fetchError);
-      }
-
-      // Usar el tipo de documento seleccionado por el usuario
-      const documentType = selectedDocumentType;
-
-      // Guardar en base de datos con el nombre generado
-      const { data: dbData, error: dbError } = await supabase
-        .from('claim_customer_documents')
-        .insert({
-          claim_id: claimId,
-          customer_id: customerId,
-          document_type: documentType,
-          file_name: newFileName, // Usar el nuevo nombre
-          file_url: publicUrl,
-          file_size: file.size,
-          mime_type: file.type,
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        console.error('❌ Error en base de datos:', dbError);
-        // Intentar eliminar el archivo subido
-        await supabase.storage.from('clientes-adjuntos').remove([storagePath]);
-
-        // Mensaje de error más específico
-        if (dbError.message.includes('row-level security')) {
-          throw new Error(
-            'Permisos insuficientes. Por favor contacta al administrador para configurar las políticas RLS.'
-          );
-        } else if (dbError.message.includes('violates foreign key')) {
-          throw new Error('Reclamación o cliente no encontrado. Verifica los datos.');
-        } else {
-          throw new Error(`Error al guardar en BD: ${dbError.message}`);
-        }
-      }
-
-      console.log('✅ Documento guardado en BD:', dbData);
-
-      toast.success('Documento subido exitosamente');
-      fetchDocuments();
-    } catch (error) {
-      console.error('❌ Error completo:', error);
-
-      // Mensaje más amigable según el tipo de error
-      const errorMessage = (error as Error).message;
-      if (errorMessage.includes('Bucket not found')) {
-        toast.error('Error: El bucket de almacenamiento no existe. Contacta al administrador.');
-      } else if (errorMessage.includes('Permisos insuficientes')) {
-        toast.error(errorMessage, {
-          description:
-            '💡 El administrador debe ejecutar el archivo SETUP_COMPLETE_CLAIM_DOCUMENTS.sql en Supabase.',
-          duration: 6000,
-        });
-      } else {
-        toast.error('Error al subir el documento: ' + errorMessage);
-      }
-    } finally {
-      setUploading(false);
-      event.target.value = '';
-      // Resetear selector al valor por defecto
-      setSelectedDocumentType('other');
-    }
-  };
 
   const handleReplaceDocument = async (docId: string, oldFileUrl: string, documentType: string) => {
     // Crear input de archivo dinámicamente
@@ -577,62 +444,8 @@ export function ClaimCustomerDocuments({
               </div>
             </div>
 
-            {/* Controles de subida solo para clientes */}
-            {currentUserRole === 'customer' && (
-              <div className="flex flex-col sm:flex-row gap-4 items-end">
-                <div className="w-full sm:w-1/3">
-                  <label className="text-sm font-medium mb-2 block">Tipo de Documento</label>
-                  <Select
-                    value={selectedDocumentType}
-                    onValueChange={(value: any) => setSelectedDocumentType(value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tipo..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(DOCUMENT_TYPE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Controles de subida eliminados para clientes - ahora solo usan el bloque de solicitud del agente */}
 
-                <div className="w-full sm:w-2/3">
-                  <div className="relative">
-                    <input
-                      type="file"
-                      id="file-upload"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleFileUpload}
-                      disabled={uploading}
-                    />
-                    <label htmlFor="file-upload" className="w-full">
-                      <Button
-                        className="w-full cursor-pointer"
-                        disabled={uploading}
-                        asChild
-                      >
-                        <span>
-                          {uploading ? (
-                            <>
-                              <span className="animate-spin mr-2">⏳</span> Subiendo...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Subir Documento
-                            </>
-                          )}
-                        </span>
-                      </Button>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </CardHeader>
         <CardContent>
