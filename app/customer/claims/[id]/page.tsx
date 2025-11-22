@@ -2,7 +2,30 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-// ... existing imports
+import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/components/auth/auth-provider';
+import { ProtectedRoute } from '@/components/auth/protected-route';
+import type { Claim } from '@/lib/types/database';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
+import { ClaimCustomerDocuments } from '@/components/claims/claim-customer-documents';
+import { ClaimCommunication } from '@/components/claims/claim-communication';
+import { 
+  ArrowLeft, 
+  AlertTriangle, 
+  Calendar, 
+  MapPin, 
+  DollarSign, 
+  CheckCircle, 
+  Car, 
+  MessageCircle, 
+  FileText, 
+  User 
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function CustomerClaimDetailPage() {
   const params = useParams();
@@ -12,17 +35,179 @@ export default function CustomerClaimDetailPage() {
   const [claim, setClaim] = useState<Claim | null>(null);
   const [loading, setLoading] = useState(true);
   const [customerId, setCustomerId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState('details');
+  
+  // Inicializar tab desde la URL si existe
+  const initialTab = searchParams.get('tab');
+  const validTabs = ['details', 'documents', 'communication', 'status'];
+  const [activeTab, setActiveTab] = useState(
+    (initialTab && validTabs.includes(initialTab)) ? initialTab : 'details'
+  );
+  
   const supabase = createClient();
 
+  // Mantener sincronizado si cambia la URL (ej. navegación atrás/adelante)
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['details', 'documents', 'communication', 'status'].includes(tab)) {
+    if (tab && validTabs.includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
 
-  // ... existing code
+  useEffect(() => {
+    const fetchClaim = async () => {
+      try {
+        if (!userProfile) return;
+
+        // Obtener el ID del cliente asociado al usuario actual
+        const { data: customerData, error: customerError } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('user_id', userProfile.id)
+          .single();
+
+        if (customerError) throw customerError;
+        setCustomerId(customerData.id);
+
+        // Obtener la reclamación
+        const { data: claimData, error: claimError } = await supabase
+          .from('claims')
+          .select(`
+            *,
+            policy:policies(*,vehicle:vehicles(*)),
+            adjuster:users!claims_adjuster_id_fkey(*)
+          `)
+          .eq('id', params.id)
+          .eq('customer_id', customerData.id)
+          .single();
+
+        if (claimError) throw claimError;
+        setClaim(claimData);
+      } catch (error) {
+        console.error('Error fetching claim:', error);
+        router.push('/customer/claims');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClaim();
+  }, [params.id, userProfile, router, supabase]);
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: {
+        label: 'Pendiente',
+        classes: 'status-badge status-pending',
+      },
+      submitted: {
+        label: 'Enviada',
+        classes: 'status-badge status-submitted',
+      },
+      under_review: {
+        label: 'En Revisión',
+        classes: 'status-badge status-under-review',
+      },
+      pending_documentation: {
+        label: 'Documentos Pendientes',
+        classes: 'status-badge status-pending',
+      },
+      waiting_approval: {
+        label: 'Esperando Aprobación',
+        classes: 'status-badge status-waiting',
+      },
+      investigating: {
+        label: 'En Investigación',
+        classes: 'status-badge status-investigating',
+      },
+      approved: {
+        label: 'Aprobada',
+        classes: 'status-badge status-approved',
+      },
+      processing_payment: {
+        label: 'Procesando Pago',
+        classes: 'status-badge status-processing',
+      },
+      rejected: {
+        label: 'Rechazada',
+        classes: 'status-badge status-denied',
+      },
+      denied: {
+        label: 'Denegada',
+        classes: 'status-badge status-denied',
+      },
+      closed: {
+        label: 'Cerrada',
+        classes: 'status-badge status-closed',
+      },
+      paid: {
+        label: 'Pagada',
+        classes: 'status-badge status-paid',
+      },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || {
+      label: status,
+      classes: 'status-badge status-submitted',
+    };
+
+    return <span className={config.classes}>{config.label}</span>;
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    const priorityConfig = {
+      low: { label: 'Baja', classes: 'priority-badge priority-low' },
+      medium: {
+        label: 'Media',
+        classes: 'priority-badge priority-medium',
+      },
+      high: { label: 'Alta', classes: 'priority-badge priority-high' },
+      urgent: {
+        label: 'Urgente',
+        classes: 'priority-badge priority-urgent',
+      },
+    };
+
+    const config = priorityConfig[priority as keyof typeof priorityConfig] || {
+      label: priority,
+      classes: 'priority-badge priority-low',
+    };
+    return <span className={config.classes}>{config.label}</span>;
+  };
+
+  const getClaimTypeLabel = (type: string) => {
+    const types = {
+      Colisión: 'Colisión',
+      Robo: 'Robo',
+      Vandalismo: 'Vandalismo',
+      Incendio: 'Incendio',
+      'Daño por clima': 'Daño por clima',
+      'Daño por granizo': 'Daño por granizo',
+      Otros: 'Otros',
+      collision: 'Colisión',
+      theft: 'Robo',
+      vandalism: 'Vandalismo',
+      fire: 'Incendio',
+      flood: 'Daño por clima',
+      hail: 'Daño por granizo',
+      glass: 'Otros',
+      other: 'Otros',
+    };
+    return types[type as keyof typeof types] || type;
+  };
+
+  if (loading) {
+    return (
+      <ProtectedRoute allowedRoles={['customer']}>
+        <div className="container mx-auto py-8 px-4 flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  if (!claim) {
+    return null;
+  }
 
   return (
     <ProtectedRoute allowedRoles={['customer']}>
