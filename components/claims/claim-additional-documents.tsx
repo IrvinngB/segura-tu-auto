@@ -48,14 +48,13 @@ export function ClaimAdditionalDocuments({
     try {
       setLoading(true);
       
-      // 1. Buscar la última comunicación de tipo "Docs requeridos"
+      // 1. Buscar TODAS las comunicaciones de tipo "Docs requeridos"
       const { data: communications, error: commError } = await supabase
         .from('communications')
         .select('*')
         .eq('claim_id', claimId)
         .ilike('subject', '%Docs requeridos%')
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .order('created_at', { ascending: true }); // Orden cronológico para procesar en orden
 
       if (commError) throw commError;
 
@@ -64,29 +63,33 @@ export function ClaimAdditionalDocuments({
         return;
       }
 
-      const latestRequest = communications[0];
       setHasRequest(true);
 
-      // 2. Parsear el contenido para extraer la lista de documentos
-      const content = latestRequest.content;
-      const lines = content.split('\n');
-      const docLabels: string[] = [];
+      // 2. Parsear el contenido de TODAS las comunicaciones para extraer la lista acumulada
+      const uniqueLabels = new Set<string>();
       
-      lines.forEach((line: string) => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
-          const label = trimmed.substring(1).trim();
-          if (label) docLabels.push(label);
-        }
+      communications.forEach(comm => {
+        const content = comm.content;
+        const lines = content.split('\n');
+        
+        lines.forEach((line: string) => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+            const label = trimmed.substring(1).trim();
+            if (label) uniqueLabels.add(label);
+          }
+        });
       });
 
-      if (docLabels.length === 0) {
-        console.warn('No se pudieron extraer documentos de la comunicación:', latestRequest.id);
-        setHasRequest(false);
-        return;
+      if (uniqueLabels.size === 0) {
+        console.warn('No se pudieron extraer documentos de las comunicaciones');
+        if (communications.length > 0 && uniqueLabels.size === 0) {
+             setHasRequest(false);
+             return;
+        }
       }
 
-      setRequestedDocs(docLabels.map(label => ({ label })));
+      setRequestedDocs(Array.from(uniqueLabels).map(label => ({ label })));
 
     } catch (error) {
       console.error('Error fetching additional requirements:', error);
