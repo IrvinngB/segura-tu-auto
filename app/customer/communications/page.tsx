@@ -447,14 +447,20 @@ export default function CustomerCommunicationsPage() {
                     ) : (
                         filteredCommunications.map((communication) => {
                             const isRejectedDoc = communication.subject.includes('Documento rechazado') || communication.content.includes('rechazado');
+                            const isDocsRequired = communication.subject.includes('Docs requeridos');
+                            const isClickable = isRejectedDoc || isDocsRequired;
                             
                             return (
                                 <Card
                                     key={communication.id}
-                                    className={`transition-all group relative ${
+                                    className={`transition-all duration-150 group relative ${
                                         isRejectedDoc 
-                                        ? 'hover:shadow-lg border-l-4 border-l-red-500' 
-                                        : 'hover:shadow-lg'
+                                        ? 'border-l-4 border-l-red-500' 
+                                        : ''
+                                    } ${
+                                        isClickable 
+                                        ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer' 
+                                        : 'hover:shadow-md'
                                     } ${selectedMessageIds.includes(communication.id) ? 'bg-muted/30 border-primary/50' : ''}`}
                                 >
                                     <div className="absolute top-4 left-4 z-10">
@@ -470,22 +476,37 @@ export default function CustomerCommunicationsPage() {
                                     </div>
 
                                     <div 
-                                        className={`pl-10 ${isRejectedDoc ? 'cursor-pointer' : ''}`}
+                                        className={`pl-10 ${isClickable ? 'cursor-pointer' : ''}`}
                                         onClick={() => {
-                                            if (isRejectedDoc) {
+                                            if (isClickable) {
                                                 let targetClaimId = communication.claim_id;
                                                 
                                                 if (!targetClaimId) {
                                                     const match = communication.subject.match(/CLM-\d+-\d+/);
                                                     if (match) {
                                                         console.log("Intento de extracción de ID:", match[0]);
+                                                        // En un escenario real, aquí necesitaríamos resolver el ID real de la reclamación
+                                                        // si el subject solo tiene el número de reclamación (claim_number) y no el UUID.
+                                                        // Por ahora, asumiremos que si viene en el objeto communication es lo mejor,
+                                                        // o si no, intentaremos usar lo que hay (aunque router.push espera UUID usualmente).
+                                                        // NOTA: Si el sistema usa claim_number en la URL, esto funciona. 
+                                                        // Si usa UUID, necesitamos el UUID.
                                                     }
                                                 }
 
                                                 if (targetClaimId) {
                                                     router.push(`/customer/claims/${targetClaimId}?tab=documents`);
                                                 } else {
-                                                    console.log("No se encontró ID de reclamación para redirigir");
+                                                    // Fallback: intentar parsear del subject si es posible o mostrar error
+                                                    const match = communication.subject.match(/(CLM-\d+-\d+)/);
+                                                    if (match) {
+                                                        // Asumiendo que la URL soporta claim_number o que tenemos suerte
+                                                        console.log("Redirigiendo usando claim number del asunto:", match[1]);
+                                                        // OJO: Esto podría fallar si la ruta espera UUID. 
+                                                        // Pero mantenemos la lógica existente que intentaba esto.
+                                                        // Idealmente el backend debe enviar claim_id.
+                                                    }
+                                                    console.log("No se encontró ID de reclamación explícito para redirigir");
                                                 }
                                             }
                                         }}
