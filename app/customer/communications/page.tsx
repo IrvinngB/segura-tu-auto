@@ -375,7 +375,7 @@ export default function CustomerCommunicationsPage() {
                     <Info className="h-4 w-4 text-blue-600" />
                     <AlertTitle className="text-blue-800 font-semibold">Nota Importante</AlertTitle>
                     <AlertDescription className="text-blue-700">
-                        Puedes hacer clic en los mensajes de "Documento rechazado" para ir directamente a la reclamación en la pestaña "Documentos y evidencia" y subir el documento corregido.
+                        Puedes hacer clic en los mensajes de "Documento rechazado" o "Docs requeridos" para ir directamente a la reclamación en la pestaña "Documentos y evidencia" y gestionar tus documentos.
                     </AlertDescription>
                 </Alert>
 

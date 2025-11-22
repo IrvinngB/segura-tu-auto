@@ -68,7 +68,7 @@ export function ClaimAdditionalDocuments({
       const lines = content.split('\n');
       const docLabels: string[] = [];
       
-      lines.forEach(line => {
+      lines.forEach((line: string) => {
         const trimmed = line.trim();
         if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
           const label = trimmed.substring(1).trim();
