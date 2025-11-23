@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { Upload, FileText, Download, Eye, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Upload, FileText, Download, Eye, AlertCircle, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -67,6 +67,7 @@ export function ClaimCustomerDocuments({
   const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [updatingDocId, setUpdatingDocId] = useState<string | null>(null);
 
 
   const supabase = createClient();
@@ -275,10 +276,6 @@ export function ClaimCustomerDocuments({
     input.click();
   };
 
-  // ... (updateDocumentStatus and getStatusBadge remain same)
-
-  // ... inside return ...
-
 
 
   const updateDocumentStatus = async (
@@ -286,6 +283,7 @@ export function ClaimCustomerDocuments({
     newStatus: 'approved' | 'rejected',
     notes?: string
   ) => {
+    setUpdatingDocId(docId);
     try {
       const response = await fetch('/api/claim-documents/update-status', {
         method: 'POST',
@@ -318,7 +316,9 @@ export function ClaimCustomerDocuments({
       fetchDocuments();
     } catch (error) {
       console.error('Error updating document status:', error);
-      toast.error('Error al actualizar el estado');
+      toast.error('Error al actualizar el estado. Intente nuevamente.');
+    } finally {
+      setUpdatingDocId(null);
     }
   };
 
@@ -447,10 +447,12 @@ export function ClaimCustomerDocuments({
           ) : (
             <div className="space-y-3">
               {documents.map(doc => {
+                const isUpdating = updatingDocId === doc.id;
+                
                 return (
                   <div
                     key={doc.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:border-gray-700 dark:hover:bg-gray-800/50 transition-colors"
+                    className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:border-gray-700 dark:hover:bg-gray-800/50 transition-colors ${isUpdating ? 'opacity-70 animate-pulse' : ''}`}
                   >
                     <div className="flex items-center gap-3 flex-1">
                       <FileText className="h-8 w-8 text-primary shrink-0" />
@@ -480,7 +482,14 @@ export function ClaimCustomerDocuments({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {getStatusBadge(doc.status)}
+                      {isUpdating ? (
+                        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Actualizando...
+                        </Badge>
+                      ) : (
+                        getStatusBadge(doc.status)
+                      )}
 
                       <Button
                         size="sm"
@@ -510,6 +519,7 @@ export function ClaimCustomerDocuments({
                           }
                         }}
                         className="dark:hover:bg-gray-700"
+                        disabled={isUpdating}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -543,6 +553,7 @@ export function ClaimCustomerDocuments({
                           }
                         }}
                         className="dark:hover:bg-gray-700"
+                        disabled={isUpdating}
                       >
                         <Download className="h-4 w-4" />
                       </Button>
@@ -554,7 +565,7 @@ export function ClaimCustomerDocuments({
                           variant="ghost"
                           onClick={() => handleReplaceDocument(doc)}
                           className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-gray-700"
-                          disabled={uploading}
+                          disabled={uploading || isUpdating}
                           title="Reemplazar documento"
                         >
                           <Upload className="h-4 w-4" />
@@ -573,6 +584,7 @@ export function ClaimCustomerDocuments({
                               variant="ghost"
                               onClick={() => updateDocumentStatus(doc.id, 'approved')}
                               className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-gray-700"
+                              disabled={isUpdating}
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
@@ -584,6 +596,7 @@ export function ClaimCustomerDocuments({
                                 updateDocumentStatus(doc.id, 'rejected', notes || undefined);
                               }}
                               className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-gray-700"
+                              disabled={isUpdating}
                             >
                               <AlertCircle className="h-4 w-4" />
                             </Button>
