@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import { PriorityBadge } from "@/components/ui/priority-badge";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -216,16 +217,7 @@ export function AgentQuoteManagement() {
         return "low";
     };
 
-    const getPriorityBadge = (priority: string) => {
-        switch (priority) {
-            case "high":
-                return <Badge variant="destructive">Alta Prioridad</Badge>;
-            case "medium":
-                return <Badge variant="secondary">Prioridad Media</Badge>;
-            default:
-                return <Badge variant="outline">Prioridad Baja</Badge>;
-        }
-    };
+
 
     if (loading) {
         return (
@@ -285,9 +277,7 @@ export function AgentQuoteManagement() {
                                             </CardDescription>
                                         </div>
                                         <div className="flex gap-2">
-                                            {getPriorityBadge(
-                                                getPriorityLevel(quote)
-                                            )}
+                                            <PriorityBadge priority={getPriorityLevel(quote)} />
                                             {getStatusBadge(quote.status)}
                                         </div>
                                     </div>

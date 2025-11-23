@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import {
   Select,
   SelectContent,
@@ -366,26 +367,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
     return <span className={config.classes}>{config.label}</span>;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { label: 'Baja', classes: 'priority-badge priority-low' },
-      medium: {
-        label: 'Media',
-        classes: 'priority-badge priority-medium',
-      },
-      high: { label: 'Alta', classes: 'priority-badge priority-high' },
-      urgent: {
-        label: 'Urgente',
-        classes: 'priority-badge priority-urgent',
-      },
-    };
 
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || {
-      label: priority,
-      classes: 'priority-badge priority-low',
-    };
-    return <span className={config.classes}>{config.label}</span>;
-  };
 
   const getClaimTypeLabel = (type: string) => {
     // Los tipos en la base de datos ya están en español
@@ -636,7 +618,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                     <TableCell className="text-center">{getStatusBadge(claim.status, claim.id)}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex flex-col gap-1 items-center">
-                        {getPriorityBadge(claim.priority)}
+                        <PriorityBadge priority={claim.priority} />
                         {claim.injury_involved && (
                           <Badge variant="destructive" className="text-xs">
                             <AlertTriangle className="h-3 w-3" />

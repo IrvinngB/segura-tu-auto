@@ -8,6 +8,7 @@ import { ProtectedRoute } from '@/components/auth/protected-route';
 import type { Claim, ClaimCustomerDocument } from '@/lib/types/database';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { ClaimCustomerDocuments } from '@/components/claims/claim-customer-documents';
@@ -164,26 +165,7 @@ export default function CustomerClaimDetailPage() {
     return <span className={config.classes}>{config.label}</span>;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { label: 'Baja', classes: 'priority-badge priority-low' },
-      medium: {
-        label: 'Media',
-        classes: 'priority-badge priority-medium',
-      },
-      high: { label: 'Alta', classes: 'priority-badge priority-high' },
-      urgent: {
-        label: 'Urgente',
-        classes: 'priority-badge priority-urgent',
-      },
-    };
 
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || {
-      label: priority,
-      classes: 'priority-badge priority-low',
-    };
-    return <span className={config.classes}>{config.label}</span>;
-  };
 
   const getClaimTypeLabel = (type: string) => {
     const types = {
@@ -238,7 +220,7 @@ export default function CustomerClaimDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             {getStatusBadge(claim.status)}
-            {getPriorityBadge(claim.priority)}
+            <PriorityBadge priority={claim.priority} />
           </div>
         </div>
 

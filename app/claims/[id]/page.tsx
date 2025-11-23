@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DamageAssessmentForm } from '@/components/claims/damage-assessment-form';
 import { ClaimProcessing } from '@/components/claims/claim-processing';
@@ -500,26 +501,7 @@ export default function ClaimDetailPage() {
     return <span className={config.classes}>{config.label}</span>;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { label: 'Baja', classes: 'priority-badge priority-low' },
-      medium: {
-        label: 'Media',
-        classes: 'priority-badge priority-medium',
-      },
-      high: { label: 'Alta', classes: 'priority-badge priority-high' },
-      urgent: {
-        label: 'Urgente',
-        classes: 'priority-badge priority-urgent',
-      },
-    };
 
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || {
-      label: priority,
-      classes: 'priority-badge priority-low',
-    };
-    return <span className={config.classes}>{config.label}</span>;
-  };
 
   const getClaimTypeLabel = (type: string) => {
     const types = {
@@ -654,7 +636,7 @@ export default function ClaimDetailPage() {
           </div>
           <div className="flex items-center gap-2 justify-center">
             {getStatusBadge(claim.status)}
-            {getPriorityBadge(claim.priority)}
+            <PriorityBadge priority={claim.priority} />
             {claim.injury_involved && (
               <Badge variant="destructive">
                 <AlertTriangle className="h-3 w-3" />

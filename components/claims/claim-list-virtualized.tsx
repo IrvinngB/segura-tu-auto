@@ -4,6 +4,7 @@ import { memo, useMemo } from 'react';
 import { FixedSizeList } from 'react-window';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Eye, Settings, Calendar, Clock, AlertTriangle } from 'lucide-react';
 import type { Claim } from '@/lib/types/database';
 import { format } from 'date-fns';
@@ -50,18 +51,6 @@ const ClaimRow = memo(function ClaimRow({
     };
 
     const config = statusConfig[status] || { label: status, variant: 'outline' as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      low: { label: 'Baja', variant: 'outline' },
-      medium: { label: 'Media', variant: 'secondary' },
-      high: { label: 'Alta', variant: 'destructive' },
-      urgent: { label: 'Urgente', variant: 'destructive' },
-    };
-
-    const config = priorityConfig[priority] || { label: priority, variant: 'outline' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -121,7 +110,7 @@ const ClaimRow = memo(function ClaimRow({
         </div>
 
         <div className="flex flex-col gap-1">
-          {getPriorityBadge(claim.priority)}
+          <PriorityBadge priority={claim.priority} />
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Calendar className="h-3 w-3" />
             {format(new Date(claim.incident_date), 'dd/MM/yyyy', { locale: es })}
