@@ -462,103 +462,88 @@ export default function CustomerCommunicationsPage() {
                                         ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer' 
                                         : 'hover:shadow-md'
                                     } ${selectedMessageIds.includes(communication.id) ? 'bg-muted/30 border-primary/50' : ''}`}
-                                >
-                                    <div className="absolute top-4 left-4 z-10">
-                                        <input 
-                                            type="checkbox"
-                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                                            checked={selectedMessageIds.includes(communication.id)}
-                                            onChange={(e) => {
-                                                e.stopPropagation();
-                                                toggleSelection(communication.id);
-                                            }}
-                                        />
-                                    </div>
-
-                                    <div 
-                                        className={`pl-10 ${isClickable ? 'cursor-pointer' : ''}`}
-                                        onClick={() => {
-                                            if (isClickable) {
-                                                let targetClaimId = communication.claim_id;
-                                                
-                                                if (!targetClaimId) {
-                                                    const match = communication.subject.match(/CLM-\d+-\d+/);
-                                                    if (match) {
-                                                        console.log("Intento de extracción de ID:", match[0]);
-                                                        // En un escenario real, aquí necesitaríamos resolver el ID real de la reclamación
-                                                        // si el subject solo tiene el número de reclamación (claim_number) y no el UUID.
-                                                        // Por ahora, asumiremos que si viene en el objeto communication es lo mejor,
-                                                        // o si no, intentaremos usar lo que hay (aunque router.push espera UUID usualmente).
-                                                        // NOTA: Si el sistema usa claim_number en la URL, esto funciona. 
-                                                        // Si usa UUID, necesitamos el UUID.
-                                                    }
-                                                }
-
-                                                if (targetClaimId) {
-                                                    router.push(`/customer/claims/${targetClaimId}?tab=documents`);
-                                                } else {
-                                                    // Fallback: intentar parsear del subject si es posible o mostrar error
-                                                    const match = communication.subject.match(/(CLM-\d+-\d+)/);
-                                                    if (match) {
-                                                        // Asumiendo que la URL soporta claim_number o que tenemos suerte
-                                                        console.log("Redirigiendo usando claim number del asunto:", match[1]);
-                                                        // OJO: Esto podría fallar si la ruta espera UUID. 
-                                                        // Pero mantenemos la lógica existente que intentaba esto.
-                                                        // Idealmente el backend debe enviar claim_id.
-                                                    }
-                                                    console.log("No se encontró ID de reclamación explícito para redirigir");
+                                    onClick={() => {
+                                        if (isClickable) {
+                                            let targetClaimId = communication.claim_id;
+                                            
+                                            if (!targetClaimId) {
+                                                const match = communication.subject.match(/CLM-\d+-\d+/);
+                                                if (match) {
+                                                    console.log("Intento de extracción de ID:", match[0]);
                                                 }
                                             }
-                                        }}
-                                    >
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    {getCommunicationIcon(
-                                                        communication.communication_type
-                                                    )}
-                                                    <div>
-                                                        <CardTitle className="text-lg font-semibold">
-                                                            {communication.subject}
-                                                        </CardTitle>
-                                                        <CardDescription className="flex items-center gap-2 mt-1">
-                                                            <Calendar className="h-4 w-4" />
-                                                            {format(
-                                                                new Date(
-                                                                    communication.created_at
-                                                                ),
-                                                                "dd/MM/yyyy HH:mm",
-                                                                { locale: es }
-                                                            )}
-                                                        </CardDescription>
-                                                    </div>
-                                                </div>
+
+                                            if (targetClaimId) {
+                                                router.push(`/customer/claims/${targetClaimId}?tab=documents`);
+                                            } else {
+                                                const match = communication.subject.match(/(CLM-\d+-\d+)/);
+                                                if (match) {
+                                                    console.log("Redirigiendo usando claim number del asunto:", match[1]);
+                                                }
+                                                console.log("No se encontró ID de reclamación explícito para redirigir");
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <CardHeader className="pb-2">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
-                                                    {getDirectionBadge(
-                                                        communication.direction
-                                                    )}
-                                                    {getStatusBadge(communication.status)}
-                                                    
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-muted-foreground hover:text-destructive ml-2"
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                                        checked={selectedMessageIds.includes(communication.id)}
+                                                        onChange={() => {}} // Controlled by onClick
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            handleDelete([communication.id]);
+                                                            toggleSelection(communication.id);
                                                         }}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                                    />
+                                                    {communication.communication_type === 'email' ? (
+                                                        <Mail className="w-5 h-5 text-white/80" />
+                                                    ) : (
+                                                        getCommunicationIcon(communication.communication_type)
+                                                    )}
+                                                    <h2 className="font-semibold text-lg">
+                                                        {communication.subject}
+                                                    </h2>
                                                 </div>
+                                                <CardDescription className="flex items-center gap-2 mt-1 pl-6">
+                                                    <Calendar className="h-4 w-4" />
+                                                    {format(
+                                                        new Date(
+                                                            communication.created_at
+                                                        ),
+                                                        "dd/MM/yyyy HH:mm",
+                                                        { locale: es }
+                                                    )}
+                                                </CardDescription>
                                             </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                                {communication.content}
-                                            </p>
-                                        </CardContent>
-                                    </div>
+                                            <div className="flex items-center gap-2">
+                                                {getDirectionBadge(
+                                                    communication.direction
+                                                )}
+                                                {getStatusBadge(communication.status)}
+                                                
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive ml-2"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete([communication.id]);
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                            {communication.content}
+                                        </p>
+                                    </CardContent>
                                 </Card>
                             );
                         })
