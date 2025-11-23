@@ -19,6 +19,7 @@ interface ClaimAdditionalDocumentsProps {
   onUploadComplete?: (doc: ClaimCustomerDocument) => void;
   documents?: ClaimCustomerDocument[];
   currentUserRole?: string;
+  onRefresh?: () => void;
 }
 
 interface RequestedDocument {
@@ -31,6 +32,7 @@ export function ClaimAdditionalDocuments({
   onUploadComplete,
   documents = [],
   currentUserRole,
+  onRefresh,
 }: ClaimAdditionalDocumentsProps) {
   const [loading, setLoading] = useState(true);
   const [requestedDocs, setRequestedDocs] = useState<RequestedDocument[]>([]);
@@ -157,6 +159,8 @@ export function ClaimAdditionalDocuments({
       
       // Recargar para actualizar estado
       await fetchRequirements();
+      if (onRefresh) onRefresh();
+      
       if (onUploadComplete && insertedDoc) {
         onUploadComplete(insertedDoc);
       }

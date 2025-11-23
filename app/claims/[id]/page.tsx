@@ -47,6 +47,13 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DocumentRequestModal } from '@/components/claims/document-request-modal';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import type { ClaimCustomerDocument } from '@/lib/types/database';
 
 export default function ClaimDetailPage() {
   const params = useParams();
@@ -56,6 +63,8 @@ export default function ClaimDetailPage() {
   const [claim, setClaim] = useState<Claim | null>(null);
   const [assessments, setAssessments] = useState<DamageAssessment[]>([]);
   const [documents, setDocuments] = useState<ClaimDocument[]>([]);
+  const [fullCustomerDocuments, setFullCustomerDocuments] = useState<ClaimCustomerDocument[]>([]);
+  const [communications, setCommunications] = useState<any[]>([]);
   const [customerDocumentsCount, setCustomerDocumentsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
@@ -188,16 +197,30 @@ export default function ClaimDetailPage() {
       if (documentError) throw documentError;
       setDocuments(documentData || []);
 
-      // Fetch customer documents count
+      // Fetch customer documents (full data)
       const { data: customerDocData, error: customerDocError } = await supabase
         .from('claim_customer_documents')
-        .select('id')
+        .select('*')
         .eq('claim_id', params.id);
 
       if (customerDocError) {
-        console.error('Error fetching customer documents count:', customerDocError);
+        console.error('Error fetching customer documents:', customerDocError);
       } else {
+        setFullCustomerDocuments(customerDocData || []);
         setCustomerDocumentsCount(customerDocData?.length || 0);
+      }
+
+      // Fetch communications to check for requested documents
+      const { data: commData, error: commError } = await supabase
+        .from('communications')
+        .select('*')
+        .eq('claim_id', params.id)
+        .ilike('subject', '%Docs requeridos%');
+
+      if (commError) {
+        console.error('Error fetching communications:', commError);
+      } else {
+        setCommunications(commData || []);
       }
     } catch (error) {
       console.error('Error fetching claim details:', error);
@@ -510,6 +533,57 @@ export default function ClaimDetailPage() {
     return types[type as keyof typeof types] || type;
   };
 
+  // Lógica para verificar si se puede asignar a evaluador técnico
+  const getAssignmentStatus = () => {
+    // 1. Hay algún documento base pendiente de revisión?
+    const hasPendingBaseDocs = fullCustomerDocuments
+      .filter(doc => !doc.is_extra_document)
+      .some(doc => doc.status === 'pending');
+
+    // 2. Hay algún documento extra pendiente de revisión?
+    const hasPendingExtraDocs = fullCustomerDocuments
+      .filter(doc => doc.is_extra_document)
+      .some(doc => doc.status === 'pending');
+
+    // 3. Hay alguna solicitud de documentos adicionales que siga "Pendiente de carga"?
+    // Parsear labels de comunicaciones
+    const uniqueLabels = new Set<string>();
+    communications.forEach(comm => {
+      const lines = comm.content.split('\n');
+      lines.forEach((line: string) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+          const label = trimmed.substring(1).trim();
+          if (label) uniqueLabels.add(label);
+        }
+      });
+    });
+
+    const requestedLabels = Array.from(uniqueLabels);
+    const hasPendingUploads = requestedLabels.some(label => {
+      // Verificar si existe un documento para este label
+      const docsForLabel = fullCustomerDocuments.filter(d => {
+        if (d.is_extra_document && d.extra_document_label === label) return true;
+        // Fallback legacy
+        const normalizedLabel = label.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normalizedName = d.file_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normalizedName.includes(normalizedLabel);
+      });
+      return docsForLabel.length === 0; // Si es 0, falta subirlo
+    });
+
+    const isBlocked = hasPendingBaseDocs || hasPendingExtraDocs || hasPendingUploads;
+    
+    return {
+      isBlocked,
+      reason: isBlocked 
+        ? 'Debe revisar y aprobar/rechazar todos los documentos (incluyendo los documentos solicitados) antes de asignar a un Evaluador Técnico.' 
+        : null
+    };
+  };
+
+  const assignmentStatus = getAssignmentStatus();
+
   if (loading) {
     return (
       <ProtectedRoute allowedRoles={['admin', 'agent', 'adjuster']}>
@@ -662,13 +736,27 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'under_review' && (
                       <>
-                        <Button
-                          onClick={() => updateClaimStatus('investigating')}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Search className="h-4 w-4 mr-2" />
-                          Asignar a Evaluador Técnico
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span tabIndex={0}> {/* Wrapper para que el tooltip funcione en botón disabled */}
+                                <Button
+                                  onClick={() => updateClaimStatus('investigating')}
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                  disabled={assignmentStatus.isBlocked}
+                                >
+                                  <Search className="h-4 w-4 mr-2" />
+                                  Asignar a Evaluador Técnico
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {assignmentStatus.isBlocked && (
+                              <TooltipContent>
+                                <p className="max-w-xs text-sm">{assignmentStatus.reason}</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                         <DocumentRequestModal
                           claimId={Array.isArray(params.id) ? params.id[0] : params.id}
                           onDocumentRequested={fetchClaimDetails}
