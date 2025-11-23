@@ -374,17 +374,14 @@ export default function CustomerClaimDetailPage() {
                 customerId={customerId}
                 currentUserRole="customer"
                 documents={documents}
-                onRefresh={() => {
+                onRefresh={async () => {
                   // Re-fetch only documents or full claim
-                  const fetchDocs = async () => {
-                    const { data } = await supabase
-                      .from('claim_customer_documents')
-                      .select('*')
-                      .eq('claim_id', claim.id)
-                      .order('upload_date', { ascending: false });
-                    setDocuments(data || []);
-                  };
-                  fetchDocs();
+                  const { data } = await supabase
+                    .from('claim_customer_documents')
+                    .select('*')
+                    .eq('claim_id', claim.id)
+                    .order('upload_date', { ascending: false });
+                  setDocuments(data || []);
                 }}
               />
             </div>

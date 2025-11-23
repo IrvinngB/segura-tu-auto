@@ -261,12 +261,8 @@ export function ClaimCustomerDocuments({
         toast.success('Documento actualizado exitosamente');
 
         // Trigger refresh
-        onRefresh();
+        await onRefresh();
         
-        // Recargar datos con delay adicional por si acaso
-        setTimeout(() => {
-          onRefresh();
-        }, 2000);
       } catch (error) {
         console.error('Error replacing document:', error);
         toast.error('Error al actualizar el documento: ' + (error as Error).message);
@@ -277,8 +273,6 @@ export function ClaimCustomerDocuments({
 
     input.click();
   };
-
-
 
   const updateDocumentStatus = async (
     docId: string,
@@ -315,7 +309,7 @@ export function ClaimCustomerDocuments({
       }
 
       toast.success(`Documento ${newStatus === 'approved' ? 'aprobado' : 'rechazado'}`);
-      onRefresh();
+      await onRefresh();
     } catch (error) {
       console.error('Error updating document status:', error);
       toast.error('Error al actualizar el estado. Intente nuevamente.');
