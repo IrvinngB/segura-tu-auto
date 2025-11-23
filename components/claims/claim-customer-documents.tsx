@@ -116,7 +116,7 @@ export function ClaimCustomerDocuments({
 
 
 
-  const handleReplaceDocument = async (docId: string, oldFileUrl: string, documentType: string) => {
+  const handleReplaceDocument = async (doc: ClaimCustomerDocument) => {
     // Crear input de archivo dinámicamente
     const input = document.createElement('input');
     input.type = 'file';
@@ -144,20 +144,29 @@ export function ClaimCustomerDocuments({
 
       try {
         console.log('🔄 Iniciando reemplazo de documento:', {
-          docId,
-          oldFileUrl,
-          documentType,
+          docId: doc.id,
+          oldFileUrl: doc.file_url,
+          documentType: doc.document_type,
+          isExtra: doc.is_extra_document,
           newFileName: file.name,
           newFileSize: file.size,
         });
 
         // Obtener extensión del archivo nuevo
-        const fileExt = file.name.split('.').pop();
+        const fileExt = file.name.split('.').pop() || 'pdf';
 
-        // Generar nombre limpio usando la misma función centralizada
-        const newFileName = generateCleanFileName(documentType, fileExt || 'pdf');
+        // Generar nombre limpio
+        let newFileName;
+        if (doc.is_extra_document && doc.extra_document_label) {
+          // Lógica para documentos extra (similar a ClaimAdditionalDocuments)
+          const cleanLabel = doc.extra_document_label.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          const timestamp = Date.now();
+          newFileName = `extra_${cleanLabel}_${timestamp}.${fileExt}`;
+        } else {
+          // Lógica estándar
+          newFileName = generateCleanFileName(doc.document_type, fileExt);
+        }
 
-        console.log('✅ REPLACE - Tipo documento:', documentType);
         console.log('✅ REPLACE - Archivo generado:', newFileName);
         const storagePath = `drafts/${newFileName}`;
 
@@ -180,15 +189,12 @@ export function ClaimCustomerDocuments({
         } = supabase.storage.from('clientes-adjuntos').getPublicUrl(storagePath);
 
         // Verificar que el documento existe antes de actualizar
-        console.log('🔍 Verificando existencia del documento con ID:', docId);
+        console.log('🔍 Verificando existencia del documento con ID:', doc.id);
         const { data: existingDoc, error: checkError } = await supabase
           .from('claim_customer_documents')
           .select('*')
-          .eq('id', docId)
+          .eq('id', doc.id)
           .single();
-
-        console.log('📋 Documento existente:', existingDoc);
-        console.log('❌ Error de verificación:', checkError);
 
         if (checkError || !existingDoc) {
           throw new Error(
@@ -197,23 +203,16 @@ export function ClaimCustomerDocuments({
         }
 
         // Actualizar el documento en la base de datos
-        console.log('📝 Iniciando actualización en BD con datos:', {
-          docId,
-          newFileName,
-          newUrl: publicUrl,
-          fileSize: file.size,
-          mimeType: file.type,
-        });
-
+        console.log('📝 Iniciando actualización en BD...');
+        
         // Usar API endpoint para bypasear RLS
-        console.log('🔄 Llamando API para actualizar documento...');
         const response = await fetch('/api/documents/replace', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            docId,
+            docId: doc.id,
             newFileName,
             newUrl: publicUrl,
             fileSize: file.size,
@@ -222,40 +221,26 @@ export function ClaimCustomerDocuments({
         });
 
         const result = await response.json();
-        console.log('📋 Resultado de la API:', result);
 
         if (!result.success) {
           throw new Error(`Error en API: ${result.error}`);
         }
 
-        console.log('✅ Documento actualizado via API exitosamente:', {
-          docId,
-          newFileName,
-          newUrl: publicUrl,
-          updatedRecord: result.data,
-        });
-
         // Eliminar el archivo anterior del storage
         try {
-          console.log('🗑️ Intentando eliminar archivo anterior:', oldFileUrl);
-          const oldUrlParts = oldFileUrl.split('/');
+          console.log('🗑️ Intentando eliminar archivo anterior:', doc.file_url);
+          const oldUrlParts = doc.file_url.split('/');
           const bucketIndex = oldUrlParts.findIndex(part => part === 'clientes-adjuntos');
 
           if (bucketIndex !== -1 && bucketIndex < oldUrlParts.length - 1) {
             const oldFilePath = oldUrlParts.slice(bucketIndex + 1).join('/');
-            console.log('📂 Path del archivo anterior:', oldFilePath);
-
             const { error: deleteError } = await supabase.storage
               .from('clientes-adjuntos')
               .remove([oldFilePath]);
 
             if (deleteError) {
               console.warn('⚠️ Error eliminando archivo anterior:', deleteError);
-            } else {
-              console.log('✅ Archivo anterior eliminado exitosamente');
             }
-          } else {
-            console.warn('⚠️ No se pudo extraer el path del archivo anterior');
           }
         } catch (cleanupError) {
           console.warn('⚠️ Error en cleanup:', cleanupError);
@@ -264,22 +249,19 @@ export function ClaimCustomerDocuments({
         toast.success('Documento actualizado exitosamente');
 
         // Forzar actualización del estado local inmediatamente
-        console.log('🔄 Actualizando estado local...');
         setDocuments(prevDocs =>
-          prevDocs.map(doc =>
-            doc.id === docId
-              ? { ...doc, file_name: newFileName, file_url: publicUrl, status: 'pending' as const }
-              : doc
+          prevDocs.map(d =>
+            d.id === doc.id
+              ? { ...d, file_name: newFileName, file_url: publicUrl, status: 'pending' as const }
+              : d
           )
         );
 
-        // Recargar documentos inmediatamente
-        console.log('🔄 Recargando lista de documentos...');
+        // Recargar documentos
         await fetchDocuments();
-
-        // Recargar datos con delay adicional para asegurar que la BD esté actualizada
+        
+        // Recargar datos con delay adicional
         setTimeout(async () => {
-          console.log('🔄 Recargando documentos después del delay...');
           await fetchDocuments();
         }, 2000);
       } catch (error) {
@@ -292,6 +274,12 @@ export function ClaimCustomerDocuments({
 
     input.click();
   };
+
+  // ... (updateDocumentStatus and getStatusBadge remain same)
+
+  // ... inside return ...
+
+
 
   const updateDocumentStatus = async (
     docId: string,
@@ -559,14 +547,12 @@ export function ClaimCustomerDocuments({
                         <Download className="h-4 w-4" />
                       </Button>
 
-                      {/* Reemplazo solo si NO es extra (o si se permite reemplazar extra desde aquí también) */}
-                      {currentUserRole === 'customer' && !doc.is_extra_document && (
+                      {/* Reemplazo para TODOS los documentos (normales y extra) si es cliente */}
+                      {currentUserRole === 'customer' && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() =>
-                            handleReplaceDocument(doc.id, doc.file_url, doc.document_type)
-                          }
+                          onClick={() => handleReplaceDocument(doc)}
                           className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-gray-700"
                           disabled={uploading}
                           title="Reemplazar documento"
