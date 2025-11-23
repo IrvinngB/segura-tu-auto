@@ -271,7 +271,7 @@ export function ClaimAdditionalDocuments({
                     icon: Clock
                   },
                   pending: {
-                    label: 'Pendiente por revisar o aprobar',
+                    label: 'Pendiente por revisar o por aprobar',
                     variant: 'default',
                     className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-200',
                     icon: Clock

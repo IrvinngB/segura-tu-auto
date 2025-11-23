@@ -327,7 +327,7 @@ export function ClaimCustomerDocuments({
 
     const config = {
       pending: {
-        label: isAgent ? 'Pendiente por revisar o aprobar' : 'Pendiente',
+        label: 'Pendiente por revisar o por aprobar',
         classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
         icon: Clock,
       },
