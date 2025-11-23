@@ -35,6 +35,8 @@ interface ClaimCustomerDocumentsProps {
   customerId: string;
   currentUserRole?: string;
   onDocumentCountChange?: (count: number) => void;
+  documents?: ClaimCustomerDocument[];
+  onRefresh?: () => void;
 }
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
@@ -72,9 +74,11 @@ export function ClaimCustomerDocuments({
   customerId,
   currentUserRole,
   onDocumentCountChange,
+  documents = [],
+  onRefresh = () => {},
 }: ClaimCustomerDocumentsProps) {
-  const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]); // Removed local state
+  // const [loading, setLoading] = useState(true); // Removed loading state (handled by parent)
   const [uploading, setUploading] = useState(false);
   const [updatingDocId, setUpdatingDocId] = useState<string | null>(null);
   
@@ -86,10 +90,9 @@ export function ClaimCustomerDocuments({
 
   const supabase = createClient();
 
-  useEffect(() => {
-    fetchDocuments();
-  }, [claimId]);
+  // Removed useEffect fetchDocuments
 
+  /*
   const fetchDocuments = async () => {
     try {
       console.log('📥 Fetching documents para claim:', claimId);
@@ -114,19 +117,13 @@ export function ClaimCustomerDocuments({
       setLoading(false);
     }
   };
+  */
 
   const handleExtraDocUpload = (newDoc: ClaimCustomerDocument) => {
     console.log('✨ Nuevo documento extra subido:', newDoc);
     
-    // Actualización optimista del estado
-    setDocuments(prev => {
-      // Evitar duplicados por si acaso
-      if (prev.some(d => d.id === newDoc.id)) return prev;
-      return [newDoc, ...prev];
-    });
-
-    // También recargar para asegurar consistencia
-    fetchDocuments();
+    // Trigger refresh
+    onRefresh();
   };
 
 
@@ -263,21 +260,12 @@ export function ClaimCustomerDocuments({
 
         toast.success('Documento actualizado exitosamente');
 
-        // Forzar actualización del estado local inmediatamente
-        setDocuments(prevDocs =>
-          prevDocs.map(d =>
-            d.id === doc.id
-              ? { ...d, file_name: newFileName, file_url: publicUrl, status: 'pending' as const }
-              : d
-          )
-        );
-
-        // Recargar documentos
-        await fetchDocuments();
+        // Trigger refresh
+        onRefresh();
         
-        // Recargar datos con delay adicional
-        setTimeout(async () => {
-          await fetchDocuments();
+        // Recargar datos con delay adicional por si acaso
+        setTimeout(() => {
+          onRefresh();
         }, 2000);
       } catch (error) {
         console.error('Error replacing document:', error);
@@ -327,7 +315,7 @@ export function ClaimCustomerDocuments({
       }
 
       toast.success(`Documento ${newStatus === 'approved' ? 'aprobado' : 'rechazado'}`);
-      fetchDocuments();
+      onRefresh();
     } catch (error) {
       console.error('Error updating document status:', error);
       toast.error('Error al actualizar el estado. Intente nuevamente.');
@@ -428,6 +416,7 @@ export function ClaimCustomerDocuments({
     return translatedName;
   };
 
+  /*
   if (loading) {
     return (
       <Card>
@@ -437,6 +426,7 @@ export function ClaimCustomerDocuments({
       </Card>
     );
   }
+  */
 
   return (
     <>
@@ -446,6 +436,7 @@ export function ClaimCustomerDocuments({
         onUploadComplete={handleExtraDocUpload}
         documents={documents}
         currentUserRole={currentUserRole}
+        onRefresh={onRefresh}
       />
 
       <Card>

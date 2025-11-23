@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/auth-provider';
 import { ProtectedRoute } from '@/components/auth/protected-route';
-import type { Claim } from '@/lib/types/database';
+import type { Claim, ClaimCustomerDocument } from '@/lib/types/database';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,6 +33,7 @@ export default function CustomerClaimDetailPage() {
   const searchParams = useSearchParams();
   const { userProfile } = useAuth();
   const [claim, setClaim] = useState<Claim | null>(null);
+  const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [customerId, setCustomerId] = useState<string>('');
   
@@ -82,6 +83,16 @@ export default function CustomerClaimDetailPage() {
 
         if (claimError) throw claimError;
         setClaim(claimData);
+
+        // Fetch documents
+        const { data: documentsData, error: documentsError } = await supabase
+          .from('claim_customer_documents')
+          .select('*')
+          .eq('claim_id', params.id)
+          .order('upload_date', { ascending: false });
+
+        if (documentsError) console.error('Error fetching documents:', documentsError);
+        setDocuments(documentsData || []);
       } catch (error) {
         console.error('Error fetching claim:', error);
         router.push('/customer/claims');
@@ -362,6 +373,19 @@ export default function CustomerClaimDetailPage() {
                 claimId={claim.id}
                 customerId={customerId}
                 currentUserRole="customer"
+                documents={documents}
+                onRefresh={() => {
+                  // Re-fetch only documents or full claim
+                  const fetchDocs = async () => {
+                    const { data } = await supabase
+                      .from('claim_customer_documents')
+                      .select('*')
+                      .eq('claim_id', claim.id)
+                      .order('upload_date', { ascending: false });
+                    setDocuments(data || []);
+                  };
+                  fetchDocs();
+                }}
               />
             </div>
           </TabsContent>

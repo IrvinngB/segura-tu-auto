@@ -111,6 +111,7 @@ export default function ClaimDetailPage() {
     message: string;
     onClose: () => void;
     type?: 'success' | 'warning' | 'error' | 'info';
+    hideButton?: boolean;
   }>({
     show: false,
     title: '',
@@ -201,7 +202,8 @@ export default function ClaimDetailPage() {
       const { data: customerDocData, error: customerDocError } = await supabase
         .from('claim_customer_documents')
         .select('*')
-        .eq('claim_id', params.id);
+        .eq('claim_id', params.id)
+        .order('upload_date', { ascending: false });
 
       if (customerDocError) {
         console.error('Error fetching customer documents:', customerDocError);
@@ -1359,6 +1361,8 @@ export default function ClaimDetailPage() {
                 customerId={claim.customer_id}
                 currentUserRole={userProfile?.role}
                 onDocumentCountChange={setCustomerDocumentsCount}
+                documents={fullCustomerDocuments}
+                onRefresh={fetchClaimDetails}
               />
             </div>
           </TabsContent>

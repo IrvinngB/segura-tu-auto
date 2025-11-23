@@ -203,7 +203,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               adjuster:users!claims_adjuster_id_fkey(*)
             `)
             .is('adjuster_id', null)
-            .eq('status', 'submitted')
+            .in('status', ['submitted', 'under_review', 'pending_documentation'])
             .order('created_at', { ascending: false }),
           fetch('/api/claims/my-claims')
         ]);
