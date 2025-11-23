@@ -335,9 +335,11 @@ export function ClaimCustomerDocuments({
   };
 
   const getStatusBadge = (status: string) => {
+    const isAgent = currentUserRole === 'agent';
+
     const config = {
       pending: {
-        label: 'Pendiente',
+        label: isAgent ? 'Pendiente por revisar o aprobar' : 'Pendiente',
         classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
         icon: Clock,
       },
