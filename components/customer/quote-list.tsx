@@ -307,7 +307,7 @@ export function QuoteList({ customerId }: QuoteListProps) {
     switch (status) {
       case 'pending':
         return (
-          <Badge variant="secondary" className="flex items-center gap-1">
+          <Badge variant="secondary">
             <Clock className="h-3 w-3" />
             Pendiente
           </Badge>
@@ -315,7 +315,7 @@ export function QuoteList({ customerId }: QuoteListProps) {
       case 'approved':
         return (
           <div className="flex items-center gap-1.5">
-            <Badge variant="default" className="flex items-center gap-1 bg-green-600">
+            <Badge variant="default" className="bg-green-600">
               <CheckCircle className="h-3 w-3" />
               Aprobada
             </Badge>
@@ -327,14 +327,14 @@ export function QuoteList({ customerId }: QuoteListProps) {
         );
       case 'rejected':
         return (
-          <Badge variant="destructive" className="flex items-center gap-1">
+          <Badge variant="destructive">
             <XCircle className="h-3 w-3" />
             Rechazada
           </Badge>
         );
       case 'converted':
         return (
-          <Badge variant="default" className="flex items-center gap-1 bg-blue-600">
+          <Badge variant="default" className="bg-blue-600">
             <FileText className="h-3 w-3" />
             Convertida a Póliza
           </Badge>

@@ -199,10 +199,10 @@ export default function CustomerCommunicationsPage() {
         return (
             <Badge
                 variant="default"
-                className={isRead 
+                className={`${isRead 
                     ? "bg-green-100 text-green-800" 
                     : "bg-orange-100 text-orange-800"
-                }
+                }`}
             >
                 {isRead ? "Leído" : "No Leído"}
             </Badge>

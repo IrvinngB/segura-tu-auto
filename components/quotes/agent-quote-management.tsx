@@ -167,7 +167,6 @@ export function AgentQuoteManagement() {
                 return (
                     <Badge
                         variant="secondary"
-                        className="flex items-center gap-1"
                     >
                         <Clock className="h-3 w-3" />
                         Pendiente
@@ -177,7 +176,7 @@ export function AgentQuoteManagement() {
                 return (
                     <Badge
                         variant="default"
-                        className="flex items-center gap-1 bg-green-600"
+                        className="bg-green-600"
                     >
                         <CheckCircle className="h-3 w-3" />
                         Aprobada
@@ -187,7 +186,6 @@ export function AgentQuoteManagement() {
                 return (
                     <Badge
                         variant="destructive"
-                        className="flex items-center gap-1"
                     >
                         <XCircle className="h-3 w-3" />
                         Rechazada
@@ -197,7 +195,7 @@ export function AgentQuoteManagement() {
                 return (
                     <Badge
                         variant="default"
-                        className="flex items-center gap-1 bg-blue-600"
+                        className="bg-blue-600"
                     >
                         <FileText className="h-3 w-3" />
                         Convertida a Póliza

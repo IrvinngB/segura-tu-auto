@@ -657,7 +657,7 @@ export default function ClaimDetailPage() {
             {getPriorityBadge(claim.priority)}
             {claim.injury_involved && (
               <Badge variant="destructive">
-                <AlertTriangle className="h-3 w-3 mr-1" />
+                <AlertTriangle className="h-3 w-3" />
                 Lesiones
               </Badge>
             )}
@@ -685,19 +685,19 @@ export default function ClaimDetailPage() {
                 <Badge variant="outline" className="ml-2">
                   {userProfile?.role === 'agent' && (
                     <>
-                      <FileText className="h-3 w-3 mr-1" />
+                      <FileText className="h-3 w-3" />
                       AGENTE
                     </>
                   )}
                   {userProfile?.role === 'adjuster' && (
                     <>
-                      <Search className="h-3 w-3 mr-1" />
+                      <Search className="h-3 w-3" />
                       AJUSTADOR
                     </>
                   )}
                   {userProfile?.role === 'admin' && (
                     <>
-                      <Shield className="h-3 w-3 mr-1" />
+                      <Shield className="h-3 w-3" />
                       ADMIN
                     </>
                   )}

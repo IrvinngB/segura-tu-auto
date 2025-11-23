@@ -639,7 +639,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                         {getPriorityBadge(claim.priority)}
                         {claim.injury_involved && (
                           <Badge variant="destructive" className="text-xs">
-                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            <AlertTriangle className="h-3 w-3" />
                             Lesiones
                           </Badge>
                         )}

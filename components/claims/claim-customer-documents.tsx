@@ -362,7 +362,7 @@ export function ClaimCustomerDocuments({
 
     return (
       <Badge className={classes}>
-        <Icon className="h-3 w-3 mr-1" />
+        <Icon className="h-3 w-3" />
         {label}
       </Badge>
     );
@@ -502,7 +502,7 @@ export function ClaimCustomerDocuments({
                     <div className="flex items-center gap-2 shrink-0">
                       {isUpdating ? (
                         <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          <Loader2 className="h-3 w-3 animate-spin" />
                           Actualizando...
                         </Badge>
                       ) : (

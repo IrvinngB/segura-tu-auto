@@ -198,7 +198,7 @@ export function ClaimAdditionalDocuments({
 
     return (
       <Badge className={classes}>
-        <Icon className="h-3 w-3 mr-1" />
+        <Icon className="h-3 w-3" />
         {label}
       </Badge>
     );
@@ -312,7 +312,7 @@ export function ClaimAdditionalDocuments({
                       )}
                       
                       <Badge variant={config.variant as any} className={config.className}>
-                        <StatusIcon className="h-3 w-3 mr-1" />
+                        <StatusIcon className="h-3 w-3" />
                         {config.label}
                       </Badge>
                     </div>
