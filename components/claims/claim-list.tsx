@@ -191,7 +191,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         data = [
           ...(myClaimsData.claims || []),
           ...(availableData.claims || [])
-        ];
+        ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       } else if (userProfile?.role === 'agent') {
         const [unassignedRes, myClaimsRes] = await Promise.all([
           supabase
@@ -213,7 +213,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         data = [
           ...(myClaimsData.claims || []),
           ...(unassignedRes.data || [])
-        ];
+        ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         error = unassignedRes.error;
       } else if (userProfile?.role === 'admin') {
         const result = await supabase
