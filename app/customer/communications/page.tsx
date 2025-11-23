@@ -41,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CommunicationsPageEffect } from "@/components/communications/communications-page-effect";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DeleteConfirmationModal } from "@/components/communications/delete-confirmation-modal";
 
 interface Communication {
     id: string;
@@ -82,6 +83,13 @@ export default function CustomerCommunicationsPage() {
         subject: "",
         content: "",
     });
+    
+    // Estados para el modal de eliminación
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
+    const [isDeletingAll, setIsDeletingAll] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const supabase = createClient();
 
     useEffect(() => {
@@ -265,54 +273,58 @@ export default function CustomerCommunicationsPage() {
         );
     };
 
-    const handleDelete = async (idsToDelete: string[]) => {
+    const handleDelete = (idsToDelete: string[]) => {
+        setItemsToDelete(idsToDelete);
+        setIsDeletingAll(false);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleDeleteAll = () => {
+        setIsDeletingAll(true);
+        setItemsToDelete([]);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
         if (!customerData) return;
         
-        // Confirmación simple
-        if (!window.confirm(`¿Estás seguro de que deseas eliminar ${idsToDelete.length} mensaje(s)?`)) {
-            return;
-        }
-
+        setIsDeleting(true);
         try {
-            const { error } = await supabase
-                .from('communications')
-                .delete()
-                .in('id', idsToDelete)
-                .eq('customer_id', customerData.id); // Seguridad extra
+            let error;
+            
+            if (isDeletingAll) {
+                const { error: deleteError } = await supabase
+                    .from('communications')
+                    .delete()
+                    .eq('customer_id', customerData.id);
+                error = deleteError;
+            } else {
+                const { error: deleteError } = await supabase
+                    .from('communications')
+                    .delete()
+                    .in('id', itemsToDelete)
+                    .eq('customer_id', customerData.id);
+                error = deleteError;
+            }
 
             if (error) throw error;
 
             // Actualizar estado local
-            setCommunications(prev => prev.filter(c => !idsToDelete.includes(c.id)));
-            setSelectedMessageIds(prev => prev.filter(id => !idsToDelete.includes(id)));
+            if (isDeletingAll) {
+                setCommunications([]);
+                setSelectedMessageIds([]);
+            } else {
+                setCommunications(prev => prev.filter(c => !itemsToDelete.includes(c.id)));
+                setSelectedMessageIds(prev => prev.filter(id => !itemsToDelete.includes(id)));
+            }
+            
+            setIsDeleteModalOpen(false);
             
         } catch (error) {
             console.error("Error deleting communications:", error);
             alert("Error al eliminar los mensajes");
-        }
-    };
-
-    const handleDeleteAll = async () => {
-        if (!customerData) return;
-        
-        if (!window.confirm("¿ADVERTENCIA: Estás seguro de que deseas eliminar TODAS tus comunicaciones? Esta acción no se puede deshacer.")) {
-            return;
-        }
-
-        try {
-            const { error } = await supabase
-                .from('communications')
-                .delete()
-                .eq('customer_id', customerData.id);
-
-            if (error) throw error;
-
-            setCommunications([]);
-            setSelectedMessageIds([]);
-            
-        } catch (error) {
-            console.error("Error deleting all communications:", error);
-            alert("Error al eliminar todas las comunicaciones");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -621,6 +633,16 @@ export default function CustomerCommunicationsPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Modal de confirmación de eliminación */}
+                <DeleteConfirmationModal 
+                    isOpen={isDeleteModalOpen}
+                    onClose={() => setIsDeleteModalOpen(false)}
+                    onConfirm={confirmDelete}
+                    count={itemsToDelete.length}
+                    isDeletingAll={isDeletingAll}
+                    isLoading={isDeleting}
+                />
             </div>
         </ProtectedRoute>
     );
