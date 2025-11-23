@@ -12,6 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 import { Upload, FileText, Download, Eye, AlertCircle, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -68,6 +77,11 @@ export function ClaimCustomerDocuments({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [updatingDocId, setUpdatingDocId] = useState<string | null>(null);
+  
+  // Estados para el modal de rechazo
+  const [rejectingDoc, setRejectingDoc] = useState<ClaimCustomerDocument | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
 
 
   const supabase = createClient();
@@ -319,6 +333,25 @@ export function ClaimCustomerDocuments({
       toast.error('Error al actualizar el estado. Intente nuevamente.');
     } finally {
       setUpdatingDocId(null);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectingDoc) return;
+    if (!rejectReason.trim()) return;
+
+    try {
+      setIsRejecting(true);
+      // Usamos updateDocumentStatus pero manejamos el loading state localmente para el modal
+      // updateDocumentStatus ya hace el fetch y el toast
+      await updateDocumentStatus(rejectingDoc.id, 'rejected', rejectReason.trim());
+      
+      setRejectingDoc(null);
+      setRejectReason('');
+    } catch (error) {
+      console.error('Error rejecting document:', error);
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -592,8 +625,8 @@ export function ClaimCustomerDocuments({
                               size="sm"
                               variant="ghost"
                               onClick={() => {
-                                const notes = prompt('Razón del rechazo (opcional):');
-                                updateDocumentStatus(doc.id, 'rejected', notes || undefined);
+                                setRejectingDoc(doc);
+                                setRejectReason('');
                               }}
                               className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-gray-700"
                               disabled={isUpdating}
@@ -610,6 +643,83 @@ export function ClaimCustomerDocuments({
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!rejectingDoc}
+        onOpenChange={(open) => {
+          if (!open && !isRejecting) {
+            setRejectingDoc(null);
+            setRejectReason('');
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-slate-900 border border-slate-700 text-slate-50 sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-slate-100">Rechazar documento</DialogTitle>
+            <DialogDescription className="text-slate-300">
+              Indique el motivo por el cual está rechazando este documento.
+              El mensaje será visible para el cliente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4 text-sm">
+            {rejectingDoc && (
+              <p className="text-slate-400">
+                Documento:{' '}
+                <span className="font-medium text-slate-100">
+                  {translateFileName(rejectingDoc.file_name)}
+                </span>
+              </p>
+            )}
+
+            <div className="space-y-2">
+              <label className="block text-slate-200 text-sm font-medium">
+                Motivo del rechazo <span className="text-red-400">*</span>
+              </label>
+              <Textarea
+                autoFocus
+                rows={4}
+                placeholder="Ejemplo: el documento está borroso o no corresponde al vehículo asegurado."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="bg-slate-950 border-slate-700 focus-visible:ring-sky-500 text-slate-100 placeholder:text-slate-500"
+              />
+              {!rejectReason.trim() && rejectReason !== '' && (
+                <p className="text-xs text-red-400">
+                  Debe escribir un motivo para poder rechazar el documento.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4 flex justify-end gap-2">
+            <Button
+              variant="outline"
+              className="border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-slate-100"
+              onClick={() => {
+                if (isRejecting) return;
+                setRejectingDoc(null);
+                setRejectReason('');
+              }}
+              disabled={isRejecting}
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              variant="destructive"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleConfirmReject}
+              disabled={isRejecting || !rejectReason.trim()}
+            >
+              {isRejecting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {isRejecting ? 'Rechazando...' : 'Rechazar documento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
