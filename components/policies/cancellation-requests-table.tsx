@@ -236,7 +236,7 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
                             <TableHead>Cliente</TableHead>
                             <TableHead>Motivo</TableHead>
                             <TableHead>Estado</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
+                            <TableHead>Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -268,7 +268,7 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
                                         </div>
                                     </TableCell>
                                     <TableCell>{getStatusBadge(req.status, req.policy?.status)}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell>
                                         <div className="flex justify-end gap-2">
                                             <Button
                                                 size="sm"

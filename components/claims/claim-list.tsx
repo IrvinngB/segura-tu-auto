@@ -565,8 +565,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                 {!customerId && <TableHead>Cliente</TableHead>}
                 <TableHead>Póliza</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead className="text-center">Estado</TableHead>
-                <TableHead className="text-center">Prioridad</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Prioridad</TableHead>
                 {(userProfile?.role === 'agent' || userProfile?.role === 'admin') && (
                   <TableHead>Ajustador</TableHead>
                 )}

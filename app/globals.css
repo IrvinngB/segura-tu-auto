@@ -969,12 +969,410 @@ html body .notification-scroll-area [data-slot="scroll-area-scrollbar"] {
 html body .notification-scroll-area [data-slot="scroll-area-thumb"] {
   background-color: #3B82F6 !important;
   /* Blue thumb */
-  border-radius: 4px !important;
-  width: 6px !important;
-  border: none !important;
 }
 
-/* Dark mode specific adjustments if needed (using same blue for consistency) */
-html.dark body .notification-scroll-area [data-slot="scroll-area-thumb"] {
+/* Light mode - FORCE ALL */
+html:not(.dark) *,
+html:not(.dark) body,
+html:not(.dark) div,
+html:not(.dark) main,
+html:not(.dark) section {
+  scrollbar-color: #84cc16 #ecfeff !important;
+}
+
+/* WEBKIT Light mode - FORCE ALL with maximum specificity */
+html:not(.dark) *::-webkit-scrollbar,
+html:not(.dark) body::-webkit-scrollbar,
+html:not(.dark) div::-webkit-scrollbar,
+html:not(.dark) main::-webkit-scrollbar,
+html:not(.dark) section::-webkit-scrollbar {
+  width: 16px !important;
+  height: 16px !important;
+  background: transparent !important;
+  -webkit-appearance: none !important;
+}
+
+html:not(.dark) *::-webkit-scrollbar-track,
+html:not(.dark) body::-webkit-scrollbar-track,
+html:not(.dark) div::-webkit-scrollbar-track,
+html:not(.dark) main::-webkit-scrollbar-track,
+html:not(.dark) section::-webkit-scrollbar-track {
+  background: #ecfeff !important;
+  border-radius: 10px !important;
+  border: 3px solid #cbd5e1 !important;
+  -webkit-appearance: none !important;
+}
+
+html:not(.dark) *::-webkit-scrollbar-thumb,
+html:not(.dark) body::-webkit-scrollbar-thumb,
+html:not(.dark) div::-webkit-scrollbar-thumb,
+html:not(.dark) main::-webkit-scrollbar-thumb,
+html:not(.dark) section::-webkit-scrollbar-thumb {
+  background: #84cc16 !important;
+  border-radius: 10px !important;
+  border: 3px solid #84cc16 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  -webkit-appearance: none !important;
+}
+
+html:not(.dark) *::-webkit-scrollbar-thumb:hover,
+html:not(.dark) body::-webkit-scrollbar-thumb:hover,
+html:not(.dark) div::-webkit-scrollbar-thumb:hover,
+html:not(.dark) main::-webkit-scrollbar-thumb:hover,
+html:not(.dark) section::-webkit-scrollbar-thumb:hover {
+  background: #65a30d !important;
+  border-color: #65a30d !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Dark mode - FORCE ALL with maximum specificity */
+html.dark *,
+html.dark body,
+html.dark div,
+html.dark main,
+html.dark section {
+  scrollbar-color: #3b82f6 #0f172a !important;
+}
+
+html.dark *::-webkit-scrollbar,
+html.dark body::-webkit-scrollbar,
+html.dark div::-webkit-scrollbar,
+html.dark main::-webkit-scrollbar,
+html.dark section::-webkit-scrollbar {
+  width: 16px !important;
+  height: 16px !important;
+  background: transparent !important;
+  -webkit-appearance: none !important;
+}
+
+html.dark *::-webkit-scrollbar-track,
+html.dark body::-webkit-scrollbar-track,
+html.dark div::-webkit-scrollbar-track,
+html.dark main::-webkit-scrollbar-track,
+html.dark section::-webkit-scrollbar-track {
+  background: #0f172a !important;
+  border-radius: 10px !important;
+  border: 3px solid #334155 !important;
+  -webkit-appearance: none !important;
+}
+
+html.dark *::-webkit-scrollbar-thumb,
+html.dark body::-webkit-scrollbar-thumb,
+html.dark div::-webkit-scrollbar-thumb,
+html.dark main::-webkit-scrollbar-thumb,
+html.dark section::-webkit-scrollbar-thumb {
+  background: #3b82f6 !important;
+  border-radius: 10px !important;
+  border: 3px solid #3b82f6 !important;
+  box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1) !important;
+  -webkit-appearance: none !important;
+}
+
+html.dark *::-webkit-scrollbar-thumb:hover,
+html.dark body::-webkit-scrollbar-thumb:hover,
+html.dark div::-webkit-scrollbar-thumb:hover,
+html.dark main::-webkit-scrollbar-thumb:hover,
+html.dark section::-webkit-scrollbar-thumb:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Fix for scrollbar width issue when select dropdowns open */
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  scrollbar-gutter: stable;
+}
+
+/* Prevent body overflow changes when select is opened */
+body[data-scroll-locked] {
+  overflow: visible !important;
+  padding-right: 0 !important;
+}
+
+/* Force stable scrollbar for Select components */
+[data-radix-select-content] {
+  scrollbar-gutter: stable;
+}
+
+/* Prevent layout shift when Select portal opens */
+[data-radix-portal] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+[data-radix-portal]::-webkit-scrollbar {
+  display: none;
+}
+
+/* NOTIFICATION BADGE FIX - TABLE CELL PERFECTO */
+.notification-badge-fix {
+  display: table-cell !important;
+  width: 20px !important;
+  height: 20px !important;
+  margin: 0 0 0 8px !important;
+  padding: 0 !important;
+  background: #ef4444 !important;
+  color: white !important;
+  border-radius: 50% !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  line-height: 20px !important;
+}
+
+/* 
+   ==========================================================================
+   NOTIFICATION PANEL SCROLLBAR OVERRIDES
+   ==========================================================================
+   Specific fixes for the agent notification dropdown to remove gray overlay
+   and ensure a thin, transparent scrollbar.
+*/
+
+/* 1. Hide native scrollbar on the viewport to prevent double scrollbars or gray strips */
+html body .notification-scroll-area [data-radix-scroll-area-viewport]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+html body .notification-scroll-area [data-radix-scroll-area-viewport] {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* 2. Style the Custom Radix Scrollbar Track (The "gray strip" culprit) */
+html body .notification-scroll-area [data-slot="scroll-area-scrollbar"] {
+  width: 8px !important;
+  background: transparent !important;
+  /* Key fix: Remove gray background */
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-left: 1px solid transparent !important;
+}
+
+/* 3. Style the Custom Radix Scrollbar Thumb */
+html body .notification-scroll-area [data-slot="scroll-area-thumb"] {
   background-color: #3B82F6 !important;
+  /* Blue thumb */
+}
+
+/* Light mode - FORCE ALL */
+html:not(.dark) *,
+html:not(.dark) body,
+html:not(.dark) div,
+html:not(.dark) main,
+html:not(.dark) section {
+  scrollbar-color: #84cc16 #ecfeff !important;
+}
+
+/* WEBKIT Light mode - FORCE ALL with maximum specificity */
+html:not(.dark) *::-webkit-scrollbar,
+html:not(.dark) body::-webkit-scrollbar,
+html:not(.dark) div::-webkit-scrollbar,
+html:not(.dark) main::-webkit-scrollbar,
+html:not(.dark) section::-webkit-scrollbar {
+  width: 16px !important;
+  height: 16px !important;
+  background: transparent !important;
+  -webkit-appearance: none !important;
+}
+
+html:not(.dark) *::-webkit-scrollbar-track,
+html:not(.dark) body::-webkit-scrollbar-track,
+html:not(.dark) div::-webkit-scrollbar-track,
+html:not(.dark) main::-webkit-scrollbar-track,
+html:not(.dark) section::-webkit-scrollbar-track {
+  background: #ecfeff !important;
+  border-radius: 10px !important;
+  border: 3px solid #cbd5e1 !important;
+  -webkit-appearance: none !important;
+}
+
+html:not(.dark) *::-webkit-scrollbar-thumb,
+html:not(.dark) body::-webkit-scrollbar-thumb,
+html:not(.dark) div::-webkit-scrollbar-thumb,
+html:not(.dark) main::-webkit-scrollbar-thumb,
+html:not(.dark) section::-webkit-scrollbar-thumb {
+  background: #84cc16 !important;
+  border-radius: 10px !important;
+  border: 3px solid #84cc16 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  -webkit-appearance: none !important;
+}
+
+html:not(.dark) *::-webkit-scrollbar-thumb:hover,
+html:not(.dark) body::-webkit-scrollbar-thumb:hover,
+html:not(.dark) div::-webkit-scrollbar-thumb:hover,
+html:not(.dark) main::-webkit-scrollbar-thumb:hover,
+html:not(.dark) section::-webkit-scrollbar-thumb:hover {
+  background: #65a30d !important;
+  border-color: #65a30d !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Dark mode - FORCE ALL with maximum specificity */
+html.dark *,
+html.dark body,
+html.dark div,
+html.dark main,
+html.dark section {
+  scrollbar-color: #3b82f6 #0f172a !important;
+}
+
+html.dark *::-webkit-scrollbar,
+html.dark body::-webkit-scrollbar,
+html.dark div::-webkit-scrollbar,
+html.dark main::-webkit-scrollbar,
+html.dark section::-webkit-scrollbar {
+  width: 16px !important;
+  height: 16px !important;
+  background: transparent !important;
+  -webkit-appearance: none !important;
+}
+
+html.dark *::-webkit-scrollbar-track,
+html.dark body::-webkit-scrollbar-track,
+html.dark div::-webkit-scrollbar-track,
+html.dark main::-webkit-scrollbar-track,
+html.dark section::-webkit-scrollbar-track {
+  background: #0f172a !important;
+  border-radius: 10px !important;
+  border: 3px solid #334155 !important;
+  -webkit-appearance: none !important;
+}
+
+html.dark *::-webkit-scrollbar-thumb,
+html.dark body::-webkit-scrollbar-thumb,
+html.dark div::-webkit-scrollbar-thumb,
+html.dark main::-webkit-scrollbar-thumb,
+html.dark section::-webkit-scrollbar-thumb {
+  background: #3b82f6 !important;
+  border-radius: 10px !important;
+  border: 3px solid #3b82f6 !important;
+  box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1) !important;
+  -webkit-appearance: none !important;
+}
+
+html.dark *::-webkit-scrollbar-thumb:hover,
+html.dark body::-webkit-scrollbar-thumb:hover,
+html.dark div::-webkit-scrollbar-thumb:hover,
+html.dark main::-webkit-scrollbar-thumb:hover,
+html.dark section::-webkit-scrollbar-thumb:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Fix for scrollbar width issue when select dropdowns open */
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  scrollbar-gutter: stable;
+}
+
+/* Prevent body overflow changes when select is opened */
+body[data-scroll-locked] {
+  overflow: visible !important;
+  padding-right: 0 !important;
+}
+
+/* Force stable scrollbar for Select components */
+[data-radix-select-content] {
+  scrollbar-gutter: stable;
+}
+
+/* Prevent layout shift when Select portal opens */
+[data-radix-portal] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+[data-radix-portal]::-webkit-scrollbar {
+  display: none;
+}
+
+/* NOTIFICATION BADGE FIX - TABLE CELL PERFECTO */
+.notification-badge-fix {
+  display: table-cell !important;
+  width: 20px !important;
+  height: 20px !important;
+  margin: 0 0 0 8px !important;
+  padding: 0 !important;
+  background: #ef4444 !important;
+  color: white !important;
+  border-radius: 50% !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  line-height: 20px !important;
+}
+
+/*
+   ==========================================================================
+   NOTIFICATION PANEL SCROLLBAR OVERRIDES
+   ==========================================================================
+   Specific fixes for the agent notification dropdown to remove gray overlay
+   and ensure a thin, transparent scrollbar.
+*/
+
+/* 1. Hide native scrollbar on the viewport to prevent double scrollbars or gray strips */
+html body .notification-scroll-area [data-radix-scroll-area-viewport]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+html body .notification-scroll-area [data-radix-scroll-area-viewport] {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* 2. Style the Custom Radix Scrollbar Track (The "gray strip" culprit) */
+html body .notification-scroll-area [data-slot="scroll-area-scrollbar"] {
+  width: 8px !important;
+  background: transparent !important;
+  /* Key fix: Remove gray background */
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-left: 1px solid transparent !important;
+}
+
+/* 3. Style the Custom Radix Scrollbar Thumb */
+html body .notification-scroll-area [data-slot="scroll-area-thumb"] {
+  background-color: #3B82F6 !important;
+  /* Blue thumb */
+}
+
+/*
+   ==========================================================================
+   GLOBAL TABLE ALIGNMENT
+   ==========================================================================
+   Ensure all table headers and cells are centered globally.
+*/
+.app-table th,
+.app-table td,
+table th,
+table td,
+[data-slot="table-head"],
+[data-slot="table-cell"] {
+  text-align: center !important;
+  vertical-align: middle !important;
 }

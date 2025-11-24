@@ -571,7 +571,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                 {!customerId && <TableHead>Cliente</TableHead>}
                 <TableHead>Vehículo</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead className="text-center">Estado</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead>Vigencia</TableHead>
                 <TableHead>Prima</TableHead>
                 <TableHead>Acciones</TableHead>
@@ -611,7 +611,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                       </div>
                     </TableCell>
                     <TableCell>{getPolicyTypeLabel(policy.policy_type)}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell>
                       <div className="flex flex-col gap-2 items-center justify-center">
                         {getStatusBadge(policy.status)}
                         {isExpiringSoon(policy.end_date) && policy.status !== 'expired' && (
