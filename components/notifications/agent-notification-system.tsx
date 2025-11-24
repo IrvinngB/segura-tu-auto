@@ -470,26 +470,26 @@ export function AgentNotificationSystem() {
                   {filteredNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`flex items-start justify-between gap-3 p-4 rounded-xl border transition-colors cursor-pointer relative group min-h-[96px] ${
+                      className={`flex items-start justify-between gap-3 p-4 rounded-xl border transition-all cursor-pointer relative group min-h-[96px] ${
                         !notification.read 
-                          ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30' 
-                          : 'bg-card border-border/40 hover:bg-muted/50'
+                          ? 'bg-[#E5F1FF] dark:bg-[#111827] border-[#7DD321] shadow-[0_0_15px_rgba(125,211,33,0.15)]' 
+                          : 'bg-[#F8FAFC] dark:bg-[#141B2B] border-gray-200 dark:border-gray-800 opacity-80 hover:opacity-100'
                       }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
                       {/* Main Content */}
-                      <div className="flex flex-1 flex-col gap-1.5 min-w-0">
+                      <div className={`flex flex-1 flex-col gap-1.5 min-w-0`}>
                         <div className="flex items-center gap-2">
                           <div className="shrink-0 mt-0.5">
                             {getIcon(notification.type)}
                           </div>
-                          <p className={`text-sm font-medium leading-tight ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          <p className={`text-sm leading-tight ${!notification.read ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}>
                             {notification.title}
                           </p>
                         </div>
                         
                         <div className="pl-6 flex flex-col gap-1">
-                          <p className="text-xs text-muted-foreground line-clamp-2">
+                          <p className={`text-xs line-clamp-2 ${!notification.read ? 'text-foreground/90 font-medium' : 'text-muted-foreground'}`}>
                             {notification.detail}
                           </p>
                           {notification.subDetail && (
@@ -506,7 +506,9 @@ export function AgentNotificationSystem() {
                               <Badge 
                                 variant="secondary" 
                                 className={`text-[10px] h-5 px-1.5 font-normal ${
-                                  notification.priority === 'urgent' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : ''
+                                  notification.priority === 'urgent' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 
+                                  notification.priority === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                  notification.priority === 'low' ? 'bg-[#7DD321]/20 text-green-800 dark:text-green-300' : ''
                                 }`}
                               >
                                 {getPriorityLabel(notification.priority)}
@@ -516,16 +518,25 @@ export function AgentNotificationSystem() {
                         </div>
                       </div>
 
-                      {/* Meta: Date & Actions */}
-                      <div className="flex shrink-0 flex-col items-end gap-2 pl-2">
-                        <span className="text-[10px] text-muted-foreground whitespace-nowrap font-medium py-0.5">
+                      {/* Meta: Badge, Date & Actions */}
+                      <div className="flex shrink-0 flex-col items-end gap-1.5 pl-2">
+                        {/* Status Badge */}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mb-1 ${
+                          !notification.read 
+                            ? 'bg-[#7DD321] text-white shadow-sm' 
+                            : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                        }`}>
+                          {!notification.read ? 'No leído' : 'Leído'}
+                        </span>
+
+                        <span className={`text-[10px] whitespace-nowrap font-medium ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {format(new Date(notification.created_at), "d MMM, h:mm a", { locale: es })}
                         </span>
                         
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 text-muted-foreground/50 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-6 w-6 text-muted-foreground/50 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-auto"
                           onClick={(e) => removeNotification(e, notification.id)}
                         >
                           <X className="h-3.5 w-3.5" />
