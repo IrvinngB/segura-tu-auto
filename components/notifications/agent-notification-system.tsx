@@ -103,9 +103,36 @@ export function AgentNotificationSystem() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications]);
 
+  // Cargar IDs leídos del almacenamiento local
+  const getReadNotificationIds = (): string[] => {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('read_notifications');
+    return stored ? JSON.parse(stored) : [];
+  };
+
+  // Guardar ID como leído
+  const markIdAsRead = (id: string) => {
+    const current = getReadNotificationIds();
+    if (!current.includes(id)) {
+      const updated = [...current, id];
+      localStorage.setItem('read_notifications', JSON.stringify(updated));
+    }
+  };
+
+  // Guardar múltiples IDs como leídos
+  const markIdsAsRead = (ids: string[]) => {
+    const current = getReadNotificationIds();
+    const newIds = ids.filter(id => !current.includes(id));
+    if (newIds.length > 0) {
+      const updated = [...current, ...newIds];
+      localStorage.setItem('read_notifications', JSON.stringify(updated));
+    }
+  };
+
   const loadNotifications = async () => {
     try {
       const allNotifications: NotificationItem[] = [];
+      const readIds = getReadNotificationIds();
 
       // 1. Fetch Claims (Submitted or Assigned)
       const { data: claims } = await supabase
@@ -122,6 +149,9 @@ export function AgentNotificationSystem() {
         claims.forEach((claim: any) => {
           // Solo mostrar si no está cerrada o rechazada (opcional, depende de reglas de negocio)
           if (['closed', 'rejected', 'paid'].includes(claim.status)) return;
+          
+          // Check if read locally OR via status
+          const isRead = readIds.includes(claim.id) || (claim.status !== 'submitted' && claim.status !== 'assigned');
 
           allNotifications.push({
             id: claim.id,
@@ -133,7 +163,7 @@ export function AgentNotificationSystem() {
             priority: claim.priority,
             created_at: claim.created_at,
             link: `/claims/${claim.id}`,
-            read: claim.status !== 'submitted' && claim.status !== 'assigned', // Lógica aproximada
+            read: isRead,
           });
         });
       }
@@ -159,15 +189,14 @@ export function AgentNotificationSystem() {
             subDetail: `$${quote.premium_amount?.toLocaleString()} - ${quote.policy_type}`,
             status: quote.status,
             created_at: quote.created_at,
-            link: `/quotes`, // Idealmente abriría el modal de esa cotización
-            read: false,
+            link: `/quotes`, 
+            read: readIds.includes(quote.id),
             metadata: { quoteId: quote.id }
           });
         });
       }
 
-      // 3. Fetch Communications (Inbound, Unread - Simulado por ahora si no hay campo read)
-      // Asumiremos que traemos los últimos inbound
+      // 3. Fetch Communications (Inbound)
       const { data: communications } = await supabase
         .from('communications')
         .select(`
@@ -180,7 +209,6 @@ export function AgentNotificationSystem() {
         
       if (communications) {
          communications.forEach((comm: any) => {
-            // Filtrar muy antiguos para no llenar de basura si no hay estado 'read'
             const isRecent = new Date(comm.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000;
             if (isRecent) {
                 allNotifications.push({
@@ -190,7 +218,7 @@ export function AgentNotificationSystem() {
                     detail: comm.claim?.claim_number ? `Ref: ${comm.claim.claim_number}` : 'Sin referencia',
                     created_at: comm.created_at,
                     link: comm.claim_id ? `/claims/${comm.claim_id}?tab=communications` : '#',
-                    read: false // Difícil saber sin campo específico
+                    read: readIds.includes(comm.id)
                 });
             }
          });
@@ -200,7 +228,6 @@ export function AgentNotificationSystem() {
       allNotifications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setNotifications(allNotifications);
-      // Calcular unread (simulado para algunos tipos)
       setUnreadCount(allNotifications.filter(n => !n.read).length);
 
     } catch (error) {
@@ -296,23 +323,41 @@ export function AgentNotificationSystem() {
         }
     }
 
+    // Persistir lectura localmente
+    markIdAsRead(notification.id);
+
     setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
     setShowNotifications(false);
 
     // Navegar
     if (notification.type === 'quote') {
-        // Para cotizaciones, vamos a la página de cotizaciones
-        // Podríamos pasar un query param para abrir el modal automáticamente
         router.push('/quotes');
     } else {
         router.push(notification.link);
     }
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    // Optimistic update
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
+    
+    // Persistir todos los IDs actuales como leídos
+    const allIds = notifications.map(n => n.id);
+    markIdsAsRead(allIds);
+    
+    // También intentar actualizar backend para claims
+    const claimIds = notifications.filter(n => n.type === 'claim' && !n.read).map(n => n.id);
+    
+    if (claimIds.length > 0) {
+        try {
+            await supabase.from('claims').update({ status: 'under_review' }).in('id', claimIds);
+        } catch (e) {
+            console.error("Error marking claims as read", e);
+        }
+    }
+
     toast.success('Todas las notificaciones marcadas como leídas');
   };
 
@@ -323,6 +368,27 @@ export function AgentNotificationSystem() {
     const notif = notifications.find(n => n.id === id);
     if (notif && !notif.read) {
         setUnreadCount(prev => Math.max(0, prev - 1));
+    }
+  };
+
+  const getPriorityLabel = (priority?: string) => {
+    switch (priority) {
+      case 'low': return 'Baja';
+      case 'medium': return 'Media';
+      case 'high': return 'Alta';
+      case 'urgent': return 'Urgente';
+      default: return priority || '';
+    }
+  };
+
+  const getTypeLabel = (type: NotificationType) => {
+    switch (type) {
+      case 'claim': return 'Reclamación';
+      case 'quote': return 'Cotización';
+      case 'message': return 'Mensaje';
+      case 'document': return 'Documento';
+      case 'system': return 'Sistema';
+      default: return type;
     }
   };
 
@@ -362,7 +428,7 @@ export function AgentNotificationSystem() {
       </Button>
 
       {showNotifications && (
-        <Card className="absolute right-0 top-12 w-[400px] max-h-[600px] z-50 shadow-xl border-border animate-in fade-in zoom-in-95 duration-200">
+        <Card className="absolute right-0 top-12 w-[420px] max-h-[600px] z-50 shadow-xl border-border animate-in fade-in zoom-in-95 duration-200">
           <CardHeader className="pb-3 border-b">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -381,14 +447,14 @@ export function AgentNotificationSystem() {
               <TabsList className="grid w-full grid-cols-4 h-8">
                 <TabsTrigger value="all" className="text-xs">Todas</TabsTrigger>
                 <TabsTrigger value="claim" className="text-xs">Reclamos</TabsTrigger>
-                <TabsTrigger value="quote" className="text-xs">Coti</TabsTrigger>
-                <TabsTrigger value="message" className="text-xs">Msjes</TabsTrigger>
+                <TabsTrigger value="quote" className="text-xs">Cotizaciones</TabsTrigger>
+                <TabsTrigger value="message" className="text-xs">Mensajes</TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>
 
           <CardContent className="p-0">
-            <ScrollArea className="h-[400px]">
+            <ScrollArea className="h-[420px] notification-scroll-area">
               {filteredNotifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center px-4">
                   <div className="bg-muted/50 p-3 rounded-full mb-3">
@@ -400,39 +466,41 @@ export function AgentNotificationSystem() {
                   </p>
                 </div>
               ) : (
-                <div className="divide-y">
+                <div className="space-y-2 p-2 pr-4">
                   {filteredNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer relative group ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
+                      className={`flex items-start justify-between gap-3 p-4 rounded-xl border transition-colors cursor-pointer relative group min-h-[96px] ${
+                        !notification.read 
+                          ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30' 
+                          : 'bg-card border-border/40 hover:bg-muted/50'
+                      }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
-                      <div className="flex gap-3">
-                        <div className="mt-1 shrink-0">
-                          {getIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={`text-sm font-medium truncate ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
-                              {notification.title}
-                            </p>
-                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                              {format(new Date(notification.created_at), 'dd MMM HH:mm', { locale: es })}
-                            </span>
+                      {/* Main Content */}
+                      <div className="flex flex-1 flex-col gap-1.5 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="shrink-0 mt-0.5">
+                            {getIcon(notification.type)}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          <p className={`text-sm font-medium leading-tight ${!notification.read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {notification.title}
+                          </p>
+                        </div>
+                        
+                        <div className="pl-6 flex flex-col gap-1">
+                          <p className="text-xs text-muted-foreground line-clamp-2">
                             {notification.detail}
                           </p>
                           {notification.subDetail && (
-                            <p className="text-xs text-muted-foreground/80 mt-0.5 truncate">
+                            <p className="text-xs text-muted-foreground/80 truncate">
                               {notification.subDetail}
                             </p>
                           )}
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal">
-                              {notification.type === 'claim' ? 'Reclamación' : 
-                               notification.type === 'quote' ? 'Cotización' : 
-                               notification.type === 'message' ? 'Mensaje' : 'Sistema'}
+                          
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-normal bg-background/50">
+                              {getTypeLabel(notification.type)}
                             </Badge>
                             {notification.priority && (
                               <Badge 
@@ -441,18 +509,26 @@ export function AgentNotificationSystem() {
                                   notification.priority === 'urgent' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : ''
                                 }`}
                               >
-                                {notification.priority}
+                                {getPriorityLabel(notification.priority)}
                               </Badge>
                             )}
                           </div>
                         </div>
+                      </div>
+
+                      {/* Meta: Date & Actions */}
+                      <div className="flex shrink-0 flex-col items-end gap-2 pl-2">
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap font-medium py-0.5">
+                          {format(new Date(notification.created_at), "d MMM, h:mm a", { locale: es })}
+                        </span>
+                        
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2"
+                          className="h-6 w-6 text-muted-foreground/50 hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => removeNotification(e, notification.id)}
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>

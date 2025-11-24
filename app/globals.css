@@ -932,3 +932,49 @@ body[data-scroll-locked] {
   font-weight: bold !important;
   line-height: 20px !important;
 }
+
+/* 
+   ==========================================================================
+   NOTIFICATION PANEL SCROLLBAR OVERRIDES
+   ==========================================================================
+   Specific fixes for the agent notification dropdown to remove gray overlay
+   and ensure a thin, transparent scrollbar.
+*/
+
+/* 1. Hide native scrollbar on the viewport to prevent double scrollbars or gray strips */
+html body .notification-scroll-area [data-radix-scroll-area-viewport]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+html body .notification-scroll-area [data-radix-scroll-area-viewport] {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* 2. Style the Custom Radix Scrollbar Track (The "gray strip" culprit) */
+html body .notification-scroll-area [data-slot="scroll-area-scrollbar"] {
+  width: 8px !important;
+  background: transparent !important;
+  /* Key fix: Remove gray background */
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-left: 1px solid transparent !important;
+}
+
+/* 3. Style the Custom Radix Scrollbar Thumb */
+html body .notification-scroll-area [data-slot="scroll-area-thumb"] {
+  background-color: #3B82F6 !important;
+  /* Blue thumb */
+  border-radius: 4px !important;
+  width: 6px !important;
+  border: none !important;
+}
+
+/* Dark mode specific adjustments if needed (using same blue for consistency) */
+html.dark body .notification-scroll-area [data-slot="scroll-area-thumb"] {
+  background-color: #3B82F6 !important;
+}
