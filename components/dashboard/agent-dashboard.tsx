@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/auth-provider';
-import { ClaimNotificationSystem } from '@/components/claims/claim-notification-system';
+import { AgentNotificationSystem } from '@/components/notifications/agent-notification-system';
 import { AdminClaimMonitor } from '@/components/admin/admin-claim-monitor';
 import {
   FileText,
@@ -422,7 +422,7 @@ export function AgentDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <ClaimNotificationSystem />
+          <AgentNotificationSystem />
           <Link href="/claims">
             <Button>
               <FileText className="h-4 w-4 mr-2" />
