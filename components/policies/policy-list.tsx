@@ -795,6 +795,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
           setShowCancellationModal(false);
           setPolicyToCancel(null);
         }}
+        mode={userProfile?.role === 'agent' ? 'agent' : 'customer'}
       />
 
       {/* Details Modal */}
