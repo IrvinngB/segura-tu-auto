@@ -470,28 +470,33 @@ Si requiere más información, por favor contacte a su agente.`
                         {/* Agent Decision Section */}
                         {viewRequest && viewRequest.status !== 'pending' && (
                             <div className={`p-4 rounded-lg border space-y-3 ${
-                                viewRequest.status === 'approved' ? 'bg-green-50/50 border-green-100' : 'bg-red-50/50 border-red-100'
+                                viewRequest.status === 'approved' 
+                                    ? 'bg-green-50/50 border-green-100 dark:bg-[#2B2F3A] dark:border-[rgba(255,255,255,0.12)]' 
+                                    : 'bg-red-50/50 border-red-100 dark:bg-[#2B2F3A] dark:border-[rgba(255,255,255,0.12)]'
                             }`}>
                                 <h3 className={`font-semibold text-sm flex items-center gap-2 ${
-                                    viewRequest.status === 'approved' ? 'text-green-700' : 'text-red-700'
+                                    viewRequest.status === 'approved' ? 'text-green-700 dark:text-[#E6EAF3]' : 'text-red-700 dark:text-[#E6EAF3]'
                                 }`}>
-                                    {viewRequest.status === 'approved' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                    {viewRequest.status === 'approved' 
+                                        ? <CheckCircle className="h-4 w-4 text-green-600 dark:text-[#4CAF50]" /> 
+                                        : <XCircle className="h-4 w-4 text-red-600 dark:text-[#E57373]" />
+                                    }
                                     Decisión del Agente
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <span className="text-xs font-medium text-muted-foreground uppercase">Estado de Resolución</span>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase dark:text-[#AEB7C4]">Estado de Resolución</span>
                                         <div className="mt-1">
                                             {viewRequest.status === 'approved' ? (
-                                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">Aprobada</Badge>
+                                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 dark:bg-[#4CAF50]/20 dark:text-[#4CAF50] dark:border-[#4CAF50]/30">Aprobada</Badge>
                                             ) : (
-                                                <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200">Rechazada</Badge>
+                                                <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200 dark:bg-[#E57373]/20 dark:text-[#E57373] dark:border-[#E57373]/30">Rechazada</Badge>
                                             )}
                                         </div>
                                     </div>
                                     <div>
-                                        <span className="text-xs font-medium text-muted-foreground uppercase">Comentario del Agente</span>
-                                        <p className="text-sm italic text-muted-foreground mt-1">
+                                        <span className="text-xs font-medium text-muted-foreground uppercase dark:text-[#AEB7C4]">Comentario del Agente</span>
+                                        <p className="text-sm italic text-muted-foreground mt-1 dark:text-[#C5CEDA]">
                                             {parseComments(viewRequest.comments).adminDecision || (viewRequest.status === 'approved' ? 'Aprobado' : 'Sin comentarios')}
                                         </p>
                                     </div>
