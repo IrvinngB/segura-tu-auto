@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-export type NotificationType = 'claim' | 'quote' | 'document' | 'message' | 'system';
+export type NotificationType = 'claim' | 'quote' | 'document' | 'message' | 'system' | 'cancellation';
 
 export interface NotificationItem {
   id: string;
@@ -81,6 +81,16 @@ export function AgentNotificationSystem() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'communications' },
         (payload) => handleNewCommunication(payload.new)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'communications' },
+        (payload) => handleNewCommunication(payload.new)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'policy_cancellation_requests' },
+        (payload) => handleNewCancellationRequest(payload.new)
       )
       .subscribe();
 
@@ -224,6 +234,34 @@ export function AgentNotificationSystem() {
          });
       }
 
+      // 4. Fetch Cancellation Requests (Pending)
+      const { data: cancellations } = await supabase
+        .from('policy_cancellation_requests')
+        .select(`
+          id, created_at, status, policy_id,
+          policy:policies(policy_number),
+          customer:customers(user:users(first_name, last_name))
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (cancellations) {
+        cancellations.forEach((req: any) => {
+            allNotifications.push({
+                id: req.id,
+                type: 'cancellation',
+                title: `Solicitud de cancelación – Póliza ${req.policy?.policy_number || 'Sin número'}`,
+                detail: `${req.customer?.user?.first_name || ''} ${req.customer?.user?.last_name || ''}`.trim(),
+                subDetail: format(new Date(req.created_at), "d MMM, h:mm a", { locale: es }),
+                status: req.status,
+                created_at: req.created_at,
+                link: '/policies?tab=cancellations', // Asumiendo que existe esta ruta/tab
+                read: readIds.includes(req.id)
+            });
+        });
+      }
+
       // Ordenar por fecha
       allNotifications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -257,6 +295,11 @@ export function AgentNotificationSystem() {
         toast.info('Nuevo mensaje recibido');
         loadNotifications();
     }
+  };
+
+  const handleNewCancellationRequest = (newRequest: any) => {
+    toast.warning('Nueva solicitud de cancelación recibida');
+    loadNotifications();
   };
 
   const tryAutoAssignment = async (claimId: string) => {
@@ -333,6 +376,9 @@ export function AgentNotificationSystem() {
     // Navegar
     if (notification.type === 'quote') {
         router.push('/quotes');
+    } else if (notification.type === 'cancellation') {
+        // Redirigir a la gestión de pólizas, idealmente al tab de cancelaciones si es posible deep linking
+        router.push('/policies'); 
     } else {
         router.push(notification.link);
     }
@@ -388,6 +434,7 @@ export function AgentNotificationSystem() {
       case 'message': return 'Mensaje';
       case 'document': return 'Documento';
       case 'system': return 'Sistema';
+      case 'cancellation': return 'Cancelación';
       default: return type;
     }
   };
@@ -398,13 +445,14 @@ export function AgentNotificationSystem() {
       case 'quote': return <Calculator className="h-4 w-4 text-blue-500" />;
       case 'document': return <FileText className="h-4 w-4 text-purple-500" />;
       case 'message': return <MessageSquare className="h-4 w-4 text-green-500" />;
+      case 'cancellation': return <X className="h-4 w-4 text-red-500" />;
       default: return <Bell className="h-4 w-4 text-gray-500" />;
     }
   };
 
   const getFilteredNotifications = () => {
     if (activeTab === 'all') return notifications;
-    return notifications.filter(n => n.type === activeTab || (activeTab === 'document' && n.type === 'document') || (activeTab === 'message' && n.type === 'message'));
+    return notifications.filter(n => n.type === activeTab || (activeTab === 'document' && n.type === 'document') || (activeTab === 'message' && n.type === 'message') || (activeTab === 'cancellation' && n.type === 'cancellation'));
   };
 
   const filteredNotifications = getFilteredNotifications();
@@ -444,11 +492,12 @@ export function AgentNotificationSystem() {
             </div>
             
             <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full mt-2">
-              <TabsList className="grid w-full grid-cols-4 h-8">
+              <TabsList className="grid w-full grid-cols-5 h-8">
                 <TabsTrigger value="all" className="text-xs">Todas</TabsTrigger>
                 <TabsTrigger value="claim" className="text-xs">Reclamos</TabsTrigger>
                 <TabsTrigger value="quote" className="text-xs">Cotizaciones</TabsTrigger>
                 <TabsTrigger value="message" className="text-xs">Mensajes</TabsTrigger>
+                <TabsTrigger value="cancellation" className="text-xs">Cancelaciones</TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>

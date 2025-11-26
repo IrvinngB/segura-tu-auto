@@ -169,6 +169,44 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
                 if (policyError) throw policyError;
             }
 
+            // 3. Create Communication for Customer
+            const communicationData = {
+                customer_id: request.customer_id,
+                policy_id: request.policy_id,
+                communication_type: 'email', // Default to email style
+                direction: 'outbound',
+                status: 'sent',
+                subject: type === "approve" 
+                    ? `Cancelación aprobada – Póliza ${request.policy?.policy_number}`
+                    : `Cancelación rechazada – Póliza ${request.policy?.policy_number}`,
+                content: type === "approve"
+                    ? `Estimado cliente,
+
+Le informamos que la solicitud de cancelación de su póliza ${request.policy?.policy_number} ha sido aprobada.
+La cancelación será efectiva a partir del ${format(new Date(), 'dd/MM/yyyy', { locale: es })}.
+
+Si tiene alguna duda, por favor contacte a su agente o a nuestro centro de atención.`
+                    : `Estimado cliente,
+
+Le informamos que la solicitud de cancelación de su póliza ${request.policy?.policy_number} ha sido rechazada.
+
+Motivo: ${rejectionReason || 'No especificado'}
+
+Si requiere más información, por favor contacte a su agente.`
+            };
+
+            const { error: commError } = await supabase
+                .from('communications')
+                .insert(communicationData);
+
+            if (commError) {
+                console.error("Error creating communication:", commError);
+                // Don't block the flow, just log it
+                toast.error("Solicitud procesada, pero falló el envío de la notificación al cliente");
+            } else {
+                toast.success("Notificación enviada al cliente");
+            }
+
             toast.success(
                 type === "approve"
                     ? `Solicitud aprobada ${applyPenalty === "yes" ? "CON" : "SIN"} multa`
