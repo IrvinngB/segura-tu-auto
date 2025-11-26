@@ -356,7 +356,7 @@ export function AgentNotificationSystem() {
   };
 
   const handleNotificationClick = async (notification: NotificationItem) => {
-    // Marcar como leída (Visualmente y en DB si es posible)
+    // 1. Marcar como leída (Visualmente y en DB si es posible)
     // Para Claims, si está en 'submitted', la pasamos a 'under_review' (lógica existente)
     if (notification.type === 'claim' && notification.status === 'submitted') {
         try {
@@ -373,11 +373,21 @@ export function AgentNotificationSystem() {
     setUnreadCount(prev => Math.max(0, prev - 1));
     setShowNotifications(false);
 
-    // Navegar
+    // Lógica de redirección específica solicitada
+    const isAgent = userProfile?.role === 'agent';
+    const isCancellationRequest = notification.type === 'cancellation';
+
+    if (isAgent && isCancellationRequest) {
+        console.log("Redirigiendo agente a solicitudes de cancelación");
+        router.push('/agent/requests');
+        return;
+    }
+
+    // Navegar (Resto de la lógica)
     if (notification.type === 'quote') {
         router.push('/quotes');
     } else if (notification.type === 'cancellation') {
-        // Redirigir a la gestión de pólizas, idealmente al tab de cancelaciones si es posible deep linking
+        // Fallback para otros roles (ej. admin)
         router.push('/policies'); 
     } else {
         router.push(notification.link);
