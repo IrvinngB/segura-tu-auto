@@ -142,9 +142,8 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
             // In a real app, we'd have separate columns for admin_notes and penalty_applied
             let adminNote = "";
             if (type === "approve") {
-                adminNote = applyPenalty === "yes"
-                    ? "\n[Admin: Aprobado CON MULTA]"
-                    : "\n[Admin: Aprobado SIN MULTA]";
+                // No appending for approval to keep it clean as requested
+                adminNote = "";
             } else {
                 adminNote = rejectionReason ? `\n[Admin: Rechazado - ${rejectionReason}]` : "\n[Admin: Rechazado]";
             }
@@ -209,7 +208,7 @@ Si requiere más información, por favor contacte a su agente.`
 
             toast.success(
                 type === "approve"
-                    ? `Solicitud aprobada ${applyPenalty === "yes" ? "CON" : "SIN"} multa`
+                    ? "Solicitud aprobada correctamente"
                     : "Solicitud rechazada correctamente"
             );
 
@@ -235,6 +234,32 @@ Si requiere más información, por favor contacte a su agente.`
             other: "Otro",
         };
         return reasons[reason] || reason;
+    };
+
+    const parseComments = (rawComments: string) => {
+        if (!rawComments) return { customerComment: "", adminDecision: null };
+
+        const adminRegex = /\[Admin:\s*(.+?)\]/i;
+        const match = rawComments.match(adminRegex);
+
+        let customerComment = rawComments;
+        let adminDecision = null;
+
+        if (match) {
+            customerComment = rawComments.replace(adminRegex, "").trim();
+            adminDecision = match[1].trim();
+
+            // Clean up common admin codes to readable text
+            if (adminDecision === "Aprobado SIN MULTA") adminDecision = "Aprobado sin multa";
+            if (adminDecision === "Aprobado CON MULTA") adminDecision = "Aprobado con multa";
+            if (adminDecision === "Rechazado") adminDecision = "Rechazado";
+            // Handle rejection with reason
+            if (adminDecision.startsWith("Rechazado - ")) {
+                 adminDecision = `Rechazado (${adminDecision.replace("Rechazado - ", "")})`;
+            }
+        }
+
+        return { customerComment, adminDecision };
     };
 
     const getStatusBadge = (status: string, policyStatus?: string) => {
@@ -300,9 +325,21 @@ Si requiere más información, por favor contacte a su agente.`
                                     <TableCell>
                                         <div className="flex flex-col gap-1">
                                             <span>{getReasonLabel(req.reason)}</span>
-                                            {req.comments && (
-                                                <span className="text-xs text-muted-foreground italic">"{req.comments}"</span>
-                                            )}
+                                            {(() => {
+                                                const { customerComment, adminDecision } = parseComments(req.comments);
+                                                return (
+                                                    <>
+                                                        {customerComment && (
+                                                            <span className="text-xs text-muted-foreground italic">"{customerComment}"</span>
+                                                        )}
+                                                        {req.status !== "pending" && adminDecision && (
+                                                            <span className="text-xs text-muted-foreground mt-1">
+                                                                Decisión del agente: <span className="italic">{adminDecision}</span>
+                                                            </span>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </TableCell>
                                     <TableCell>{getStatusBadge(req.status, req.policy?.status)}</TableCell>
@@ -360,22 +397,6 @@ Si requiere más información, por favor contacte a su agente.`
                                 : `¿Estás seguro de que deseas rechazar esta solicitud? La póliza permanecerá activa.`}
                         </DialogDescription>
                     </DialogHeader>
-
-                    {confirmDialog.type === "approve" && (
-                        <div className="py-4">
-                            <Label className="mb-2 block">Aplicar penalización por cancelación anticipada:</Label>
-                            <RadioGroup value={applyPenalty} onValueChange={setApplyPenalty} className="flex flex-col space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="no" id="no-penalty" />
-                                    <Label htmlFor="no-penalty">Sin Multa (Devolución estándar)</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="yes" id="yes-penalty" />
-                                    <Label htmlFor="yes-penalty">Con Multa (Aplicar cargos administrativos)</Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
-                    )}
 
                     {confirmDialog.type === "reject" && (
                         <div className="py-2">
