@@ -64,6 +64,15 @@ export default function CustomerVehiclesPage() {
         title: "",
         description: "",
     });
+    const [blockedDialog, setBlockedDialog] = useState<{
+        open: boolean;
+        title: string;
+        description: string;
+    }>({
+        open: false,
+        title: "",
+        description: "",
+    });
     const supabase = createClient();
 
     useEffect(() => {
@@ -183,14 +192,16 @@ export default function CustomerVehiclesPage() {
             // Caso A: Ningún vehículo se puede eliminar (todos tienen pólizas activas/pending)
             if (idsSafeToDelete.length === 0) {
                 const isSingle = idsToDelete.length === 1;
-                toast({
-                    title: "No se pueden eliminar los vehículos seleccionados",
-                    description: isSingle
-                        ? "Este vehículo tiene una póliza activa o pendiente. Para eliminarlo, primero debes coordinar con tu agente para cancelar o dejar sin efecto la póliza correspondiente."
-                        : "Todos los vehículos seleccionados tienen pólizas activas o pendientes. Para eliminarlos, primero debes coordinar con tu agente para cancelar o dejar sin efecto las pólizas correspondientes.",
-                    variant: "destructive",
-                });
+                
                 setDeleteDialog((prev) => ({ ...prev, open: false }));
+                setBlockedDialog({
+                    open: true,
+                    title: isSingle ? "No puedes eliminar este vehículo" : "No se pueden eliminar los vehículos",
+                    description: isSingle
+                        ? "Este vehículo tiene una póliza activa o pendiente. Para eliminarlo, primero debes gestionar con tu agente de seguros la cancelación o finalización de la póliza asociada."
+                        : "Todos los vehículos seleccionados tienen pólizas activas o pendientes. Para eliminarlos, primero debes gestionar con tu agente de seguros la cancelación o finalización de las pólizas asociadas."
+                });
+                
                 setDeletingVehicleId(null);
                 return;
             }
@@ -220,10 +231,11 @@ export default function CustomerVehiclesPage() {
 
             // Caso B: Eliminación parcial
             if (omittedCount > 0) {
-                toast({
-                    title: "Vehículos eliminados parcialmente",
-                    description: `Se eliminaron ${idsSafeToDelete.length} vehículo(s). ${omittedCount} vehículo(s) no se pudieron eliminar porque tienen pólizas activas o pendientes. Para eliminarlos, primero debes coordinar con tu agente para cancelar o dejar sin efecto la póliza.`,
-                    variant: "default",
+                setDeleteDialog((prev) => ({ ...prev, open: false }));
+                setBlockedDialog({
+                    open: true,
+                    title: "Algunos vehículos no se pudieron eliminar",
+                    description: `Uno o más de los vehículos seleccionados tienen pólizas activas o pendientes. Esos vehículos no se eliminaron. Para eliminarlos, primero debes gestionar con tu agente de seguros la cancelación o finalización de las pólizas asociadas.`
                 });
             } 
             // Caso C: Eliminación completa (ÉXITO)
@@ -604,6 +616,21 @@ export default function CustomerVehiclesPage() {
                 variant="default"
                 showCancel={false}
                 icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+            />
+
+            {/* Modal de Bloqueo (Pólizas Activas) */}
+            <ConfirmDialog
+                open={blockedDialog.open}
+                onOpenChange={(open) =>
+                    setBlockedDialog((prev) => ({ ...prev, open }))
+                }
+                title={blockedDialog.title}
+                description={blockedDialog.description}
+                confirmText="Entendido"
+                onConfirm={() => setBlockedDialog((prev) => ({ ...prev, open: false }))}
+                variant="default"
+                showCancel={false}
+                icon={<AlertTriangle className="h-5 w-5 text-amber-500" />}
             />
         </ProtectedRoute>
     );
