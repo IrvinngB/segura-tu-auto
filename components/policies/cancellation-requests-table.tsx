@@ -70,6 +70,8 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
     const [showPolicyModal, setShowPolicyModal] = useState(false);
     const [loadingPolicy, setLoadingPolicy] = useState(false);
 
+    const [viewRequest, setViewRequest] = useState<CancellationRequest | null>(null);
+
     const supabase = createClient();
 
     const fetchRequests = async () => {
@@ -326,16 +328,11 @@ Si requiere más información, por favor contacte a su agente.`
                                         <div className="flex flex-col gap-1">
                                             <span>{getReasonLabel(req.reason)}</span>
                                             {(() => {
-                                                const { customerComment, adminDecision } = parseComments(req.comments);
+                                                const { customerComment } = parseComments(req.comments);
                                                 return (
                                                     <>
                                                         {customerComment && (
                                                             <span className="text-xs text-muted-foreground italic">"{customerComment}"</span>
-                                                        )}
-                                                        {req.status !== "pending" && adminDecision && (
-                                                            <span className="text-xs text-muted-foreground mt-1">
-                                                                Decisión del agente: <span className="italic">{adminDecision}</span>
-                                                            </span>
                                                         )}
                                                     </>
                                                 );
@@ -348,8 +345,11 @@ Si requiere más información, por favor contacte a su agente.`
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
-                                                onClick={() => fetchPolicyDetails(req.policy_id)}
-                                                title="Ver Póliza"
+                                                onClick={() => {
+                                                    setViewRequest(req);
+                                                    fetchPolicyDetails(req.policy_id);
+                                                }}
+                                                title="Ver Detalles"
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </Button>
@@ -435,48 +435,110 @@ Si requiere más información, por favor contacte a su agente.`
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <FileText className="h-5 w-5" />
-                            Detalles de Póliza {viewPolicy?.policy_number}
+                            Detalles de Solicitud de Cancelación
                         </DialogTitle>
-                        <DialogDescription>Información completa de la póliza</DialogDescription>
+                        <DialogDescription>Información completa de la solicitud y la póliza</DialogDescription>
                     </DialogHeader>
 
-                    {viewPolicy && (
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <span className="font-medium">Estado Actual:</span>
-                                <Badge variant="outline">{viewPolicy.status}</Badge>
+                    <div className="space-y-6">
+                        {/* Request Details Section */}
+                        {viewRequest && (
+                            <div className="bg-muted/30 p-4 rounded-lg border space-y-3">
+                                <h3 className="font-semibold text-sm flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                    Información de la Solicitud
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase">Motivo</span>
+                                        <p className="font-medium">{getReasonLabel(viewRequest.reason)}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase">Fecha Solicitud</span>
+                                        <p className="text-sm">{format(new Date(viewRequest.created_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <span className="text-xs font-medium text-muted-foreground uppercase">Comentario del Cliente</span>
+                                        <p className="text-sm italic text-muted-foreground">
+                                            "{parseComments(viewRequest.comments).customerComment || 'Sin comentarios adicionales'}"
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
+                        )}
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <span className="font-medium">Cliente:</span>
-                                    <p className="text-muted-foreground">
-                                        {viewPolicy.customer?.user?.first_name} {viewPolicy.customer?.user?.last_name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">{viewPolicy.customer?.user?.email}</p>
-                                </div>
-                                <div>
-                                    <span className="font-medium">Vehículo:</span>
-                                    <p className="text-muted-foreground">
-                                        {viewPolicy.vehicle?.year} {viewPolicy.vehicle?.make} {viewPolicy.vehicle?.model}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">{viewPolicy.vehicle?.license_plate}</p>
-                                </div>
-                                <div>
-                                    <span className="font-medium">Vigencia:</span>
-                                    <p className="text-muted-foreground">
-                                        {format(new Date(viewPolicy.start_date), 'dd/MM/yyyy')} - {format(new Date(viewPolicy.end_date), 'dd/MM/yyyy')}
-                                    </p>
-                                </div>
-                                <div>
-                                    <span className="font-medium">Prima:</span>
-                                    <p className="text-lg font-bold text-primary">
-                                        ${viewPolicy.premium_amount?.toLocaleString()}
-                                    </p>
+                        {/* Agent Decision Section */}
+                        {viewRequest && viewRequest.status !== 'pending' && (
+                            <div className={`p-4 rounded-lg border space-y-3 ${
+                                viewRequest.status === 'approved' ? 'bg-green-50/50 border-green-100' : 'bg-red-50/50 border-red-100'
+                            }`}>
+                                <h3 className={`font-semibold text-sm flex items-center gap-2 ${
+                                    viewRequest.status === 'approved' ? 'text-green-700' : 'text-red-700'
+                                }`}>
+                                    {viewRequest.status === 'approved' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                    Decisión del Agente
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase">Estado de Resolución</span>
+                                        <div className="mt-1">
+                                            {viewRequest.status === 'approved' ? (
+                                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">Aprobada</Badge>
+                                            ) : (
+                                                <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200">Rechazada</Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase">Comentario del Agente</span>
+                                        <p className="text-sm italic text-muted-foreground mt-1">
+                                            {parseComments(viewRequest.comments).adminDecision || (viewRequest.status === 'approved' ? 'Aprobado' : 'Sin comentarios')}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {/* Policy Details Section */}
+                        {viewPolicy && (
+                            <div className="space-y-4 pt-2 border-t">
+                                <h3 className="font-semibold text-sm">Detalles de la Póliza {viewPolicy.policy_number}</h3>
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium">Estado Actual:</span>
+                                    <Badge variant="outline">{viewPolicy.status}</Badge>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="font-medium">Cliente:</span>
+                                        <p className="text-muted-foreground">
+                                            {viewPolicy.customer?.user?.first_name} {viewPolicy.customer?.user?.last_name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">{viewPolicy.customer?.user?.email}</p>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Vehículo:</span>
+                                        <p className="text-muted-foreground">
+                                            {viewPolicy.vehicle?.year} {viewPolicy.vehicle?.make} {viewPolicy.vehicle?.model}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">{viewPolicy.vehicle?.license_plate}</p>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Vigencia:</span>
+                                        <p className="text-muted-foreground">
+                                            {format(new Date(viewPolicy.start_date), 'dd/MM/yyyy')} - {format(new Date(viewPolicy.end_date), 'dd/MM/yyyy')}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Prima:</span>
+                                        <p className="text-lg font-bold text-primary">
+                                            ${viewPolicy.premium_amount?.toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>
