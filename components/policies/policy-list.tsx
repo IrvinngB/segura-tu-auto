@@ -39,6 +39,7 @@ import {
 import { PolicyRenewal } from '@/components/policies/policy-renewal';
 import { PolicyCancellationModal } from '@/components/policies/policy-cancellation-modal';
 import { Trash2 } from 'lucide-react';
+import { useAuth } from '@/components/auth/auth-provider';
 
 interface PolicyListProps {
   customerId?: string;
@@ -47,6 +48,7 @@ interface PolicyListProps {
 }
 
 export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyListProps) {
+  const { userProfile } = useAuth();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [filteredPolicies, setFilteredPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -418,22 +420,31 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
     return end < now;
   };
 
+
   const getStatusBadge = (status: string) => {
+    const isAgent = userProfile?.role === 'agent';
+
     const statusConfig = {
       active: {
         label: 'Activa',
         classes: 'status-badge status-active',
-        tooltip: 'Tu póliza está activa y te protege en este momento. Recuerda renovarla antes de que expire.'
+        tooltip: isAgent 
+          ? 'Esta póliza ya está activa. Puedes gestionarla o registrar reclamaciones asociadas.'
+          : 'Tu póliza está activa y te protege en este momento. Recuerda renovarla antes de que expire.'
       },
       approved: {
         label: 'Aprobada',
         classes: 'status-badge status-approved',
-        tooltip: 'Tu póliza fue aprobada por el agente. Completa el pago para activarla.'
+        tooltip: isAgent
+          ? 'Has aprobado esta póliza. El cliente debe completar el pago para que se active.'
+          : 'Tu póliza fue aprobada por el agente. Completa el pago para activarla.'
       },
       expired: {
         label: 'Vencida',
         classes: 'status-badge status-expired',
-        tooltip: 'Esta póliza ha expirado. Ya no estás protegido. Renuévala lo antes posible para mantener tu cobertura.'
+        tooltip: isAgent
+          ? 'Esta póliza ha expirado. Puedes ofrecer renovación al cliente si corresponde.'
+          : 'Esta póliza ha expirado. Ya no estás protegido. Renuévala lo antes posible para mantener tu cobertura.'
       },
       cancelled: {
         label: 'Cancelada',
@@ -448,8 +459,17 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
       draft: {
         label: 'Borrador',
         classes: 'status-badge status-draft',
-        tooltip: 'Esta póliza está en revisión. El agente debe aprobarla antes de que puedas pagarla.'
+        tooltip: isAgent
+          ? 'El cliente aún no ha completado los requisitos. Puedes revisarla o solicitar correcciones.'
+          : 'Esta póliza está en revisión. El agente debe aprobarla antes de que puedas pagarla.'
       },
+      rejected: {
+        label: 'Rechazada',
+        classes: 'status-badge status-cancelled', // Using cancelled style for rejected
+        tooltip: isAgent
+          ? 'Has rechazado esta póliza. El cliente deberá enviar una nueva solicitud si desea continuar.'
+          : 'Tu solicitud de póliza fue rechazada. Por favor contacta al agente para más información.'
+      }
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
