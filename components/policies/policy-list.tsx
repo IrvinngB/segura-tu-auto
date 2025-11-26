@@ -728,14 +728,25 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                           </Button>
                         )}
                         {hasPendingCancellation(policy.id) && (
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs border-yellow-500 text-yellow-600 cursor-pointer hover:bg-yellow-50"
-                            onClick={() => window.location.href = '/agent/requests'}
-                            title="Ir a solicitudes de cancelación"
-                          >
-                            Cancelación Pendiente
-                          </Badge>
+                          userProfile?.role === 'agent' ? (
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs border-yellow-500 text-yellow-600 cursor-pointer hover:bg-yellow-50"
+                              onClick={() => window.location.href = '/agent/requests'}
+                              title="Ir a solicitudes de cancelación"
+                            >
+                              Cancelación Pendiente
+                            </Badge>
+                          ) : (
+                            <div title="Tu agente está revisando la cancelación de esta póliza.">
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs border-[#FFC107] text-[#FFC107] bg-[rgba(255,193,7,0.18)] cursor-default hover:bg-[rgba(255,193,7,0.18)]"
+                              >
+                                Cancelación Pendiente
+                              </Badge>
+                            </div>
+                          )
                         )}
                       </div>
                     </TableCell>
