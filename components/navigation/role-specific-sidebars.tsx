@@ -114,7 +114,7 @@ const agentNavigation: NavigationItem[] = [
     description: 'Gestión de reclamos',
   },
   {
-    name: 'Solicitudes',
+    name: 'Solicitudes de Cancelación',
     href: '/agent/requests',
     icon: FileX,
     description: 'Solicitudes de cancelación',
@@ -211,6 +211,7 @@ const SidebarContent = memo(function SidebarContent({ navigation, userProfile }:
         'Cotizaciones',
         'Mis Reclamaciones',
         'Reclamaciones',
+        'Solicitudes de Cancelación',
         'Mis Casos',
       ].includes(item.name)
     );
