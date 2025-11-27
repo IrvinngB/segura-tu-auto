@@ -486,7 +486,7 @@ export function AgentNotificationSystem() {
       </Button>
 
       {showNotifications && (
-        <Card className="absolute right-0 top-12 w-[420px] max-h-[600px] z-50 shadow-xl border-border animate-in fade-in zoom-in-95 duration-200">
+        <Card className="absolute right-0 top-12 w-[90vw] sm:w-[650px] max-h-[600px] z-50 shadow-xl border-border animate-in fade-in zoom-in-95 duration-200">
           <CardHeader className="pb-3 border-b">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
