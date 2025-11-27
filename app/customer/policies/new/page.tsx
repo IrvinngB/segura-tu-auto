@@ -124,7 +124,7 @@ export default function CustomerNewPolicyPage() {
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* Step 1 */}
-                                    <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 hover:border-green-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200">
                                         <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/10"></div>
                                         <div className="relative p-4">
                                             <div className="flex items-center gap-3">
@@ -145,7 +145,7 @@ export default function CustomerNewPolicyPage() {
                                     </div>
 
                                     {/* Step 2 */}
-                                    <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-50 to-orange-100 border border-yellow-200 hover:border-yellow-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-50 to-orange-100 border border-yellow-200">
                                         <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-orange-500/10"></div>
                                         <div className="relative p-4">
                                             <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ export default function CustomerNewPolicyPage() {
                                     </div>
 
                                     {/* Step 3 */}
-                                    <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 hover:border-blue-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200">
                                         <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/10"></div>
                                         <div className="relative p-4">
                                             <div className="flex items-center gap-3">
@@ -187,7 +187,7 @@ export default function CustomerNewPolicyPage() {
                                     </div>
 
                                     {/* Step 4 */}
-                                    <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 hover:border-purple-300 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200">
                                         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-violet-500/10"></div>
                                         <div className="relative p-4">
                                             <div className="flex items-center gap-3">
