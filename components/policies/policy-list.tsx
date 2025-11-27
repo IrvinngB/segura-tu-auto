@@ -594,7 +594,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                 <TableHead>Estado</TableHead>
                 <TableHead>Vigencia</TableHead>
                 <TableHead>Prima</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead className="text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -678,7 +678,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
+                      <div className="flex items-center justify-center gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -741,7 +741,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                             <div title="Tu agente está revisando la cancelación de esta póliza.">
                               <Badge 
                                 variant="outline" 
-                                className="text-xs border-[#FFC107] text-[#FFC107] bg-[rgba(255,193,7,0.18)] cursor-default hover:bg-[rgba(255,193,7,0.18)]"
+                                className="text-[0.8rem] rounded-full px-3 py-1 border-[#e3b341] text-[#e3b341] bg-[#FFF8E1] dark:bg-[#3d3a2b] cursor-default hover:bg-[#FFF8E1] dark:hover:bg-[#3d3a2b]"
                               >
                                 Cancelación Pendiente
                               </Badge>
