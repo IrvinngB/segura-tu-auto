@@ -230,7 +230,7 @@ export function PaymentMethods({
                 }
                 if (!validateCardNumber(formData.card_number)) {
                     throw new Error(
-                        "El número de tarjeta no es válido (debe tener 13-19 dígitos)"
+                        "El número de tarjeta no es válido (debe tener exactamente 16 dígitos)"
                     );
                 }
                 if (!formData.expiry_date) {
@@ -292,7 +292,7 @@ export function PaymentMethods({
                     formData.bank_name ||
                     "Método de Pago",
                 last_four:
-                    formData.card_number.slice(-4) ||
+                    formData.card_number.replace(/\s+/g, "").slice(-4) ||
                     formData.account_number.slice(-4) ||
                     "****",
                 expiry_date: formData.expiry_date || null,
@@ -447,7 +447,7 @@ export function PaymentMethods({
 
     const validateCardNumber = (cardNumber: string): boolean => {
         const cleaned = cardNumber.replace(/\s+/g, "");
-        return /^\d{13,19}$/.test(cleaned);
+        return /^\d{16}$/.test(cleaned);
     };
 
     const validateCVV = (cvv: string): boolean => {
@@ -473,6 +473,28 @@ export function PaymentMethods({
         if (formError) {
             setFormError("");
         }
+    };
+
+    const isFormValid = () => {
+        if (formData.type === "credit_card" || formData.type === "debit_card") {
+            return (
+                validateCardNumber(formData.card_number) &&
+                validateExpiryDate(formData.expiry_date) &&
+                validateCVV(formData.cvv) &&
+                formData.cardholder_name.trim() !== ""
+            );
+        }
+        if (formData.type === "bank_account") {
+            return (
+                validateAccountNumber(formData.account_number) &&
+                validateRoutingNumber(formData.routing_number) &&
+                formData.bank_name.trim() !== ""
+            );
+        }
+        if (formData.type === "digital_wallet") {
+            return validateEmail(formData.wallet_email);
+        }
+        return false;
     };
 
     if (loading) {
@@ -701,15 +723,22 @@ export function PaymentMethods({
                                         id="card_number"
                                         value={formData.card_number}
                                         onChange={(e) => {
-                                            const value = e.target.value
-                                                .replace(/\D/g, "")
-                                                .slice(0, 16);
+                                            // Remove non-digits and limit to 16 digits
+                                            const rawValue = e.target.value.replace(/\D/g, "").slice(0, 16);
+                                            // Format with spaces every 4 digits
+                                            const formatted = rawValue.replace(/(\d{4})(?=\d)/g, "$1 ");
+                                            
                                             updateFormData({
-                                                card_number: value,
+                                                card_number: formatted,
                                             });
+                                            
+                                            // Clear error if valid length is reached
+                                            if (formError && rawValue.length === 16) {
+                                                setFormError("");
+                                            }
                                         }}
-                                        placeholder="1234 5678 9012 3456"
-                                        maxLength={16}
+                                        placeholder="1111 2222 3333 4444"
+                                        maxLength={19} // 16 digits + 3 spaces
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -799,7 +828,44 @@ export function PaymentMethods({
                                         placeholder="1234567890"
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="routing_number">
+                                        Número de Ruta
+                                    </Label>
+                                    <Input
+                                        id="routing_number"
+                                        value={formData.routing_number}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                routing_number: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="123456789"
+                                    />
+                                </div>
                             </>
+                        )}
+
+                        {/* Digital Wallet Fields */}
+                        {formData.type === "digital_wallet" && (
+                            <div className="space-y-2">
+                                <Label htmlFor="wallet_email">
+                                    Correo Electrónico
+                                </Label>
+                                <Input
+                                    id="wallet_email"
+                                    type="email"
+                                    value={formData.wallet_email}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            wallet_email: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="correo@ejemplo.com"
+                                />
+                            </div>
                         )}
 
                         {/* Primary checkbox */}
@@ -842,7 +908,7 @@ export function PaymentMethods({
                         </Button>
                         <Button
                             onClick={handleSubmitMethod}
-                            disabled={submitting}
+                            disabled={submitting || !isFormValid()}
                         >
                             {submitting ? (
                                 <>

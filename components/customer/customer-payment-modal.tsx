@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,6 +106,7 @@ export function CustomerPaymentModal({
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [saveMethod, setSaveMethod] = useState(false);
     const supabase = createClient();
+    const queryClient = useQueryClient();
 
     // Load payment methods when modal opens
     useEffect(() => {
@@ -143,28 +145,9 @@ export function CustomerPaymentModal({
     };
 
     const validateCardNumber = (cardNumber: string): boolean => {
-        // Algoritmo de Luhn para validar números de tarjeta
+        // Nueva regla: exactamente 16 dígitos numéricos
         const cleanNumber = cardNumber.replace(/\s/g, "");
-        if (cleanNumber.length < 13 || cleanNumber.length > 19) return false;
-        
-        let sum = 0;
-        let isEven = false;
-        
-        for (let i = cleanNumber.length - 1; i >= 0; i--) {
-            let digit = parseInt(cleanNumber.charAt(i), 10);
-            
-            if (isEven) {
-                digit *= 2;
-                if (digit > 9) {
-                    digit = Math.floor(digit / 10) + (digit % 10);
-                }
-            }
-            
-            sum += digit;
-            isEven = !isEven;
-        }
-        
-        return sum % 10 === 0;
+        return /^\d{16}$/.test(cleanNumber);
     };
 
     const validateExpiryDate = (expiry: string): boolean => {
@@ -194,7 +177,7 @@ export function CustomerPaymentModal({
             if (!newPaymentMethod.cardNumber.trim()) {
                 errors.push("El número de tarjeta es requerido");
             } else if (!validateCardNumber(newPaymentMethod.cardNumber)) {
-                errors.push("El número de tarjeta no es válido");
+                errors.push("El número de tarjeta no es válido (debe tener exactamente 16 dígitos)");
             }
             
             if (!newPaymentMethod.expiryDate.trim()) {
@@ -227,9 +210,9 @@ export function CustomerPaymentModal({
     };
 
     const formatCardNumber = (value: string): string => {
-        const cleanValue = value.replace(/\s/g, "");
-        const formatted = cleanValue.replace(/(.{4})/g, "$1 ");
-        return formatted.trim();
+        const cleanValue = value.replace(/\D/g, "").slice(0, 16); // Solo dígitos, max 16
+        const formatted = cleanValue.replace(/(\d{4})(?=\d)/g, "$1 "); // Agrupar de 4 en 4
+        return formatted;
     };
 
     const formatExpiryDate = (value: string): string => {
@@ -255,35 +238,8 @@ export function CustomerPaymentModal({
         }
     };
 
-    const simulatePaymentProcessing = async (): Promise<{ success: boolean; paymentId?: string; error?: string }> => {
-        // Simular procesamiento de pago
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // 95% de probabilidad de éxito
-        const success = Math.random() > 0.05;
-        
-        if (success) {
-            return {
-                success: true,
-                paymentId: `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-            };
-        } else {
-            const errors = [
-                "Tarjeta declinada - Fondos insuficientes",
-                "Tarjeta declinada - Contacte su banco",
-                "Error de conexión con el procesador",
-                "Tarjeta expirada",
-                "CVV incorrecto"
-            ];
-            return {
-                success: false,
-                error: errors[Math.floor(Math.random() * errors.length)]
-            };
-        }
-    };
-
     const handlePayment = async () => {
-        // Simplificar validación - solo verificar que haya algo seleccionado o nuevo
+        // Validación inicial
         if (paymentStep === "select" && !selectedPaymentMethod) {
             toast({
                 title: "Error",
@@ -293,24 +249,54 @@ export function CustomerPaymentModal({
             return;
         }
 
+        if (paymentStep === "new" && !validateNewPaymentMethod()) {
+            return;
+        }
+
         setPaymentStep("processing");
         setProcessingPayment(true);
 
         try {
-            // Simular procesamiento de pago (siempre exitoso en desarrollo)
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            // Determinar método de pago para el registro
             let paymentMethodId = selectedPaymentMethod;
             let paymentMethodType = "credit_card";
 
+            // Si es un nuevo método, primero lo creamos en el backend
             if (paymentStep === "new") {
                 paymentMethodType = newPaymentMethod.type;
-                // Si es nuevo, usar el primero disponible o crear uno temporal
-                if (paymentMethods.length > 0) {
-                    paymentMethodId = paymentMethods[0].id;
-                } else {
-                    paymentMethodId = "temp_" + Date.now();
+                
+                // Preparar datos para crear el método
+                const methodData = {
+                    type: newPaymentMethod.type,
+                    name: newPaymentMethod.type === "bank_account" 
+                        ? newPaymentMethod.bankName 
+                        : newPaymentMethod.cardHolderName,
+                    last_four: newPaymentMethod.type === "bank_account"
+                        ? newPaymentMethod.accountNumber?.slice(-4)
+                        : newPaymentMethod.cardNumber.slice(-4),
+                    expiry_date: newPaymentMethod.expiryDate,
+                    is_primary: saveMethod, // Usar el checkbox del usuario
+                    billing_address: "Dirección registrada", // Placeholder o tomar del perfil
+                };
+
+                console.log("Creating new payment method:", methodData);
+
+                const createMethodResponse = await fetch("/api/payment-methods", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(methodData),
+                });
+
+                if (!createMethodResponse.ok) {
+                    const errorData = await createMethodResponse.json();
+                    throw new Error(errorData.error || "Error al guardar el método de pago");
+                }
+
+                const { paymentMethod } = await createMethodResponse.json();
+                paymentMethodId = paymentMethod.id;
+                
+                // Si el usuario eligió guardar, recargamos la lista para el futuro
+                if (saveMethod) {
+                    loadPaymentMethods();
                 }
             } else {
                 const method = paymentMethods.find(m => m.id === selectedPaymentMethod);
@@ -319,7 +305,9 @@ export function CustomerPaymentModal({
                 }
             }
 
-            // Procesar el pago usando el endpoint
+            // Procesar el pago usando el ID del método (existente o recién creado)
+            console.log("Processing payment with method:", paymentMethodId);
+            
             const paymentResponse = await fetch("/api/payments", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -341,24 +329,49 @@ export function CustomerPaymentModal({
 
             setPaymentStep("success");
             
+            // Invalidate queries to update UI
+            queryClient.invalidateQueries({ queryKey: ["customer-payments-summary"] });
+            queryClient.invalidateQueries({ queryKey: ["customer-upcoming-payments"] });
+            queryClient.invalidateQueries({ queryKey: ["customer-policies"] });
+            queryClient.invalidateQueries({ queryKey: ["payment-methods"] });
+            
+            // Esperar un momento para mostrar el éxito antes de cerrar
             setTimeout(() => {
                 onPaymentSuccess();
                 onOpenChange(false);
+                // Resetear estado
                 setPaymentStep("select");
-            }, 2000);
+                setNewPaymentMethod({
+                    type: "credit_card",
+                    cardNumber: "",
+                    expiryDate: "",
+                    cvv: "",
+                    cardHolderName: "",
+                    bankName: "",
+                    accountNumber: "",
+                    routingNumber: "",
+                });
+                setSelectedPaymentMethod("");
+            }, 2500);
 
             toast({
                 title: "¡Pago Exitoso!",
                 description: `El pago de $${amount.toLocaleString()} ha sido procesado correctamente.`,
+                className: "bg-green-50 border-green-200 text-green-900",
             });
+
         } catch (error) {
             console.error("Error procesando pago:", error);
-            setPaymentStep("select");
+            // Mantener en el paso actual para permitir reintentar o corregir
+            if (paymentStep === "processing") {
+                setPaymentStep(selectedPaymentMethod ? "select" : "new");
+            }
+            
             onPaymentError(error instanceof Error ? error.message : "Error desconocido");
             
             toast({
                 title: "Error en el Pago",
-                description: error instanceof Error ? error.message : "Error desconocido",
+                description: error instanceof Error ? error.message : "No se pudo procesar el pago. Intenta nuevamente.",
                 variant: "destructive",
             });
         } finally {
@@ -539,13 +552,23 @@ export function CustomerPaymentModal({
                                 <Input
                                     placeholder="1234 5678 9012 3456"
                                     value={formatCardNumber(newPaymentMethod.cardNumber)}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
+                                        const rawValue = e.target.value.replace(/\s/g, "");
                                         setNewPaymentMethod(prev => ({ 
                                             ...prev, 
-                                            cardNumber: e.target.value.replace(/\s/g, "") 
-                                        }))
-                                    }
+                                            cardNumber: rawValue 
+                                        }));
+                                        // Auto-clear error if valid
+                                        if (validationErrors.length > 0 && /^\d{16}$/.test(rawValue)) {
+                                            setValidationErrors(prev => prev.filter(err => !err.includes("número de tarjeta")));
+                                        }
+                                    }}
                                     maxLength={19}
+                                    className={
+                                        validationErrors.some(err => err.includes("número de tarjeta")) 
+                                            ? "border-red-500 focus-visible:ring-red-500" 
+                                            : ""
+                                    }
                                 />
                             </div>
 
@@ -660,7 +683,7 @@ export function CustomerPaymentModal({
                 </Button>
                 <Button 
                     onClick={handlePayment}
-                    disabled={processingPayment}
+                    disabled={processingPayment || (newPaymentMethod.type !== "bank_account" && !/^\d{16}$/.test(newPaymentMethod.cardNumber))}
                     className="min-w-[120px]"
                 >
                     {processingPayment ? (
