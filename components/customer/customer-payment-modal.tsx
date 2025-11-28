@@ -74,6 +74,7 @@ interface NewPaymentMethod {
     bankName?: string;
     accountNumber?: string;
     routingNumber?: string;
+    isPrimary?: boolean;
 }
 
 export function CustomerPaymentModal({
@@ -102,6 +103,7 @@ export function CustomerPaymentModal({
         bankName: "",
         accountNumber: "",
         routingNumber: "",
+        isPrimary: false,
     });
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [saveMethod, setSaveMethod] = useState(false);
@@ -274,7 +276,7 @@ export function CustomerPaymentModal({
                         ? newPaymentMethod.accountNumber?.slice(-4)
                         : newPaymentMethod.cardNumber.slice(-4),
                     expiry_date: newPaymentMethod.expiryDate,
-                    is_primary: saveMethod, // Usar el checkbox del usuario
+                    is_primary: newPaymentMethod.isPrimary, // Usar el checkbox del usuario
                     billing_address: "Dirección registrada", // Placeholder o tomar del perfil
                 };
 
@@ -350,6 +352,7 @@ export function CustomerPaymentModal({
                     bankName: "",
                     accountNumber: "",
                     routingNumber: "",
+                    isPrimary: false,
                 });
                 setSelectedPaymentMethod("");
             }, 2500);
@@ -674,6 +677,21 @@ export function CustomerPaymentModal({
                             Guardar este método para futuros pagos
                         </Label>
                     </div>
+
+                    {saveMethod && (
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="is-primary"
+                                checked={newPaymentMethod.isPrimary}
+                                onCheckedChange={(checked) => 
+                                    setNewPaymentMethod(prev => ({ ...prev, isPrimary: checked === true }))
+                                }
+                            />
+                            <Label htmlFor="is-primary" className="text-sm">
+                                Establecer como método principal
+                            </Label>
+                        </div>
+                    )}
                 </div>
             </div>
 

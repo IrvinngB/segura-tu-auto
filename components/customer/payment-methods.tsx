@@ -104,6 +104,7 @@ export function PaymentMethods({
         null
     );
     const [expiryError, setExpiryError] = useState<string | null>(null);
+    const [showWarningModal, setShowWarningModal] = useState(false);
     const supabase = createClient();
 
     // Form data for new/edit payment method
@@ -181,6 +182,15 @@ export function PaymentMethods({
     };
 
     const handleAddMethod = () => {
+        if (paymentMethods.length >= 5) {
+            toast({
+                title: "Límite alcanzado",
+                description: "Has alcanzado el número máximo de métodos de pago guardados (5).",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setFormData({
             type: "credit_card",
             card_number: "",
@@ -364,15 +374,78 @@ export function PaymentMethods({
     };
 
     const handleSetPrimary = async (methodId: string) => {
-        setPaymentMethods((methods) =>
-            methods.map((method) => ({
-                ...method,
-                is_primary: method.id === methodId,
-            }))
-        );
+        try {
+            // Optimistic update
+            setPaymentMethods((methods) =>
+                methods.map((method) => ({
+                    ...method,
+                    is_primary: method.id === methodId,
+                }))
+            );
+
+            // Backend update
+            // First, set all to false (optional if backend handles it, but safer here)
+            await supabase
+                .from("payment_methods")
+                .update({ is_primary: false })
+                .eq("customer_id", customerData!.id);
+
+            // Then set the selected one to true
+            const { error } = await supabase
+                .from("payment_methods")
+                .update({ is_primary: true })
+                .eq("id", methodId);
+
+            if (error) throw error;
+
+            toast({
+                title: "Método principal actualizado",
+                description: "Se ha establecido el nuevo método de pago principal.",
+            });
+        } catch (error) {
+            console.error("Error setting primary method:", error);
+            toast({
+                title: "Error",
+                description: "No se pudo actualizar el método principal.",
+                variant: "destructive",
+            });
+            // Revert optimistic update (reload)
+            fetchPaymentMethods();
+        }
     };
 
     const handleDeleteMethod = (methodId: string, methodName: string) => {
+        if (paymentMethods.length === 1) {
+            // Show warning instead of delete dialog
+            // We can reuse the delete dialog state but with a specific flag or just use a separate alert
+            // For simplicity, let's use a toast or a specific modal if requested.
+            // User requested a modal: "No puedes eliminar tu único método de pago"
+            // We'll use a standard alert dialog for this specific case or reuse ConfirmDialog with different props?
+            // Let's use a simple alert via toast for now OR modify the ConfirmDialog usage.
+            // Actually, the requirement says "Modal de advertencia".
+            // Let's use a simple window.alert or a custom dialog. 
+            // Since we have `ConfirmDialog`, let's check if we can use it for info only.
+            // Or better, let's just use the existing `deleteDialog` state but add a `isWarning` flag?
+            // No, let's just block it and show a toast for now as it's faster and cleaner, 
+            // OR if strictly following "Modal", I'd need to add a new state for "WarningModal".
+            // Let's try to use the existing ConfirmDialog but change the text and remove the cancel button?
+            // The ConfirmDialog component might not support "Info only".
+            
+            // Let's stick to the requirement: "Modal de advertencia".
+            // I will use the existing deleteDialog but with a special ID or flag to render differently?
+            // No, let's just add a simple state for this warning.
+            
+            // Actually, I'll just use the `ConfirmDialog` but with a "Entendido" action that does nothing.
+            // But `ConfirmDialog` usually has Cancel/Confirm.
+            
+            // Let's use a toast for simplicity unless strictly enforced. 
+            // "Si es el único método de pago guardado y el usuario intenta eliminarlo, mostrar un modal de advertencia"
+            
+            // Okay, I'll add a `showWarningModal` state.
+            setShowWarningModal(true);
+            return;
+        }
+
         // Abrir el diálogo de confirmación
         setDeleteDialog({
             open: true,
@@ -663,9 +736,37 @@ export function PaymentMethods({
                                 </div>
                             ))}
                         </div>
+
+                    )}
+                    
+                    {/* Add button below list if methods exist */}
+                    {paymentMethods.length > 0 && showAddButton && (
+                        <div className="mt-6">
+                            <Button onClick={handleAddMethod} variant="outline" className="w-full sm:w-auto">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Agregar Método de Pago
+                            </Button>
+                        </div>
                     )}
                 </CardContent>
             </Card>
+
+            {/* Warning Modal for Single Method Deletion */}
+            <Dialog open={showWarningModal} onOpenChange={setShowWarningModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>No puedes eliminar tu único método de pago</DialogTitle>
+                        <DialogDescription>
+                            Debes tener al menos un método de pago para poder contratar y pagar tus pólizas.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={() => setShowWarningModal(false)}>
+                            Entendido
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Add/Edit Payment Method Modal */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
