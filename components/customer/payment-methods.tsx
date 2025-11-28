@@ -103,6 +103,7 @@ export function PaymentMethods({
     const [deletingMethodId, setDeletingMethodId] = useState<string | null>(
         null
     );
+    const [expiryError, setExpiryError] = useState<string | null>(null);
     const supabase = createClient();
 
     // Form data for new/edit payment method
@@ -192,6 +193,7 @@ export function PaymentMethods({
             wallet_email: "",
             is_primary: paymentMethods.length === 0,
         });
+        setExpiryError(null);
         setEditingMethod(null);
         setShowAddModal(true);
     };
@@ -210,6 +212,7 @@ export function PaymentMethods({
             wallet_email: "",
             is_primary: method.is_primary,
         });
+        setExpiryError(null);
         setShowAddModal(true);
     };
 
@@ -443,6 +446,25 @@ export function PaymentMethods({
             return false;
 
         return true;
+    };
+
+    const isDatePast = (expiry: string): boolean => {
+        const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
+        if (!regex.test(expiry)) return false; // Invalid format is not "past" per se, but we handle it in validation
+
+        const [month, year] = expiry.split("/");
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear() % 100;
+        const currentMonth = currentDate.getMonth() + 1;
+
+        const expiryYear = parseInt(year);
+        const expiryMonth = parseInt(month);
+
+        if (expiryYear < currentYear) return true;
+        if (expiryYear === currentYear && expiryMonth < currentMonth)
+            return true;
+
+        return false;
     };
 
     const validateCardNumber = (cardNumber: string): boolean => {
@@ -750,25 +772,59 @@ export function PaymentMethods({
                                             id="expiry_date"
                                             value={formData.expiry_date}
                                             onChange={(e) => {
-                                                let value =
-                                                    e.target.value.replace(
-                                                        /\D/g,
-                                                        ""
-                                                    );
-                                                if (value.length >= 2) {
-                                                    value =
-                                                        value.slice(0, 2) +
-                                                        "/" +
-                                                        value.slice(2, 4);
+                                                let value = e.target.value;
+
+                                                // Permitir borrar todo, incluyendo el "/"
+                                                if (/^[0-9/]*$/.test(value) === false) return;
+
+                                                // Eliminar "/" si el usuario lo borra
+                                                value = value.replace(/[^0-9]/g, "");
+
+                                                // Insertar "/" automáticamente después de 2 dígitos
+                                                if (value.length > 2) {
+                                                    value = value.slice(0, 2) + "/" + value.slice(2, 4);
                                                 }
+
+                                                // Limitar longitud max 5 (MM/AA)
+                                                if (value.length > 5) return;
+
                                                 setFormData((prev) => ({
                                                     ...prev,
                                                     expiry_date: value,
                                                 }));
+
+                                                // Validación automática cuando MM/AA esté completo
+                                                if (value.length === 5) {
+                                                    const [mm, yy] = value.split("/").map(Number);
+
+                                                    if (mm < 1 || mm > 12) {
+                                                        setExpiryError("El mes de vencimiento no es válido. Debe estar entre 01 y 12.");
+                                                        return;
+                                                    }
+
+                                                    const currentYear = Number(new Date().getFullYear().toString().slice(-2));
+                                                    const currentMonth = new Date().getMonth() + 1;
+
+                                                    if (yy < currentYear || (yy === currentYear && mm < currentMonth)) {
+                                                        setExpiryError("La fecha de vencimiento no puede estar en el pasado.");
+                                                        return;
+                                                    }
+
+                                                    setExpiryError(""); // OK
+                                                } else {
+                                                    // Si aún está incompleto, no mostrar error
+                                                    setExpiryError("");
+                                                }
                                             }}
                                             placeholder="MM/AA"
                                             maxLength={5}
+                                            className={expiryError ? "border-red-500" : ""}
                                         />
+                                        {expiryError && (
+                                            <p className="text-xs text-red-500 mt-1">
+                                                {expiryError}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="cvv">CVV</Label>
