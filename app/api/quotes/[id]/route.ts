@@ -163,7 +163,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
 Te informamos que tu cotización ${existingQuote.quote_number} ha sido aprobada por nuestro equipo.
 Para activar tu póliza, por favor ingresa al Centro de Pagos y completa el pago inicial de activación.
-
+${notes && notes.trim().length > 0 ? `\nNotas del agente:\n${notes}\n` : ''}
 Si tienes alguna duda, por favor contacta a tu agente o a nuestro centro de atención.`,
         metadata: {
           quoteId: existingQuote.id,
