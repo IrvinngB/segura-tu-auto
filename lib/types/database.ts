@@ -223,10 +223,11 @@ export interface Communication {
   agent_id?: string;
   policy_id?: string;
   claim_id?: string;
-  communication_type: 'email' | 'phone' | 'chat' | 'sms' | 'letter';
+  communication_type: 'email' | 'phone' | 'chat' | 'sms' | 'letter' | 'quote_approved' | 'quote_rejected';
   direction: 'inbound' | 'outbound';
   subject?: string;
   content: string;
+  metadata?: any;
   status: 'draft' | 'sent' | 'delivered' | 'read' | 'failed';
   priority: 'low' | 'normal' | 'high' | 'urgent';
   created_at: string;

@@ -25,7 +25,9 @@ import {
     AlertCircle,
     CheckSquare,
     Square,
-    Info
+    Info,
+    CheckCircle,
+    XCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -60,6 +62,7 @@ interface Communication {
     policy: {
         policy_number: string;
     };
+    metadata?: any;
 }
 
 export default function CustomerCommunicationsPage() {
@@ -162,6 +165,10 @@ export default function CustomerCommunicationsPage() {
                 return <Phone className="h-4 w-4" />;
             case "sms":
                 return <MessageSquare className="h-4 w-4" />;
+            case "quote_approved":
+                return <CheckCircle className="h-4 w-4 text-green-600" />;
+            case "quote_rejected":
+                return <XCircle className="h-4 w-4 text-red-600" />;
             default:
                 return <FileText className="h-4 w-4" />;
         }
@@ -460,14 +467,17 @@ export default function CustomerCommunicationsPage() {
                         filteredCommunications.map((communication) => {
                             const isRejectedDoc = communication.subject.includes('Documento rechazado') || communication.content.includes('rechazado');
                             const isDocsRequired = communication.subject.includes('Docs requeridos');
-                            const isClickable = isRejectedDoc || isDocsRequired;
+                            const isQuoteUpdate = communication.communication_type === 'quote_approved' || communication.communication_type === 'quote_rejected';
+                            const isClickable = isRejectedDoc || isDocsRequired || isQuoteUpdate;
                             
                             return (
                                 <Card
                                     key={communication.id}
                                     className={`transition-all duration-150 group relative ${
-                                        isRejectedDoc 
+                                        isRejectedDoc || communication.communication_type === 'quote_rejected'
                                         ? 'border-l-4 border-l-red-500' 
+                                        : communication.communication_type === 'quote_approved'
+                                        ? 'border-l-4 border-l-green-500'
                                         : ''
                                     } ${
                                         isClickable 
@@ -487,6 +497,13 @@ export default function CustomerCommunicationsPage() {
 
                                             if (targetClaimId) {
                                                 router.push(`/customer/claims/${targetClaimId}?tab=documents`);
+                                            } else if (isQuoteUpdate) {
+                                                const quoteId = communication.metadata?.quoteId;
+                                                if (quoteId) {
+                                                    router.push(`/customer/quote?quoteId=${quoteId}`);
+                                                } else {
+                                                    router.push('/customer/quote');
+                                                }
                                             } else {
                                                 const match = communication.subject.match(/(CLM-\d+-\d+)/);
                                                 if (match) {

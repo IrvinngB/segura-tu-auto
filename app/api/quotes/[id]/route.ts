@@ -153,6 +153,32 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         return NextResponse.json({ error: updateError.message }, { status: 500 });
       }
 
+      // Create communication for approval
+      const { error: commError } = await supabase.from('communications').insert({
+        customer_id: existingQuote.customer_id,
+        communication_type: 'quote_approved',
+        direction: 'outbound',
+        subject: `Cotización aprobada – Póliza ${existingQuote.quote_number}`,
+        content: `Estimado cliente,
+
+Te informamos que tu cotización ${existingQuote.quote_number} ha sido aprobada por nuestro equipo.
+Para activar tu póliza, por favor ingresa al Centro de Pagos y completa el pago inicial de activación.
+
+Si tienes alguna duda, por favor contacta a tu agente o a nuestro centro de atención.`,
+        metadata: {
+          quoteId: existingQuote.id,
+          quoteNumber: existingQuote.quote_number,
+          policyType: existingQuote.policy_type
+        },
+        status: 'unread'
+      });
+
+      if (commError) {
+        console.error('❌ Error creating approval communication:', commError);
+      } else {
+        console.log('✅ Approval communication created successfully for customer:', existingQuote.customer_id);
+      }
+
       return NextResponse.json({
         quote: updatedQuote,
         policy,
@@ -175,6 +201,39 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
       if (updateError) {
         return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+
+      // Create communication for rejection
+      const { error: commError } = await supabase.from('communications').insert({
+        customer_id: existingQuote.customer_id,
+        communication_type: 'quote_rejected',
+        direction: 'outbound',
+        subject: `Cotización rechazada – Póliza ${existingQuote.quote_number}`,
+        content: `Estimado cliente,
+
+Le informamos que su cotización ${existingQuote.quote_number} ha sido rechazada por nuestro equipo.
+
+📌 Motivo del rechazo:
+${rejected_reason}
+
+📝 Notas del agente:
+${notes || 'El agente no dejó notas adicionales.'}
+
+Por favor revisa los detalles indicados y, si lo deseas, crea una nueva cotización con la información actualizada.
+
+Si tienes alguna duda, por favor contacta a tu agente o a nuestro centro de atención.`,
+        metadata: {
+          quoteId: existingQuote.id,
+          quoteNumber: existingQuote.quote_number,
+          policyType: existingQuote.policy_type
+        },
+        status: 'unread'
+      });
+
+      if (commError) {
+        console.error('❌ Error creating rejection communication:', commError);
+      } else {
+        console.log('✅ Rejection communication created successfully for customer:', existingQuote.customer_id);
       }
 
       return NextResponse.json({
