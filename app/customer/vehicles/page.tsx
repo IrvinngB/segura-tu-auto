@@ -201,8 +201,8 @@ export default function CustomerVehiclesPage() {
                     open: true,
                     title: isSingle ? "No puedes eliminar este vehículo" : "No se pueden eliminar los vehículos",
                     description: isSingle
-                        ? "Este vehículo tiene una póliza activa, aprobada o suspendida. Para eliminarlo, primero debes cancelar la póliza asociada."
-                        : "Todos los vehículos seleccionados tienen pólizas activas, aprobadas o suspendidas. Para eliminarlos, primero debes cancelar las pólizas asociadas."
+                        ? "Este vehículo tiene una póliza activa o aprobada. Para eliminarlo, primero debes cancelar la póliza asociada."
+                        : "Todos los vehículos seleccionados tienen pólizas activas o aprobadas. Para eliminarlos, primero debes cancelar las pólizas asociadas."
                 });
                 
                 setDeletingVehicleId(null);
