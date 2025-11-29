@@ -605,153 +605,183 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPolicies.map(policy => (
-                  <TableRow key={policy.id}>
-                    <TableCell className="font-medium">{policy.policy_number}</TableCell>
-                    {!customerId && (
+                filteredPolicies.map(policy => {
+                  const isApproved = policy.status === 'approved';
+                  
+                  return (
+                    <TableRow 
+                      key={policy.id}
+                      onClick={() => {
+                        if (isApproved) {
+                          window.location.href = `/customer/payments?policyId=${policy.id}`;
+                        }
+                      }}
+                      className={isApproved ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+                    >
+                      <TableCell className="font-medium">{policy.policy_number}</TableCell>
+                      {!customerId && (
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {policy.customer?.user?.first_name} {policy.customer?.user?.last_name}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {policy.customer?.user?.email}
+                            </div>
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div>
                           <div className="font-medium">
-                            {policy.customer?.user?.first_name} {policy.customer?.user?.last_name}
+                            {policy.vehicle?.year} {policy.vehicle?.make} {policy.vehicle?.model}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {policy.customer?.user?.email}
+                            {policy.vehicle?.license_plate}
                           </div>
                         </div>
                       </TableCell>
-                    )}
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">
-                          {policy.vehicle?.year} {policy.vehicle?.make} {policy.vehicle?.model}
+                      <TableCell>{getPolicyTypeLabel(policy.policy_type)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-2 items-center justify-center">
+                          {getStatusBadge(policy.status)}
+                          {isExpiringSoon(policy.end_date) && policy.status !== 'expired' && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs flex items-center justify-center px-3 py-1 min-w-[90px]"
+                            >
+                              Vence pronto
+                            </Badge>
+                          )}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {policy.vehicle?.license_plate}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Calendar className="h-3 w-3" />
+                          <span>
+                            {format(new Date(policy.start_date), 'dd/MM/yyyy', { locale: es })} -{' '}
+                            {format(new Date(policy.end_date), 'dd/MM/yyyy', { locale: es })}
+                          </span>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getPolicyTypeLabel(policy.policy_type)}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-2 items-center justify-center">
-                        {getStatusBadge(policy.status)}
-                        {isExpiringSoon(policy.end_date) && policy.status !== 'expired' && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs flex items-center justify-center px-3 py-1 min-w-[90px]"
-                          >
-                            Vence pronto
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Calendar className="h-3 w-3" />
-                        <span>
-                          {format(new Date(policy.start_date), 'dd/MM/yyyy', { locale: es })} -{' '}
-                          {format(new Date(policy.end_date), 'dd/MM/yyyy', { locale: es })}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span className="font-medium">
-                          $
-                          {policy.payment_frequency === 'monthly'
-                            ? (policy.premium_amount / 12).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })
-                            : policy.payment_frequency === 'quarterly'
-                              ? (policy.premium_amount / 4).toLocaleString(undefined, {
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">
+                            $
+                            {policy.payment_frequency === 'monthly'
+                              ? (policy.premium_amount / 12).toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })
-                              : policy.premium_amount.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {policy.payment_frequency === 'monthly' ? 'mensual' : policy.payment_frequency === 'annual' ? 'anual' : 'trimestral'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewDetails(policy)}
-                          title="Ver detalles"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => generatePolicyPDF(policy)}
-                          title="Descargar PDF"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        {(policy.status === 'expired' || isPolicyExpired(policy.end_date)) && (
+                              : policy.payment_frequency === 'quarterly'
+                                ? (policy.premium_amount / 4).toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })
+                                : policy.premium_amount.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {policy.payment_frequency === 'monthly' ? 'mensual' : policy.payment_frequency === 'annual' ? 'anual' : 'trimestral'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleRenewPolicy(policy)}
-                            title="Renovar póliza"
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(policy);
+                            }}
+                            title="Ver detalles"
                           >
-                            <RefreshCw className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                           </Button>
-                        )}
-                        {!customerId && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEditPolicy(policy)}
-                            title="Editar"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              generatePolicyPDF(policy);
+                            }}
+                            title="Descargar PDF"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Download className="h-4 w-4" />
                           </Button>
-                        )}
-                        {policy.status?.toLowerCase() === 'active' && !hasPendingCancellation(policy.id) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRequestCancellation(policy)}
-                            title={customerId ? "Solicitar Cancelación" : "Cancelar Póliza"}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            {customerId ? <Trash2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                          </Button>
-                        )}
-                        {hasPendingCancellation(policy.id) && (
-                          userProfile?.role === 'agent' ? (
-                            <Badge 
-                              variant="outline" 
-                              className="text-xs border-yellow-500 text-yellow-600 cursor-pointer hover:bg-yellow-50"
-                              onClick={() => window.location.href = '/agent/requests'}
-                              title="Ir a solicitudes de cancelación"
+                          {(policy.status === 'expired' || isPolicyExpired(policy.end_date)) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRenewPolicy(policy);
+                              }}
+                              title="Renovar póliza"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
                             >
-                              Cancelación Pendiente
-                            </Badge>
-                          ) : (
-                            <div title="Tu agente está revisando la cancelación de esta póliza.">
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {!customerId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditPolicy(policy);
+                              }}
+                              title="Editar"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {policy.status?.toLowerCase() === 'active' && !hasPendingCancellation(policy.id) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRequestCancellation(policy);
+                              }}
+                              title={customerId ? "Solicitar Cancelación" : "Cancelar Póliza"}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              {customerId ? <Trash2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                            </Button>
+                          )}
+                          {hasPendingCancellation(policy.id) && (
+                            userProfile?.role === 'agent' ? (
                               <Badge 
                                 variant="outline" 
-                                className="text-[0.8rem] rounded-full px-3 py-1 border-[#e3b341] text-[#e3b341] bg-[#FFF8E1] dark:bg-[#3d3a2b] cursor-default hover:bg-[#FFF8E1] dark:hover:bg-[#3d3a2b]"
+                                className="text-xs border-yellow-500 text-yellow-600 cursor-pointer hover:bg-yellow-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.location.href = '/agent/requests';
+                                }}
+                                title="Ir a solicitudes de cancelación"
                               >
                                 Cancelación Pendiente
                               </Badge>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                            ) : (
+                              <div title="Tu agente está revisando la cancelación de esta póliza.">
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-[0.8rem] rounded-full px-3 py-1 border-[#e3b341] text-[#e3b341] bg-[#FFF8E1] dark:bg-[#3d3a2b] cursor-default hover:bg-[#FFF8E1] dark:hover:bg-[#3d3a2b]"
+                                >
+                                  Cancelación Pendiente
+                                </Badge>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

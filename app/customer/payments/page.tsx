@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useAuth } from "@/components/auth/auth-provider";
 import { createClient } from "@/lib/supabase/client";
@@ -167,7 +168,25 @@ export default function CustomerPaymentsPage() {
         paymentType: string;
     } | null>(null);
     const [customerId, setCustomerId] = useState<string>("");
+    const searchParams = useSearchParams();
+    const policyIdToHighlight = searchParams.get("policyId");
+    const highlightedRef = useRef<HTMLDivElement>(null);
     const supabase = createClient();
+
+    useEffect(() => {
+        if (policyIdToHighlight && upcomingPayments.length > 0) {
+            // Dar un pequeño tiempo para que se renderice
+            const timer = setTimeout(() => {
+                if (highlightedRef.current) {
+                    highlightedRef.current.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    });
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [policyIdToHighlight, upcomingPayments]);
 
     // Función auxiliar para obtener la frecuencia de pago de una póliza
     const getPaymentFrequencyFromPolicy = (policy: any) => {
@@ -743,10 +762,17 @@ export default function CustomerPaymentsPage() {
                                                     new Date()
                                                 );
 
+                                            const isHighlighted = payment.policy_id === policyIdToHighlight;
+
                                             return (
                                                 <div
                                                     key={payment.id}
-                                                    className="flex items-center justify-between p-4 border rounded-lg"
+                                                    ref={isHighlighted ? highlightedRef : null}
+                                                    className={`flex items-center justify-between p-4 border rounded-lg transition-all duration-500 ${
+                                                        isHighlighted 
+                                                            ? "border-emerald-400/80 bg-emerald-500/10 ring-2 ring-emerald-400/40 shadow-lg shadow-emerald-900/20" 
+                                                            : ""
+                                                    }`}
                                                 >
                                                     <div className="flex items-center space-x-4">
                                                         <div

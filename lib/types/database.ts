@@ -91,7 +91,7 @@ export interface Policy {
   vehicle_id: string;
   agent_id?: string;
   policy_type: string;
-  status: 'draft' | 'active' | 'expired' | 'cancelled' | 'suspended';
+  status: 'draft' | 'active' | 'expired' | 'cancelled' | 'suspended' | 'approved';
   start_date: string;
   end_date: string;
   premium_amount: number;
