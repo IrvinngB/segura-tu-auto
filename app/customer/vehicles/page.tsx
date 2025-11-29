@@ -172,24 +172,27 @@ export default function CustomerVehiclesPage() {
             if (vehicleId) setDeletingVehicleId(vehicleId);
             setError("");
 
-            // 1. Verificar pólizas activas o pendientes
-            const { data: activePolicies, error: policiesError } = await supabase
+            // 1. Verificar pólizas BLOQUEANTES (active, approved, suspended)
+            // Estos estados impiden la eliminación del vehículo
+            const blockingStatuses = ["active", "approved", "suspended", "pending_payment", "in_grace"];
+            
+            const { data: blockingPolicies, error: policiesError } = await supabase
                 .from("policies")
                 .select("vehicle_id")
                 .in("vehicle_id", idsToDelete)
-                .in("status", ["active", "pending"]);
+                .in("status", blockingStatuses);
 
             if (policiesError) {
                 console.error("Error al verificar pólizas:", policiesError);
                 throw new Error(`Error al verificar pólizas: ${policiesError.message}`);
             }
 
-            // Identificar vehículos con pólizas activas/pendientes
-            const vehicleIdsWithPolicies = new Set(activePolicies?.map(p => p.vehicle_id) || []);
-            const idsSafeToDelete = idsToDelete.filter(id => !vehicleIdsWithPolicies.has(id));
+            // Identificar vehículos con pólizas bloqueantes
+            const vehicleIdsBlocked = new Set(blockingPolicies?.map(p => p.vehicle_id) || []);
+            const idsSafeToDelete = idsToDelete.filter(id => !vehicleIdsBlocked.has(id));
             const omittedCount = idsToDelete.length - idsSafeToDelete.length;
 
-            // Caso A: Ningún vehículo se puede eliminar (todos tienen pólizas activas/pending)
+            // Caso A: Ningún vehículo se puede eliminar (todos tienen pólizas bloqueantes)
             if (idsSafeToDelete.length === 0) {
                 const isSingle = idsToDelete.length === 1;
                 
@@ -198,15 +201,27 @@ export default function CustomerVehiclesPage() {
                     open: true,
                     title: isSingle ? "No puedes eliminar este vehículo" : "No se pueden eliminar los vehículos",
                     description: isSingle
-                        ? "Este vehículo tiene una póliza activa o pendiente. Para eliminarlo, primero debes gestionar con tu agente de seguros la cancelación o finalización de la póliza asociada."
-                        : "Todos los vehículos seleccionados tienen pólizas activas o pendientes. Para eliminarlos, primero debes gestionar con tu agente de seguros la cancelación o finalización de las pólizas asociadas."
+                        ? "Este vehículo tiene una póliza activa, aprobada o suspendida. Para eliminarlo, primero debes cancelar la póliza asociada."
+                        : "Todos los vehículos seleccionados tienen pólizas activas, aprobadas o suspendidas. Para eliminarlos, primero debes cancelar las pólizas asociadas."
                 });
                 
                 setDeletingVehicleId(null);
                 return;
             }
 
-            // 2. Eliminar vehículos seguros
+            // 2. Desvincular pólizas NO bloqueantes (cancelled, expired, draft)
+            // Para evitar error de Foreign Key, ponemos vehicle_id = NULL
+            const { error: unlinkError } = await supabase
+                .from("policies")
+                .update({ vehicle_id: null } as any) // Cast as any to bypass strict type check if needed, or partial
+                .in("vehicle_id", idsSafeToDelete);
+
+            if (unlinkError) {
+                console.error("Error desvinculando pólizas:", unlinkError);
+                // No lanzamos error fatal, intentamos borrar igual, si falla el FK saltará el error abajo
+            }
+
+            // 3. Eliminar vehículos seguros
             const { error: deleteError } = await supabase
                 .from("vehicles")
                 .delete()
@@ -216,7 +231,7 @@ export default function CustomerVehiclesPage() {
                 console.error("Error eliminando vehículo(s):", deleteError);
                 toast({
                     title: "Error al eliminar vehículos",
-                    description: "Ocurrió un error al eliminar los vehículos seleccionados. Intenta nuevamente.",
+                    description: "Ocurrió un error al eliminar los vehículos seleccionados. Es posible que tengan registros asociados.",
                     variant: "destructive",
                 });
                 setDeleteDialog((prev) => ({ ...prev, open: false }));
@@ -224,7 +239,7 @@ export default function CustomerVehiclesPage() {
                 return;
             }
 
-            // 3. Actualizar UI (Estado local)
+            // 4. Actualizar UI (Estado local)
             setVehicles((prevVehicles) =>
                 prevVehicles.filter((vehicle) => !idsSafeToDelete.includes(vehicle.id))
             );
@@ -235,7 +250,7 @@ export default function CustomerVehiclesPage() {
                 setBlockedDialog({
                     open: true,
                     title: "Algunos vehículos no se pudieron eliminar",
-                    description: `Uno o más de los vehículos seleccionados tienen pólizas activas o pendientes. Esos vehículos no se eliminaron. Para eliminarlos, primero debes gestionar con tu agente de seguros la cancelación o finalización de las pólizas asociadas.`
+                    description: `Uno o más de los vehículos seleccionados tienen pólizas activas. Esos vehículos no se eliminaron.`
                 });
             } 
             // Caso C: Eliminación completa (ÉXITO)
@@ -248,13 +263,13 @@ export default function CustomerVehiclesPage() {
                     setSuccessDialog({
                         open: true,
                         title: "Vehículos eliminados",
-                        description: `Se eliminaron ${idsSafeToDelete.length} vehículo(s) exitosamente de tu lista.`,
+                        description: `Se eliminaron ${idsSafeToDelete.length} vehículo(s) exitosamente.`,
                     });
                 } else {
                     setSuccessDialog({
                         open: true,
                         title: "Vehículo eliminado",
-                        description: "El vehículo se eliminó correctamente de tu lista de vehículos.",
+                        description: "El vehículo se eliminó correctamente.",
                     });
                 }
             }
@@ -262,11 +277,7 @@ export default function CustomerVehiclesPage() {
             // Limpieza final
             setSelectedVehicles([]);
             setDeletingVehicleId(null);
-            // Asegurar cierre si no se hizo antes (aunque ya se hace en los ifs)
-            if (omittedCount > 0) {
-                setDeleteDialog((prev) => ({ ...prev, open: false }));
-            }
-
+            
         } catch (error: any) {
             console.error("Error inesperado en confirmDeleteVehicle:", error);
             // Case D: Error inesperado
