@@ -394,66 +394,90 @@ export function CustomerPaymentModal({
                 </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-6">
+            <div className="space-y-6 min-h-[300px]">
                 <div className="space-y-4">
                     <Label className="text-base font-semibold">
                         Seleccionar Método de Pago
                     </Label>
                     
-                    {paymentMethods.map((method) => (
-                        <Card
-                            key={method.id}
-                            className={`cursor-pointer transition-all ${
-                                selectedPaymentMethod === method.id
-                                    ? "ring-2 ring-primary border-primary"
-                                    : "hover:shadow-md"
-                            }`}
-                            onClick={() => setSelectedPaymentMethod(method.id)}
-                        >
-                            <CardContent className="flex items-center justify-between p-4">
-                                <div className="flex items-center gap-3">
-                                    {getCardIcon(method.type)}
-                                    <div>
-                                        <div className="font-semibold">
-                                            {method.name} •••• {method.last_four}
-                                        </div>
-                                        {method.expiry_date && (
-                                            <div className="text-sm text-muted-foreground">
-                                                Exp: {method.expiry_date}
+                    {loadingMethods ? (
+                        <div className="flex flex-col items-center justify-center py-12 space-y-4 animate-in fade-in duration-300">
+                            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                            <p className="text-sm text-muted-foreground">
+                                Cargando tus métodos de pago guardados...
+                            </p>
+                        </div>
+                    ) : paymentMethods.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center animate-in fade-in duration-500">
+                            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                                <CreditCard className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="font-medium">No tienes métodos guardados</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Agrega una tarjeta o cuenta para realizar tu pago
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 animate-in fade-in duration-500">
+                            {paymentMethods.map((method) => (
+                                <Card
+                                    key={method.id}
+                                    className={`cursor-pointer transition-all ${
+                                        selectedPaymentMethod === method.id
+                                            ? "ring-2 ring-primary border-primary"
+                                            : "hover:shadow-md"
+                                    }`}
+                                    onClick={() => setSelectedPaymentMethod(method.id)}
+                                >
+                                    <CardContent className="flex items-center justify-between p-4">
+                                        <div className="flex items-center gap-3">
+                                            {getCardIcon(method.type)}
+                                            <div>
+                                                <div className="font-semibold">
+                                                    {method.name} •••• {method.last_four}
+                                                </div>
+                                                {method.expiry_date && (
+                                                    <div className="text-sm text-muted-foreground">
+                                                        Exp: {method.expiry_date}
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {method.is_primary && (
-                                        <Badge variant="secondary">
-                                            <Star className="h-3 w-3 mr-1" />
-                                            Principal
-                                        </Badge>
-                                    )}
-                                    <div
-                                        className={`w-4 h-4 rounded-full border-2 ${
-                                            selectedPaymentMethod === method.id
-                                                ? "border-primary bg-primary"
-                                                : "border-gray-300"
-                                        }`}
-                                    >
-                                        {selectedPaymentMethod === method.id && (
-                                            <CheckCircle className="h-3 w-3 text-white" />
-                                        )}
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {method.is_primary && (
+                                                <Badge variant="secondary">
+                                                    <Star className="h-3 w-3 mr-1" />
+                                                    Principal
+                                                </Badge>
+                                            )}
+                                            <div
+                                                className={`w-4 h-4 rounded-full border-2 ${
+                                                    selectedPaymentMethod === method.id
+                                                        ? "border-primary bg-primary"
+                                                        : "border-gray-300"
+                                                }`}
+                                            >
+                                                {selectedPaymentMethod === method.id && (
+                                                    <CheckCircle className="h-3 w-3 text-white" />
+                                                )}
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <Separator />
 
                 <Button
-                    variant="outline"
+                    variant={paymentMethods.length === 0 && !loadingMethods ? "default" : "outline"}
                     onClick={() => setPaymentStep("new")}
                     className="w-full"
+                    disabled={loadingMethods}
                 >
                     <Plus className="h-4 w-4 mr-2" />
                     Usar Nuevo Método de Pago
@@ -466,7 +490,7 @@ export function CustomerPaymentModal({
                 </Button>
                 <Button 
                     onClick={handlePayment} 
-                    disabled={!selectedPaymentMethod || processingPayment}
+                    disabled={!selectedPaymentMethod || processingPayment || loadingMethods}
                     className="min-w-[120px]"
                 >
                     {processingPayment ? (
