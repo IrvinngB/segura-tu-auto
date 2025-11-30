@@ -170,23 +170,107 @@ export default function CustomerPaymentsPage() {
     const [customerId, setCustomerId] = useState<string>("");
     const searchParams = useSearchParams();
     const policyIdToHighlight = searchParams.get("policyId");
+    const payQuoteId = searchParams.get("payQuoteId");
     const highlightedRef = useRef<HTMLDivElement>(null);
     const supabase = createClient();
 
     useEffect(() => {
-        if (policyIdToHighlight && upcomingPayments.length > 0) {
+        if ((policyIdToHighlight || payQuoteId) && upcomingPayments.length > 0) {
             // Dar un pequeño tiempo para que se renderice
             const timer = setTimeout(() => {
-                if (highlightedRef.current) {
-                    highlightedRef.current.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                    });
+                // If payQuoteId is present, we need to find the corresponding policy/payment
+                // The upcoming payments have IDs like `approved_${policyId}` or `upcoming_${policyId}`
+                
+                let elementId = '';
+                if (payQuoteId) {
+                    // Find the upcoming payment that corresponds to this quote
+                    // We need to know which policy corresponds to the quote.
+                    // Since we don't have quote info here directly, we might need to fetch it or rely on policy matching.
+                    // However, for approved quotes, we created a policy with status 'approved'.
+                    // So we can look for an upcoming payment with type 'Pago Inicial (Activación)'?
+                    // Or we can try to find the policy ID from the quote ID if we had it.
+                    // But we don't have it easily here without fetching.
+                    
+                    // Let's try to find the element by data attribute if we add it, or just search DOM.
+                    // But we render based on `upcomingPayments`.
+                    
+                    // Alternative: Fetch the quote to get the policy ID first?
+                    // Or just iterate through upcoming payments and see if any matches?
+                    // We don't have quote ID in upcoming payments.
+                    
+                    // Let's fetch the quote details if payQuoteId is present to get the policy ID.
+                    // This is done in loadPaymentData or a separate effect?
+                    // Better to do it in a separate effect or inside loadPaymentData.
+                } else if (policyIdToHighlight) {
+                     // Try to find element with ID containing policyId
+                     const el = document.getElementById(`payment-card-approved_${policyIdToHighlight}`) || 
+                                document.getElementById(`payment-card-upcoming_${policyIdToHighlight}`);
+                     if (el) {
+                         el.scrollIntoView({ behavior: "smooth", block: "center" });
+                         el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+                         setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+                     }
                 }
             }, 500);
             return () => clearTimeout(timer);
         }
-    }, [policyIdToHighlight, upcomingPayments]);
+    }, [policyIdToHighlight, payQuoteId, upcomingPayments]);
+
+    // Effect to fetch quote details if payQuoteId is present
+    useEffect(() => {
+        const fetchQuoteAndHighlight = async () => {
+            if (!payQuoteId) return;
+            
+            try {
+                // We need to find the policy associated with this quote.
+                // Since we don't have a direct endpoint for "get policy by quote id" easily accessible here without auth check etc.
+                // We can fetch the quote details.
+                // But wait, we are in the customer payments page.
+                // We can just fetch the quote using supabase client.
+                
+                const { data: quote, error } = await supabase
+                    .from('quotes')
+                    .select('vehicle_id, customer_id, status')
+                    .eq('id', payQuoteId)
+                    .single();
+                    
+                if (quote && quote.vehicle_id) {
+                    // Now find the approved policy for this vehicle
+                    const { data: policy } = await supabase
+                        .from('policies')
+                        .select('id')
+                        .eq('vehicle_id', quote.vehicle_id)
+                        .eq('customer_id', quote.customer_id)
+                        .eq('status', 'approved')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+                        
+                    if (policy) {
+                        // Now we have the policy ID, we can highlight the card
+                        const elementId = `payment-card-approved_${policy.id}`;
+                        const el = document.getElementById(elementId);
+                        if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                            el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+                            setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+                            
+                            // Also open the payment modal automatically?
+                            // Maybe better to just highlight.
+                            // If user wants to pay, they click "Pagar".
+                            // But the requirement says "destaque".
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching quote for highlight:", err);
+            }
+        };
+        
+        if (payQuoteId && upcomingPayments.length > 0) {
+            fetchQuoteAndHighlight();
+        }
+    }, [payQuoteId, upcomingPayments, supabase]);
 
     // Función auxiliar para obtener la frecuencia de pago de una póliza
     const getPaymentFrequencyFromPolicy = (policy: any) => {
@@ -767,6 +851,7 @@ export default function CustomerPaymentsPage() {
                                             return (
                                                 <div
                                                     key={payment.id}
+                                                    id={`payment-card-${payment.id}`}
                                                     ref={isHighlighted ? highlightedRef : null}
                                                     className={`flex items-center justify-between p-4 border rounded-lg transition-all duration-500 ${
                                                         isHighlighted 

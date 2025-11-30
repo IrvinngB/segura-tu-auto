@@ -136,11 +136,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         }
       }
 
-      // Update quote status to approved and converted
+      // Update quote status to approved (it will be converted when paid)
       const { data: updatedQuote, error: updateError } = await supabase
         .from('quotes')
         .update({
-          status: 'converted',
+          status: 'approved',
           agent_id: user.id,
           agent_notes: notes,
           reviewed_at: new Date().toISOString(),
