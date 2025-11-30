@@ -1376,3 +1376,16 @@ table td,
   text-align: center !important;
   vertical-align: middle !important;
 }
+/* Quote Highlight Animation */
+@keyframes quoteHighlightPulse {
+  0% {
+    background-color: rgba(0, 200, 255, 0.25);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.quote-card--highlight {
+  animation: quoteHighlightPulse 1s ease-out;
+}

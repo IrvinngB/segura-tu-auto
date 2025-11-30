@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,11 +51,37 @@ export function QuoteList({ customerId }: QuoteListProps) {
   const [error, setError] = useState('');
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [highlightedQuoteId, setHighlightedQuoteId] = useState<string | null>(null);
+  
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     fetchQuotes();
   }, [customerId]);
+
+  useEffect(() => {
+    const highlightId = searchParams.get('highlightQuoteId');
+    if (highlightId && quotes.length > 0) {
+      setHighlightedQuoteId(highlightId);
+      
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        const el = document.getElementById(`quote-card-${highlightId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('quote-card--highlight');
+          
+          const timer = setTimeout(() => {
+            el.classList.remove('quote-card--highlight');
+            setHighlightedQuoteId(null);
+          }, 1000);
+          
+          return () => clearTimeout(timer);
+        }
+      }, 100);
+    }
+  }, [searchParams, quotes]);
 
   const fetchQuotes = async () => {
     try {
@@ -400,7 +427,7 @@ export function QuoteList({ customerId }: QuoteListProps) {
   return (
     <div className="space-y-6">
       {quotes.map(quote => (
-        <Card key={quote.id} className="w-full">
+        <Card key={quote.id} id={`quote-card-${quote.id}`} className="w-full transition-colors duration-300">
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>

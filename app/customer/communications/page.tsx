@@ -500,9 +500,9 @@ export default function CustomerCommunicationsPage() {
                                             } else if (isQuoteUpdate) {
                                                 const quoteId = communication.metadata?.quoteId;
                                                 if (quoteId) {
-                                                    router.push(`/customer/quote?quoteId=${quoteId}`);
+                                                    router.push(`/customer/quotes?highlightQuoteId=${quoteId}`);
                                                 } else {
-                                                    router.push('/customer/quote');
+                                                    router.push('/customer/quotes');
                                                 }
                                             } else {
                                                 const match = communication.subject.match(/(CLM-\d+-\d+)/);
