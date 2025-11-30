@@ -35,6 +35,7 @@ import {
   Star,
   Crown,
   Download,
+  Clock,
 } from 'lucide-react';
 
 interface QuoteFormProps {
@@ -198,76 +199,57 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     if (!customerData) return;
 
     try {
-      console.log('Buscando vehículos del cliente:', customerData.id);
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('customer_id', customerData.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching vehicles:', error);
+      console.log('Buscando vehículos del cliente con estado:', customerData.id);
+      const response = await fetch('/api/customer/vehicles-with-status');
+      
+      if (!response.ok) {
+        console.error('Error fetching vehicles with status');
         return;
       }
 
-      if (data) {
-        console.log('Vehículos encontrados:', data.length);
-        setVehicles(data);
-        // Verificar cuáles vehículos ya tienen pólizas activas
-        await checkVehicleActivePolicies(data);
+      const data = await response.json();
 
-        // Auto-select first available vehicle (without active policy)
+      if (data && Array.isArray(data)) {
+        console.log('Vehículos encontrados (RAW):', data);
+        data.forEach((v: any) => {
+             console.log(`Vehicle ${v.id} availability:`, v.quoteAvailability, 'Status:', v.latestQuoteStatus);
+        });
+        setVehicles(data);
+        
+        // No need to call checkVehicleActivePolicies anymore as the API handles it
+        // But we might need to update vehiclesWithPolicies set for compatibility if used elsewhere
+        const policiesSet = new Set<string>();
+        data.forEach((v: any) => {
+          if (
+            v.quoteAvailability === 'ACTIVE_POLICY' ||
+            v.quoteAvailability === 'PENDING_QUOTE' ||
+            v.quoteAvailability === 'APPROVED_QUOTE'
+          ) {
+            policiesSet.add(v.id);
+          }
+        });
+        setVehiclesWithPolicies(policiesSet);
+
+        // Auto-select first available vehicle
         if (data.length > 0) {
-          // Primero intentar con vehículos sin póliza activa
-          const availableVehicle = data.find(vehicle => !vehiclesWithPolicies.has(vehicle.id));
+          // Primero intentar con vehículos disponibles (AVAILABLE)
+          const availableVehicle = data.find((vehicle: any) => vehicle.quoteAvailability === 'AVAILABLE');
+          
           if (availableVehicle) {
             setSelectedVehicleId(availableVehicle.id);
           } else {
-            // Si todos tienen póliza, seleccionar el primero pero mostrar advertencia
-            setSelectedVehicleId(data[0].id);
+            // Si no hay disponibles, no seleccionar ninguno automáticamente o seleccionar el primero
+            // Mejor no seleccionar ninguno para obligar al usuario a ver el estado
+            // O seleccionar el primero para mostrar la info aunque esté deshabilitado
+            // setSelectedVehicleId(data[0].id);
           }
         }
       } else {
         console.log('No se encontraron vehículos');
         setVehicles([]);
       }
-    } catch (error) {
-      console.error('Error fetching vehicles:', error);
-    }
-  };
 
-  const checkVehicleActivePolicies = async (vehicleList: Vehicle[]) => {
-    if (vehicleList.length === 0) return;
 
-    try {
-      setLoadingVehiclePolicies(true);
-
-      // Obtener todas las pólizas activas para estos vehículos
-      const vehicleIds = vehicleList.map(v => v.id);
-      const { data: activePolicies } = await supabase
-        .from('policies')
-        .select('vehicle_id')
-        .in('vehicle_id', vehicleIds)
-        .in('status', ['active', 'suspended']); // Considera activas y suspendidas como ocupadas
-
-      // También verificar cotizaciones pendientes
-      const { data: pendingQuotes } = await supabase
-        .from('quotes')
-        .select('vehicle_id')
-        .in('vehicle_id', vehicleIds)
-        .in('status', ['pending', 'approved']);
-
-      const vehiclesWithActivePolicies = new Set<string>();
-
-      if (activePolicies) {
-        activePolicies.forEach(policy => vehiclesWithActivePolicies.add(policy.vehicle_id));
-      }
-
-      if (pendingQuotes) {
-        pendingQuotes.forEach(quote => vehiclesWithActivePolicies.add(quote.vehicle_id));
-      }
-
-      setVehiclesWithPolicies(vehiclesWithActivePolicies);
     } catch (error) {
       console.error('Error checking vehicle policies:', error);
     } finally {
@@ -966,16 +948,39 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                     <Select
                       value={selectedVehicleId}
                       onValueChange={value => {
-                        if (vehiclesWithPolicies.has(value)) {
+                        const selectedVehicle = vehicles.find(v => v.id === value);
+                        const status = (selectedVehicle as any)?.quoteAvailability;
+
+                        if (status === 'ACTIVE_POLICY') {
                           setNotificationModal({
                             open: true,
                             type: 'warning',
                             title: 'Vehículo Ya Asegurado',
-                            message:
-                              'Este vehículo ya tiene una póliza activa. Un vehículo solo puede tener una póliza activa a la vez. Puedes cotizar para otros vehículos disponibles.',
+                            message: 'Este vehículo ya tiene una póliza activa. No es posible crear una nueva cotización.',
                           });
                           return;
                         }
+                        
+                        if (status === 'PENDING_QUOTE') {
+                          setNotificationModal({
+                            open: true,
+                            type: 'warning',
+                            title: 'Cotización Pendiente',
+                            message: 'Este vehículo ya tiene una cotización en proceso. Por favor espera la respuesta del agente.',
+                          });
+                          return;
+                        }
+
+                        if (status === 'APPROVED_QUOTE') {
+                          setNotificationModal({
+                            open: true,
+                            type: 'info',
+                            title: 'Cotización Aprobada',
+                            message: 'Este vehículo ya tiene una cotización aprobada. Por favor procede al pago para activar tu póliza.',
+                          });
+                          return;
+                        }
+
                         setSelectedVehicleId(value);
                       }}
                     >
@@ -989,19 +994,42 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                             <SelectItem
                               key={vehicle.id}
                               value={vehicle.id}
-                              disabled={hasActivePolicy}
-                              className={hasActivePolicy ? 'opacity-50' : ''}
+                              disabled={
+                                (vehicle as any).quoteAvailability === 'ACTIVE_POLICY' ||
+                                (vehicle as any).quoteAvailability === 'PENDING_QUOTE' ||
+                                (vehicle as any).quoteAvailability === 'APPROVED_QUOTE'
+                              }
+                              className={
+                                (vehicle as any).quoteAvailability !== 'AVAILABLE' ? 'opacity-70' : ''
+                              }
                             >
-                              <div className="flex items-center justify-between w-full">
+                              <div className="flex items-center justify-between w-full gap-4">
                                 <div className="flex items-center gap-2">
                                   <Car className="h-4 w-4" />
-                                  {vehicle.year} {vehicle.make} {vehicle.model} -{' '}
-                                  {vehicle.license_plate}
+                                  <span className="truncate max-w-[200px] sm:max-w-md">
+                                    {vehicle.year} {vehicle.make} {vehicle.model} -{' '}
+                                    {vehicle.license_plate}
+                                  </span>
                                 </div>
-                                {hasActivePolicy && (
-                                  <Badge variant="destructive" className="ml-2">
+                                
+                                {(vehicle as any).quoteAvailability === 'ACTIVE_POLICY' && (
+                                  <Badge variant="default" className="bg-green-600 hover:bg-green-700 ml-2 whitespace-nowrap">
                                     <Shield className="h-3 w-3 mr-1" />
                                     Asegurado
+                                  </Badge>
+                                )}
+                                
+                                {(vehicle as any).quoteAvailability === 'PENDING_QUOTE' && (
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200 ml-2 whitespace-nowrap">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    En cotización
+                                  </Badge>
+                                )}
+                                
+                                {(vehicle as any).quoteAvailability === 'APPROVED_QUOTE' && (
+                                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200 ml-2 whitespace-nowrap">
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Cotización aprobada
                                   </Badge>
                                 )}
                               </div>
