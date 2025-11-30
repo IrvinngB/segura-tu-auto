@@ -72,6 +72,7 @@ import {
     isAfter,
     isBefore,
     differenceInDays,
+    parseISO,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "@/components/ui/use-toast";
@@ -147,6 +148,20 @@ interface UpcomingPayment {
     payment_type: string;
     status: "upcoming" | "overdue" | "grace_period";
 }
+
+// Helper to parse date string as local date (avoiding UTC conversion issues)
+const parseLocalDate = (dateString: string) => {
+    if (!dateString) return new Date();
+    // If it's a full ISO string with time, parseISO handles it well usually, 
+    // but if it's YYYY-MM-DD, new Date() treats it as UTC midnight.
+    // We want YYYY-MM-DD to be treated as local midnight.
+    if (dateString.includes('T')) {
+        return new Date(dateString);
+    }
+    // Append time to force local interpretation or parse manually
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+};
 
 export default function CustomerPaymentsPage() {
     const { userProfile } = useAuth();
@@ -883,9 +898,7 @@ export default function CustomerPaymentsPage() {
                                                                 }{" "}
                                                                 - Vence{" "}
                                                                 {format(
-                                                                    new Date(
-                                                                        payment.due_date
-                                                                    ),
+                                                                    parseLocalDate(payment.due_date),
                                                                     "dd 'de' MMMM",
                                                                     {
                                                                         locale: es,
@@ -1261,9 +1274,7 @@ export default function CustomerPaymentsPage() {
                                                         <p className="text-xs text-muted-foreground">
                                                             Vence:{" "}
                                                             {format(
-                                                                new Date(
-                                                                    payment.due_date
-                                                                ),
+                                                                parseLocalDate(payment.due_date),
                                                                 "dd 'de' MMMM yyyy",
                                                                 { locale: es }
                                                             )}

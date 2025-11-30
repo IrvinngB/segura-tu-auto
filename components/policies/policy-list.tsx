@@ -592,8 +592,8 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                 <TableHead>Vehículo</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Vigencia</TableHead>
-                <TableHead>Prima</TableHead>
+                <TableHead className="text-center align-middle">Vigencia</TableHead>
+                <TableHead className="text-center align-middle">Prima</TableHead>
                 <TableHead className="text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -618,9 +618,9 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                       }}
                       className={isApproved ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
                     >
-                      <TableCell className="font-medium">{policy.policy_number}</TableCell>
+                      <TableCell className="font-medium align-middle">{policy.policy_number}</TableCell>
                       {!customerId && (
-                        <TableCell>
+                        <TableCell className="align-middle">
                           <div>
                             <div className="font-medium">
                               {policy.customer?.user?.first_name} {policy.customer?.user?.last_name}
@@ -631,7 +631,7 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                           </div>
                         </TableCell>
                       )}
-                      <TableCell>
+                      <TableCell className="align-middle">
                         <div>
                           <div className="font-medium">
                             {policy.vehicle?.year} {policy.vehicle?.make} {policy.vehicle?.model}
@@ -641,8 +641,8 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{getPolicyTypeLabel(policy.policy_type)}</TableCell>
-                      <TableCell>
+                      <TableCell className="align-middle">{getPolicyTypeLabel(policy.policy_type)}</TableCell>
+                      <TableCell className="align-middle">
                         <div className="flex flex-col gap-2 items-center justify-center">
                           {getStatusBadge(policy.status)}
                           {isExpiringSoon(policy.end_date) && policy.status !== 'expired' && (
@@ -655,8 +655,8 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-sm">
+                      <TableCell className="text-center align-middle py-4">
+                        <div className="flex items-center justify-center gap-1 text-sm">
                           <Calendar className="h-3 w-3" />
                           <span>
                             {format(new Date(policy.start_date), 'dd/MM/yyyy', { locale: es })} -{' '}
@@ -664,31 +664,33 @@ export function PolicyList({ customerId, onViewPolicy, onEditPolicy }: PolicyLis
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium">
-                            $
-                            {policy.payment_frequency === 'monthly'
-                              ? (policy.premium_amount / 12).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
-                              : policy.payment_frequency === 'quarterly'
-                                ? (policy.premium_amount / 4).toLocaleString(undefined, {
+                      <TableCell className="text-center align-middle py-4">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">
+                              $
+                              {policy.payment_frequency === 'monthly'
+                                ? (policy.premium_amount / 12).toLocaleString(undefined, {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
                                 })
-                                : policy.premium_amount.toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {policy.payment_frequency === 'monthly' ? 'mensual' : policy.payment_frequency === 'annual' ? 'anual' : 'trimestral'}
+                                : policy.payment_frequency === 'quarterly'
+                                  ? (policy.premium_amount / 4).toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })
+                                  : policy.premium_amount.toLocaleString(undefined, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {policy.payment_frequency === 'monthly' ? 'mensual' : policy.payment_frequency === 'annual' ? 'anual' : 'trimestral'}
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="align-middle">
                         <div className="flex items-center justify-center gap-2">
                           <Button
                             variant="ghost"
