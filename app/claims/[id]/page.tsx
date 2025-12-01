@@ -232,6 +232,67 @@ export default function ClaimDetailPage() {
     }
   };
 
+  const createClaimStatusNotification = async (customerId: string, statusChange: { claimNumber: string, oldStatus: string, newStatus: string, updatedBy?: string }) => {
+    const statusLabels: Record<string, string> = {
+      'submitted': 'Enviada',
+      'under_review': 'En Revisión',
+      'pending_documentation': 'Documentos Pendientes',
+      'waiting_approval': 'Esperando Aprobación',
+      'investigating': 'En Investigación',
+      'approved': 'Aprobada',
+      'denied': 'Denegada',
+      'processing_payment': 'Procesando Pago',
+      'paid': 'Pagada',
+      'closed': 'Cerrada'
+    };
+
+    let content = `Tu reclamación ${statusChange.claimNumber} ha cambiado de estado de "${statusLabels[statusChange.oldStatus] || statusChange.oldStatus}" a "${statusLabels[statusChange.newStatus] || statusChange.newStatus}".`;
+
+    // Mensajes específicos
+    if (statusChange.oldStatus === 'submitted' && statusChange.newStatus === 'under_review') {
+      content = `Tu reclamación ${statusChange.claimNumber} está siendo revisada por nuestro equipo.`;
+    } else if (statusChange.oldStatus === 'under_review' && statusChange.newStatus === 'investigating') {
+      content = `Tu reclamación ${statusChange.claimNumber} ha sido asignada a un evaluador técnico.`;
+    } else if (statusChange.oldStatus === 'investigating' && statusChange.newStatus === 'waiting_approval') {
+      content = `La evaluación técnica de tu reclamación ${statusChange.claimNumber} ha sido completada, esperando aprobación final.`;
+    } else if (statusChange.oldStatus === 'waiting_approval' && statusChange.newStatus === 'approved') {
+      content = `¡Buenas noticias! Tu reclamación ${statusChange.claimNumber} ha sido aprobada.`;
+    } else if (statusChange.newStatus === 'denied') {
+      content = `Tu reclamación ${statusChange.claimNumber} ha sido denegada. Contacta con nosotros para más información.`;
+    }
+
+    console.log('🔔 Datos a insertar:', {
+      customer_id: customerId,
+      claim_id: params.id,
+      subject: 'Estado de Reclamación Actualizado',
+      content: content,
+      communication_type: 'email' // Usamos 'email' para evitar error de constraint
+    });
+
+    const { data, error } = await supabase
+      .from('communications')
+      .insert({
+        customer_id: customerId,
+        claim_id: params.id,
+        subject: 'Estado de Reclamación Actualizado',
+        content: content,
+        communication_type: 'email', // Usamos 'email' para evitar error de constraint
+        direction: 'outbound',
+        status: 'unread',
+        created_at: new Date().toISOString()
+      })
+      .select();
+
+    if (error) {
+      console.error('❌ Error completo:', error);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error details:', error.details);
+      console.error('❌ Error hint:', error.hint);
+    } else {
+      console.log('✅ Notificación creada:', data);
+    }
+  };
+
   const updateClaimStatus = async (newStatus: string) => {
     console.log('🔄 ACTUALIZANDO STATUS RECLAMACIÓN:');
     console.log('📋 Claim ID:', params.id);
@@ -267,6 +328,20 @@ export default function ClaimDetailPage() {
       console.log('🔄 Refrescando datos de la reclamación...');
       await fetchClaimDetails();
       console.log('✅ Datos refrescados completamente');
+
+      // Crear notificación para el cliente
+      console.log('🔔 Intentando crear notificación...');
+      if (claim && claim.customer_id) {
+        console.log('✅ Customer ID encontrado:', claim.customer_id);
+        await createClaimStatusNotification(claim.customer_id, {
+          claimNumber: claim.claim_number,
+          oldStatus: claim.status,
+          newStatus: newStatus,
+          updatedBy: userProfile?.role
+        });
+      } else {
+        console.error('❌ No se encontró customer_id. Claim:', claim);
+      }
 
       // Mapeo de estados para mostrar nombres amigables
       const statusLabels: Record<string, string> = {
@@ -344,6 +419,18 @@ export default function ClaimDetailPage() {
 
           if (error) throw error;
 
+          if (error) throw error;
+
+          // Crear notificación para el cliente
+          if (claim && claim.customer_id) {
+            await createClaimStatusNotification(claim.customer_id, {
+              claimNumber: claim.claim_number,
+              oldStatus: claim.status,
+              newStatus: 'approved',
+              updatedBy: userProfile?.role
+            });
+          }
+
           await fetchClaimDetails();
           setMessageModal({
             show: true,
@@ -387,6 +474,18 @@ export default function ClaimDetailPage() {
             .eq('id', params.id);
 
           if (error) throw error;
+
+          if (error) throw error;
+
+          // Crear notificación para el cliente
+          if (claim && claim.customer_id) {
+            await createClaimStatusNotification(claim.customer_id, {
+              claimNumber: claim.claim_number,
+              oldStatus: claim.status,
+              newStatus: 'processing_payment',
+              updatedBy: userProfile?.role
+            });
+          }
 
           await fetchClaimDetails();
           setMessageModal({
@@ -433,6 +532,18 @@ export default function ClaimDetailPage() {
         .eq('id', params.id);
 
       if (error) throw error;
+
+      if (error) throw error;
+
+      // Crear notificación para el cliente
+      if (claim && claim.customer_id) {
+        await createClaimStatusNotification(claim.customer_id, {
+          claimNumber: claim.claim_number,
+          oldStatus: claim.status,
+          newStatus: 'paid',
+          updatedBy: userProfile?.role
+        });
+      }
 
       await fetchClaimDetails();
       alert(`Pago confirmado. Referencia: ${paymentReference}`);

@@ -27,7 +27,8 @@ import {
     Square,
     Info,
     CheckCircle,
-    XCircle
+    XCircle,
+    Bell
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -169,6 +170,8 @@ export default function CustomerCommunicationsPage() {
                 return <CheckCircle className="h-4 w-4 text-green-600" />;
             case "quote_rejected":
                 return <XCircle className="h-4 w-4 text-red-600" />;
+            case "claim_status_update":
+                return <Bell className="h-4 w-4 text-blue-600" />;
             default:
                 return <FileText className="h-4 w-4" />;
         }
@@ -468,7 +471,8 @@ export default function CustomerCommunicationsPage() {
                             const isRejectedDoc = communication.subject.includes('Documento rechazado') || communication.content.includes('rechazado');
                             const isDocsRequired = communication.subject.includes('Docs requeridos');
                             const isQuoteUpdate = communication.communication_type === 'quote_approved' || communication.communication_type === 'quote_rejected';
-                            const isClickable = isRejectedDoc || isDocsRequired || isQuoteUpdate;
+                            const isClaimUpdate = communication.communication_type === 'claim_status_update' || (communication.communication_type === 'email' && communication.subject === 'Estado de Reclamación Actualizado');
+                            const isClickable = isRejectedDoc || isDocsRequired || isQuoteUpdate || isClaimUpdate;
                             
                             return (
                                 <Card
@@ -478,6 +482,8 @@ export default function CustomerCommunicationsPage() {
                                         ? 'border-l-4 border-l-red-500' 
                                         : communication.communication_type === 'quote_approved'
                                         ? 'border-l-4 border-l-green-500'
+                                        : isClaimUpdate
+                                        ? 'border-l-4 border-l-blue-500'
                                         : ''
                                     } ${
                                         isClickable 
@@ -503,6 +509,20 @@ export default function CustomerCommunicationsPage() {
                                                     router.push(`/customer/quotes?highlightQuoteId=${quoteId}`);
                                                 } else {
                                                     router.push('/customer/quotes');
+                                                }
+                                            } else if (isClaimUpdate) {
+                                                // Try to extract claim ID from metadata if available, otherwise use claim_id
+                                                if (communication.claim_id) {
+                                                    router.push(`/customer/claims/${communication.claim_id}`);
+                                                } else {
+                                                    // Fallback to regex if claim_id is missing (shouldn't happen with new trigger)
+                                                    const match = communication.subject.match(/(CLM-\d+-\d+)/) || communication.content.match(/(CLM-\d+-\d+)/);
+                                                    if (match) {
+                                                        // We can't easily redirect to ID from number without a lookup, but we can try to find it in the list or just go to claims list
+                                                        router.push('/customer/claims');
+                                                    } else {
+                                                        router.push('/customer/claims');
+                                                    }
                                                 }
                                             } else {
                                                 const match = communication.subject.match(/(CLM-\d+-\d+)/);
