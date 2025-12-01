@@ -79,6 +79,7 @@ import { toast } from "@/components/ui/use-toast";
 import { CustomerPaymentModal } from "@/components/customer/customer-payment-modal";
 import { PaymentMethods } from "@/components/customer/payment-methods";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { formatDueDate, isDueDatePassed, getPaymentStatus } from "@/lib/utils/payments";
 
 interface Payment {
     id: string;
@@ -447,19 +448,47 @@ export default function CustomerPaymentsPage() {
             if (sortedPolicies) {
                 const upcomingPaymentsData: UpcomingPayment[] = [];
 
+                // Agregar pagos pendientes reales de la base de datos primero
+                if (paymentsData) {
+                    paymentsData.filter(p => p.status === 'pending').forEach(p => {
+                        upcomingPaymentsData.push({
+                            id: p.id,
+                            policy_id: p.policy_id || '',
+                            policy_number: p.policy?.policy_number || '',
+                            amount: p.amount,
+                            due_date: p.due_date || new Date().toISOString(),
+                            payment_type: p.payment_type === 'activation' ? 'Pago Inicial (Activación)' : 
+                                         p.payment_type === 'premium' ? 'Prima Mensual' : p.payment_type,
+                            status: getUpcomingPaymentStatus(p.due_date || new Date().toISOString())
+                        });
+                    });
+                }
+
                 // Agregar pólizas aprobadas como próximos pagos (pendientes de pago inicial)
+                // Solo si no existe ya un pago pendiente real para esta póliza
                 sortedPolicies
                     .filter((policy) => policy.status === "approved")
                     .forEach((policy) => {
-                        upcomingPaymentsData.push({
-                            id: `approved_${policy.id}`,
-                            policy_id: policy.id,
-                            policy_number: policy.policy_number,
-                            amount: policy.premium_amount,
-                            due_date: policy.start_date,
-                            payment_type: "Pago Inicial (Activación)",
-                            status: "upcoming",
-                        });
+                        const hasPending = upcomingPaymentsData.some(up => up.policy_id === policy.id);
+                        
+                        if (!hasPending) {
+                            // Calcular la fecha de vencimiento con gracia de 15 días desde la última actualización
+                            const gracePeriod = parseInt(process.env.NEXT_PUBLIC_PAYMENT_GRACE_DAYS || '15');
+                            const approvalDate = new Date(policy.updated_at);
+                            const dueDate = new Date(approvalDate);
+                            dueDate.setDate(dueDate.getDate() + gracePeriod);
+                            dueDate.setUTCHours(23, 59, 59, 999);
+                            
+                            upcomingPaymentsData.push({
+                                id: `approved_${policy.id}`,
+                                policy_id: policy.id,
+                                policy_number: policy.policy_number,
+                                amount: policy.premium_amount,
+                                due_date: dueDate.toISOString(),
+                                payment_type: "Pago Inicial (Activación)",
+                                status: "upcoming",
+                            });
+                        }
                     });
 
                 // Agregar pólizas activas con renovación automática
@@ -617,22 +646,7 @@ export default function CustomerPaymentsPage() {
     };
 
     const getUpcomingPaymentStatus = (dueDate: string) => {
-        const today = new Date();
-        const due = new Date(dueDate);
-        const daysUntilDue = differenceInDays(due, today);
-
-        if (daysUntilDue < 0) {
-            // Si ya pasó la fecha de vencimiento
-            const daysPastDue = Math.abs(daysUntilDue);
-            if (daysPastDue <= 30) {
-                // Período de gracia: hasta 30 días después del vencimiento
-                return "grace_period";
-            } else {
-                // Después de 30 días, está vencido
-                return "overdue";
-            }
-        }
-        return "upcoming";
+        return getPaymentStatus(dueDate);
     };
 
     const getTotalPaid = () => {
@@ -897,13 +911,7 @@ export default function CustomerPaymentsPage() {
                                                                     payment.payment_type
                                                                 }{" "}
                                                                 - Vence{" "}
-                                                                {format(
-                                                                    parseLocalDate(payment.due_date),
-                                                                    "dd 'de' MMMM",
-                                                                    {
-                                                                        locale: es,
-                                                                    }
-                                                                )}
+                                                                {formatDueDate(payment.due_date)}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -1272,12 +1280,7 @@ export default function CustomerPaymentsPage() {
                                                             }
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Vence:{" "}
-                                                            {format(
-                                                                parseLocalDate(payment.due_date),
-                                                                "dd 'de' MMMM yyyy",
-                                                                { locale: es }
-                                                            )}
+                                                            Vence: {formatDueDate(payment.due_date)}
                                                         </p>
                                                     </div>
                                                 </div>

@@ -153,7 +153,30 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         return NextResponse.json({ error: updateError.message }, { status: 500 });
       }
 
-      // Create communication for approval
+      // Create pending payment with grace period using utility function
+      const { createActivationPaymentData } = await import('@/lib/utils/payments');
+      
+      const paymentData = createActivationPaymentData(
+        {
+          approvedAt: new Date().toISOString(), // Current approval time
+          createdAt: existingQuote.created_at,
+          premium_amount: existingQuote.premium_amount,
+          payment_frequency: existingQuote.payment_frequency
+        },
+        policy.id,
+        existingQuote.customer_id
+      );
+
+      const { error: paymentError } = await supabase
+          .from('payments')
+          .insert(paymentData);
+
+      if (paymentError) {
+          console.error("Error creating pending payment:", paymentError);
+          // Don't fail the whole request, but log it. The user can still pay via the UI fallback if needed,
+          // but ideally this record exists.
+      }
+
       const { error: commError } = await supabase.from('communications').insert({
         customer_id: existingQuote.customer_id,
         communication_type: 'quote_approved',
