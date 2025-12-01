@@ -570,9 +570,9 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                 {(userProfile?.role === 'agent' || userProfile?.role === 'admin') && (
                   <TableHead>Ajustador</TableHead>
                 )}
-                <TableHead>Fecha</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead className="text-center">Fecha</TableHead>
+                <TableHead className="text-center">Monto</TableHead>
+                <TableHead className="text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -645,22 +645,22 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                         )}
                       </TableCell>
                     )}
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
+                    <TableCell className="text-center">
+                      <div className="flex items-center gap-1 text-sm justify-center">
                         <Calendar className="h-3 w-3" />
                         <span>
                           {format(new Date(claim.incident_date), 'dd/MM/yyyy', { locale: es })}
                         </span>
                       </div>
                       {getClaimAgeDisplay(claim.created_at) && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground justify-center">
                           <Clock className="h-3 w-3" />
                           <span>{getClaimAgeDisplay(claim.created_at)}</span>
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
+                    <TableCell className="text-center">
+                      <div className="text-sm flex flex-col items-center">
                         {claim.estimated_damage_cost && (
                           <div className="flex items-center gap-1">
                             <span>${claim.estimated_damage_cost.toLocaleString()}</span>
@@ -674,8 +674,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2 justify-end">
+                    <TableCell className="text-center">
+                      <div className="flex gap-2 justify-center">
                         {/* Botón Ver - Mejorado y Visible */}
                         <Button
                           variant="outline"
