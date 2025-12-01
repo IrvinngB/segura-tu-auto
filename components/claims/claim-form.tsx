@@ -189,8 +189,26 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
       if (error) throw error;
 
       if (data) {
+        // Fetch active claims for this customer to filter out policies
+        const { data: activeClaims, error: claimsError } = await supabase
+          .from('claims')
+          .select('policy_id')
+          .eq('customer_id', selectedCustomer)
+          .in('status', ['submitted', 'under_review', 'investigating', 'pending_documentation']);
+
+        if (claimsError) {
+          console.error('Error fetching active claims:', claimsError);
+        }
+
+        const activePolicyIds = new Set(activeClaims?.map(c => c.policy_id) || []);
+
         // Filtrar adicionalmente en el frontend para asegurar que tenemos pólizas válidas
         const validPolicies = data.filter(policy => {
+          // Excluir pólizas con reclamaciones activas
+          if (activePolicyIds.has(policy.id)) {
+            return false;
+          }
+
           const endDate = new Date(policy.end_date);
           const today = new Date();
           // Incluir pólizas que no hayan expirado hace más de 30 días (para reclamaciones tardías)
@@ -199,7 +217,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
         });
 
         console.log(
-          '✅ Found valid policies:',
+          '✅ Found valid policies (excluding active claims):',
           validPolicies.map(p => ({
             id: p.id,
             policy_number: p.policy_number,
