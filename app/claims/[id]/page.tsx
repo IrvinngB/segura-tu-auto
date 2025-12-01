@@ -654,7 +654,7 @@ export default function ClaimDetailPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Acciones de Estado</CardTitle>
+                  <CardTitle className="mb-3">Acciones de Estado</CardTitle>
                   <CardDescription>
                     {userProfile?.role === 'agent' &&
                       'Funciones de Agente - Revisión Documental y Asignación'}
