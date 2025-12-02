@@ -107,6 +107,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [vehiclesWithPolicies, setVehiclesWithPolicies] = useState<Set<string>>(new Set());
   const [loadingVehiclePolicies, setLoadingVehiclePolicies] = useState(false);
+  const [isLoadingVehicles, setIsLoadingVehicles] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
@@ -198,6 +199,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
   const fetchVehicles = async () => {
     if (!customerData) return;
 
+    setIsLoadingVehicles(true);
     try {
       console.log('Buscando vehículos del cliente con estado:', customerData.id);
       const response = await fetch('/api/customer/vehicles-with-status');
@@ -254,6 +256,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
       console.error('Error checking vehicle policies:', error);
     } finally {
       setLoadingVehiclePolicies(false);
+      setIsLoadingVehicles(false);
     }
   };
 
@@ -945,7 +948,14 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Vehicle Selection - Only if vehicles exist */}
-              {vehicles.length > 0 ? (
+              {isLoadingVehicles ? (
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <p className="text-muted-foreground">Cargando tus vehículos...</p>
+                  </div>
+                </div>
+              ) : vehicles.length > 0 ? (
                 allVehiclesUnavailable ? (
                   <div className="text-center py-8 border-2 border-dashed rounded-lg">
                     <Car className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
