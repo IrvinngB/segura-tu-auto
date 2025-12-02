@@ -309,7 +309,7 @@ const SidebarContent = memo(function SidebarContent({ navigation, userProfile }:
 
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -542,7 +542,7 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
 
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
