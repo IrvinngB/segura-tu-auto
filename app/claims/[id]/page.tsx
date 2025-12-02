@@ -432,6 +432,7 @@ export default function ClaimDetailPage() {
           }
 
           await fetchClaimDetails();
+          setInputModal(prev => ({ ...prev, show: false }));
           setMessageModal({
             show: true,
             title: 'Reclamación Aprobada',
@@ -488,6 +489,7 @@ export default function ClaimDetailPage() {
           }
 
           await fetchClaimDetails();
+          setConfirmModal(prev => ({ ...prev, show: false }));
           setMessageModal({
             show: true,
             title: 'Proceso Iniciado',
