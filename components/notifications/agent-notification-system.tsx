@@ -148,7 +148,7 @@ export function AgentNotificationSystem() {
       const { data: claims } = await supabase
         .from('claims')
         .select(`
-          id, claim_number, claim_type, priority, status, created_at,
+          id, claim_number, claim_type, priority, status, created_at, customer_id,
           customer:customers(user:users(first_name, last_name))
         `)
         .or(`status.eq.submitted,adjuster_id.eq.${userProfile?.id}`)
@@ -174,6 +174,10 @@ export function AgentNotificationSystem() {
             created_at: claim.created_at,
             link: `/claims/${claim.id}`,
             read: isRead,
+            metadata: { 
+                customerId: claim.customer_id,
+                claimNumber: claim.claim_number
+            }
           });
         });
       }
@@ -358,11 +362,58 @@ export function AgentNotificationSystem() {
   const handleNotificationClick = async (notification: NotificationItem) => {
     // 1. Marcar como leída (Visualmente y en DB si es posible)
     // Para Claims, si está en 'submitted', la pasamos a 'under_review' (lógica existente)
+    console.log('🔔 Notification clicked:', notification);
+    console.log('🔔 Metadata:', notification.metadata);
+    
     if (notification.type === 'claim' && notification.status === 'submitted') {
         try {
+            // 1. Obtener detalles actualizados de la reclamación para tener el customer_id
+            const { data: claimData, error: claimError } = await supabase
+                .from('claims')
+                .select('customer_id, claim_number')
+                .eq('id', notification.id)
+                .single();
+
+            if (claimError) {
+                console.error('Error fetching claim details:', claimError);
+            }
+
+            // 2. Actualizar estado
             await supabase.from('claims').update({ status: 'under_review' }).eq('id', notification.id);
+            
+            // 3. Notificar al cliente
+            const customerId = claimData?.customer_id || notification.metadata?.customerId;
+            const claimNumber = claimData?.claim_number || notification.metadata?.claimNumber;
+
+            if (customerId) {
+                console.log('🔔 Sending notification to customer:', customerId);
+                const content = `Tu reclamación ${claimNumber || ''} está siendo revisada por nuestro equipo.`;
+                
+                const { error: commError } = await supabase.from('communications').insert({
+                    customer_id: customerId,
+                    claim_id: notification.id,
+                    subject: 'Estado de Reclamación Actualizado',
+                    content: content,
+                    communication_type: 'email',
+                    direction: 'outbound',
+                    status: 'unread',
+                    created_at: new Date().toISOString()
+                });
+                
+                if (commError) {
+                    console.error('❌ Error sending communication:', commError);
+                    toast.error('Error al notificar al cliente');
+                } else {
+                    console.log('✅ Notificación enviada al cliente por cambio de estado automático');
+                    toast.success('Cliente notificado del cambio de estado');
+                }
+            } else {
+                console.warn('⚠️ No customerId found, cannot notify customer');
+                toast.warning('No se pudo notificar al cliente (ID no encontrado)');
+            }
         } catch (e) {
-            console.error(e);
+            console.error('Error updating claim status or notifying customer:', e);
+            toast.error('Error al actualizar estado o notificar');
         }
     }
 
