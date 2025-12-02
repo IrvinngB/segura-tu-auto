@@ -64,9 +64,10 @@ interface ClaimFormProps {
   customerId?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
+  isCustomerView?: boolean;
 }
 
-export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFormProps) {
+export function ClaimForm({ policyId, customerId, onSuccess, onCancel, isCustomerView = false }: ClaimFormProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState(customerId || '');
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -752,7 +753,9 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                         : loadingPolicies
                           ? 'Cargando pólizas...'
                           : policies.length === 0
-                            ? 'No hay pólizas disponibles para este cliente'
+                            ? isCustomerView 
+                              ? 'No tienes pólizas disponibles para registrar una reclamación'
+                              : 'No hay pólizas disponibles para este cliente'
                             : 'Seleccionar póliza'
                     }
                   />
@@ -778,7 +781,9 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel }: ClaimFo
                       <div className="flex items-center gap-3">
                         <AlertTriangle className="h-4 w-4 text-yellow-500" />
                         <span className="text-foreground/70">
-                          No hay pólizas disponibles para este cliente
+                          {isCustomerView 
+                            ? 'No tienes pólizas disponibles para registrar una reclamación'
+                            : 'No hay pólizas disponibles para este cliente'}
                         </span>
                       </div>
                     </SelectItem>
