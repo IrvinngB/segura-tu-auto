@@ -241,6 +241,8 @@ export function CustomerPaymentModal({
     };
 
     const handlePayment = async () => {
+        const initialStep = paymentStep;
+
         // Validación inicial
         if (paymentStep === "select" && !selectedPaymentMethod) {
             toast({
@@ -277,7 +279,6 @@ export function CustomerPaymentModal({
                         : newPaymentMethod.cardNumber.slice(-4),
                     expiry_date: newPaymentMethod.expiryDate,
                     is_primary: newPaymentMethod.isPrimary, // Usar el checkbox del usuario
-                    billing_address: "Dirección registrada", // Placeholder o tomar del perfil
                 };
 
                 console.log("Creating new payment method:", methodData);
@@ -365,10 +366,8 @@ export function CustomerPaymentModal({
 
         } catch (error) {
             console.error("Error procesando pago:", error);
-            // Mantener en el paso actual para permitir reintentar o corregir
-            if (paymentStep === "processing") {
-                setPaymentStep(selectedPaymentMethod ? "select" : "new");
-            }
+            // Restaurar el paso anterior en caso de error
+            setPaymentStep(initialStep);
             
             onPaymentError(error instanceof Error ? error.message : "Error desconocido");
             
