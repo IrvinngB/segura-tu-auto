@@ -102,6 +102,28 @@ export default function CustomerCommunicationsPage() {
         }
     }, [customerData, customerLoading]);
 
+    const markMessagesAsRead = async () => {
+        if (!customerData) return;
+
+        try {
+            const { error } = await supabase
+                .from('communications')
+                .update({ status: 'read' })
+                .eq('customer_id', customerData.id)
+                .eq('direction', 'outbound')
+                .neq('status', 'read');
+
+            if (error) {
+                console.error('Error marking messages as read:', error);
+            } else {
+                // Dispatch event to update badge immediately
+                window.dispatchEvent(new Event('communications-read'));
+            }
+        } catch (error) {
+            console.error('Error in markMessagesAsRead:', error);
+        }
+    };
+
     const fetchCommunications = async () => {
         if (!customerData) return;
 
@@ -329,6 +351,9 @@ export default function CustomerCommunicationsPage() {
             }
             
             setIsDeleteModalOpen(false);
+            
+            // Dispatch event to update badge immediately after deletion
+            window.dispatchEvent(new Event('communications-read'));
             
         } catch (error) {
             console.error("Error deleting communications:", error);

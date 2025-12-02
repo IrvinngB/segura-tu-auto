@@ -74,30 +74,29 @@ export function useCustomerCommunicationsCount(customerId?: string) {
       )
       .subscribe();
 
-    // REMOVIDO: Ya no escuchamos eventos agresivos de forzado
-    // Solo el sistema de re-entrada maneja el marcado como leído
+    // Escuchar evento de lectura manual (ej: al eliminar mensajes)
+    const handleManualRead = () => {
+        console.log('📢 Evento communications-read recibido - actualizando conteo');
+        fetchUnreadCount();
+    };
+
+    window.addEventListener('communications-read', handleManualRead);
 
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('communications-read', handleManualRead);
     };
   }, [customerId, supabase]);
 
-  // Efecto para tracking de navegación - solo marcar como leído en re-visitas
+  // Efecto para tracking de navegación - marcar como leído al SALIR de comunicaciones
   useEffect(() => {
     const currentPath = pathname;
     const prevPath = lastPathname.current;
     
-    console.log('🚶‍♂️ Navegación detectada:', { prevPath, currentPath, hasVisited: hasVisitedCommunications.current });
-    
-    // Si está en comunicaciones
-    if (currentPath === '/customer/communications' && customerId) {
-      // Si ya había visitado comunicaciones antes (re-entrada)
-      if (hasVisitedCommunications.current && prevPath !== '/customer/communications') {
-        console.log('🔄 RE-ENTRADA a comunicaciones detectada - marcando como leído');
-        setCount(0);
-        setLoading(false);
+    // Si estamos saliendo de comunicaciones hacia otra página
+    if (prevPath === '/customer/communications' && currentPath !== '/customer/communications' && customerId) {
+        console.log('👋 SALIENDO de comunicaciones - marcando mensajes como leídos');
         
-        // Marcar como leídas solo en re-entrada
         const markAsRead = async () => {
           try {
             await supabase
@@ -107,18 +106,15 @@ export function useCustomerCommunicationsCount(customerId?: string) {
               .eq('direction', 'outbound')
               .neq('status', 'read');
             
-            console.log('✅ Comunicaciones marcadas como leídas en re-entrada');
+            console.log('✅ Comunicaciones marcadas como leídas al salir');
+            // Actualizar conteo localmente a 0
+            setCount(0);
           } catch (error) {
-            console.error('❌ Error marcando como leídas en re-entrada:', error);
+            console.error('❌ Error marcando como leídas al salir:', error);
           }
         };
         
         markAsRead();
-      } else if (!hasVisitedCommunications.current) {
-        // Primera visita - solo marcar que ya visitó, pero NO cambiar el estado
-        console.log('👋 PRIMERA VISITA a comunicaciones - manteniendo estado original');
-        hasVisitedCommunications.current = true;
-      }
     }
     
     // Actualizar el path anterior
