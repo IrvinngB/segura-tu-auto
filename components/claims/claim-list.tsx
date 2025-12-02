@@ -194,7 +194,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
           ...(availableData.claims || [])
         ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       } else if (userProfile?.role === 'agent') {
-        const [unassignedRes, myClaimsRes] = await Promise.all([
+        const [unassignedRes, processRes, myClaimsRes] = await Promise.all([
+          // 1. Reclamaciones sin asignar (Intake)
           supabase
             .from('claims')
             .select(`
@@ -204,18 +205,38 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               adjuster:users!claims_adjuster_id_fkey(*)
             `)
             .is('adjuster_id', null)
-            .in('status', ['submitted', 'under_review', 'pending_documentation'])
+            .in('status', ['submitted', 'under_review', 'pending_documentation', 'investigating'])
             .order('created_at', { ascending: false }),
+          
+          // 2. Reclamaciones en proceso post-ajuste (Visibles para todos los agentes)
+          supabase
+            .from('claims')
+            .select(`
+              *,
+              policy:policies(*,vehicle:vehicles(*)),
+              customer:customers(*,user:users(*)),
+              adjuster:users!claims_adjuster_id_fkey(*)
+            `)
+            .in('status', ['waiting_approval', 'approved', 'processing_payment', 'paid'])
+            .order('created_at', { ascending: false }),
+
+          // 3. Mis reclamaciones asignadas
           fetch('/api/claims/my-claims')
         ]);
 
         const myClaimsData = await myClaimsRes.json();
-
-        data = [
+        
+        // Combinar y deduplicar por ID
+        const allClaims = [
           ...(myClaimsData.claims || []),
-          ...(unassignedRes.data || [])
-        ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        error = unassignedRes.error;
+          ...(unassignedRes.data || []),
+          ...(processRes.data || [])
+        ];
+
+        const uniqueClaims = Array.from(new Map(allClaims.map(item => [item.id, item])).values());
+
+        data = uniqueClaims.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        error = unassignedRes.error || processRes.error;
       } else if (userProfile?.role === 'admin') {
         const result = await supabase
           .from('claims')
@@ -818,7 +839,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                   <div className="text-2xl font-bold text-gray-400">
                     {filteredClaims.filter(c => c.status === 'submitted').length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Por revisar</div>
+                  <div className="text-sm text-muted-foreground">Enviadas</div>
                 </CardContent>
               </Card>
               <Card>
@@ -834,7 +855,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                   <div className="text-2xl font-bold text-purple-500">
                     {filteredClaims.filter(c => c.status === 'waiting_approval').length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Para aprobación</div>
+                  <div className="text-sm text-muted-foreground">Esperando aprobación</div>
                 </CardContent>
               </Card>
               <Card>

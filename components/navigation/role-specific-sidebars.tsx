@@ -53,6 +53,12 @@ const adminNavigation: NavigationItem[] = [
   },
   { name: 'Clientes', href: '/clients', icon: Users, description: 'Gestión de clientes' },
   {
+    name: 'Reclamaciones',
+    href: '/claims',
+    icon: AlertTriangle,
+    description: 'Gestión de reclamos',
+  },
+  {
     name: 'Evaluación de Riesgo',
     href: '/risk-assessment',
     icon: TrendingUp,

@@ -513,44 +513,72 @@ export default function ClaimDetailPage() {
   const confirmPayment = async () => {
     if (!claim || !userProfile) return;
 
-    const paymentReference = prompt('Ingrese la referencia o número de transacción del pago:');
+    setInputModal({
+      show: true,
+      title: 'Confirmar Pago',
+      message: 'Por favor, ingrese la referencia o número de transacción del pago realizado.',
+      inputLabel: 'Referencia de Pago',
+      inputPlaceholder: 'Ej. TRANS-123456',
+      inputType: 'text',
+      type: 'info',
+      onConfirm: async (paymentReference) => {
+        if (!paymentReference) {
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Debe ingresar una referencia de pago',
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
+          });
+          return;
+        }
 
-    if (!paymentReference) {
-      alert('Debe ingresar una referencia de pago');
-      return;
-    }
+        try {
+          // Actualizar estado a paid con monto pagado
+          const { error } = await supabase
+            .from('claims')
+            .update({
+              status: 'paid',
+              paid_amount: claim.approved_amount,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', params.id);
 
-    try {
-      // Actualizar estado a paid con monto pagado
-      const { error } = await supabase
-        .from('claims')
-        .update({
-          status: 'paid',
-          paid_amount: claim.approved_amount,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
+          if (error) throw error;
 
-      if (error) throw error;
+          // Crear notificación para el cliente
+          if (claim && claim.customer_id) {
+            await createClaimStatusNotification(claim.customer_id, {
+              claimNumber: claim.claim_number,
+              oldStatus: claim.status,
+              newStatus: 'paid',
+              updatedBy: userProfile?.role
+            });
+          }
 
-      if (error) throw error;
-
-      // Crear notificación para el cliente
-      if (claim && claim.customer_id) {
-        await createClaimStatusNotification(claim.customer_id, {
-          claimNumber: claim.claim_number,
-          oldStatus: claim.status,
-          newStatus: 'paid',
-          updatedBy: userProfile?.role
-        });
-      }
-
-      await fetchClaimDetails();
-      alert(`Pago confirmado. Referencia: ${paymentReference}`);
-    } catch (error) {
-      console.error('Error confirming payment:', error);
-      alert('Error al confirmar el pago: ' + (error as Error).message);
-    }
+          await fetchClaimDetails();
+          setInputModal(prev => ({ ...prev, show: false }));
+          
+          setMessageModal({
+            show: true,
+            title: 'Pago Confirmado',
+            message: `El pago ha sido registrado exitosamente. Referencia: ${paymentReference}`,
+            type: 'success',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
+          });
+        } catch (error) {
+          console.error('Error confirming payment:', error);
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Error al confirmar el pago: ' + (error as Error).message,
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
+          });
+        }
+      },
+      onCancel: () => setInputModal(prev => ({ ...prev, show: false })),
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -611,8 +639,6 @@ export default function ClaimDetailPage() {
     };
     return <span className={config.classes}>{config.label}</span>;
   };
-
-
 
   const getClaimTypeLabel = (type: string) => {
     const types = {
@@ -879,18 +905,67 @@ export default function ClaimDetailPage() {
                       </>
                     )}
 
-                    {[
-                      'investigating',
-                      'waiting_approval',
-                      'approved',
-                      'processing_payment',
-                      'paid',
-                    ].includes(claim.status) && (
+                    {claim.status === 'investigating' && (
                       <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 p-3 rounded-lg">
                         <p className="text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           <strong>Caso en proceso técnico:</strong> El ajustador está manejando la
                           evaluación y aprobación.
+                        </p>
+                      </div>
+                    )}
+
+                    {claim.status === 'approved' && (
+                      <div className="space-y-3">
+                        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3 rounded-lg">
+                          <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <strong>¡Reclamación Aprobada!</strong> El monto ha sido autorizado. Puedes proceder con el pago.
+                          </p>
+                        </div>
+                        <Button onClick={processPayment} className="w-full sm:w-auto bg-green-600 hover:bg-green-700">
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Iniciar Proceso de Pago
+                        </Button>
+                      </div>
+                    )}
+
+                    {claim.status === 'processing_payment' && (
+                      <div className="space-y-3">
+                        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
+                          <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            <strong>Pago en Proceso:</strong> Realiza la transferencia y confirma el pago.
+                          </p>
+                        </div>
+                        <Button onClick={confirmPayment} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Confirmar Pago Realizado
+                        </Button>
+                      </div>
+                    )}
+
+                    {claim.status === 'paid' && (
+                      <div className="space-y-3">
+                        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3 rounded-lg">
+                          <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <strong>Pago Completado:</strong> El pago ha sido registrado exitosamente.
+                          </p>
+                        </div>
+                        <Button onClick={() => updateClaimStatus('closed')} className="w-full sm:w-auto">
+                          <FolderOpen className="h-4 w-4 mr-2" />
+                          Cerrar Reclamación
+                        </Button>
+                      </div>
+                    )}
+
+                    {claim.status === 'waiting_approval' && (
+                      <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 p-3 rounded-lg">
+                        <p className="text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          <strong>Esperando aprobación directiva:</strong> El ajustador ha completado la evaluación técnica. 
+                          Un supervisor debe aprobar el monto de indemnización.
                         </p>
                       </div>
                     )}
@@ -982,27 +1057,23 @@ export default function ClaimDetailPage() {
                     )}
 
                     {claim.status === 'waiting_approval' && (
-                      <>
-                        <Button
-                          onClick={approveClaimWithAmount}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Aprobar con Monto Final
-                        </Button>
-                        <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Denegar Reclamación
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => updateClaimStatus('investigating')}
-                          className="border-green-600 text-green-600"
-                        >
-                          <Search className="h-4 w-4 mr-2" />
-                          Continuar Investigación Técnica
-                        </Button>
-                      </>
+                      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
+                        <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          <strong>Evaluación enviada a aprobación:</strong> Tu evaluación técnica ha sido enviada al supervisor 
+                          para aprobación del monto de indemnización.
+                        </p>
+                        <div className="mt-2 flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => updateClaimStatus('investigating')}
+                            className="border-green-600 text-green-600"
+                          >
+                            <Search className="h-4 w-4 mr-2" />
+                            Revisar Evaluación Técnica
+                          </Button>
+                        </div>
+                      </div>
                     )}
 
                     {claim.status === 'approved' && (
@@ -1145,20 +1216,24 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'waiting_approval' && (
                       <>
-                        <Button onClick={approveClaimWithAmount}>
+                        <Button
+                          onClick={approveClaimWithAmount}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
                           <CheckCircle className="h-4 w-4 mr-2" />
-                          Aprobar con Monto
+                          Aprobar Monto Final (SUPERVISOR)
                         </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
                           <XCircle className="h-4 w-4 mr-2" />
-                          Denegar Reclamación
+                          Denegar Reclamación (SUPERVISOR)
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => updateClaimStatus('investigating')}
+                          className="border-green-600 text-green-600"
                         >
-                          <Search className="h-4 w-4 mr-2" />
-                          Regresar a Investigación
+                          <ArrowLeft className="h-4 w-4 mr-2" />
+                          Devolver al Ajustador para Revisión
                         </Button>
                       </>
                     )}
