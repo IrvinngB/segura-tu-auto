@@ -595,7 +595,12 @@ export function AgentQuoteManagement() {
                                             </p>
                                             <p className="font-semibold">
                                                 {
-                                                    selectedQuote.payment_frequency
+                                                    {
+                                                        monthly: "Mensual",
+                                                        quarterly: "Trimestral",
+                                                        biannual: "Semestral",
+                                                        yearly: "Anual",
+                                                    }[selectedQuote.payment_frequency] || selectedQuote.payment_frequency
                                                 }
                                             </p>
                                         </div>
