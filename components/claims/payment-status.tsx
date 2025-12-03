@@ -12,9 +12,10 @@ interface PaymentStatusProps {
   claim: Claim;
   onProcessPayment?: () => void;
   onConfirmPayment?: () => void;
+  currentUserRole?: string;
 }
 
-export function PaymentStatus({ claim, onProcessPayment, onConfirmPayment }: PaymentStatusProps) {
+export function PaymentStatus({ claim, onProcessPayment, onConfirmPayment, currentUserRole }: PaymentStatusProps) {
   const getPaymentStatusInfo = () => {
     switch (claim.status) {
       case 'approved':
@@ -125,7 +126,7 @@ export function PaymentStatus({ claim, onProcessPayment, onConfirmPayment }: Pay
         </div>
 
         {/* Acciones */}
-        {statusInfo.action && (
+        {statusInfo.action && (!currentUserRole || currentUserRole !== 'adjuster') && (
           <div className="flex gap-2 pt-2">
             <Button onClick={statusInfo.action} className="flex items-center gap-2">
               {claim.status === 'approved' && (

@@ -1338,6 +1338,7 @@ export default function ClaimDetailPage() {
             claim={claim}
             onProcessPayment={processPayment}
             onConfirmPayment={confirmPayment}
+            currentUserRole={userProfile?.role}
           />
         )}
 
