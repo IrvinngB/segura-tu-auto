@@ -80,7 +80,8 @@ export function ClaimCustomerDocuments({
   // const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]); // Removed local state
   // const [loading, setLoading] = useState(true); // Removed loading state (handled by parent)
   const [uploading, setUploading] = useState(false);
-  const [updatingDocId, setUpdatingDocId] = useState<string | null>(null);
+  const [updatingDocIds, setUpdatingDocIds] = useState<Set<string>>(new Set());
+  const [optimisticStatus, setOptimisticStatus] = useState<Record<string, string>>({});
   
   // Estados para el modal de rechazo
   const [rejectingDoc, setRejectingDoc] = useState<ClaimCustomerDocument | null>(null);
@@ -90,34 +91,7 @@ export function ClaimCustomerDocuments({
 
   const supabase = createClient();
 
-  // Removed useEffect fetchDocuments
-
-  /*
-  const fetchDocuments = async () => {
-    try {
-      console.log('📥 Fetching documents para claim:', claimId);
-      const { data, error } = await supabase
-        .from('claim_customer_documents')
-        .select('*')
-        .eq('claim_id', claimId)
-        .order('upload_date', { ascending: false });
-
-      if (error) throw error;
-      console.log('✅ Documentos cargados desde BD:', data?.length || 0, 'documentos');
-      
-      // Mostrar TODOS los documentos, incluyendo los extra
-      const documentsData = data || [];
-      
-      setDocuments(documentsData);
-      // Notificar al componente padre sobre el cambio en el conteo
-      onDocumentCountChange?.(documentsData.length);
-    } catch (error) {
-      console.error('Error fetching documents:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  */
+  // ... (fetchDocuments commented out code) ...
 
   const handleExtraDocUpload = (newDoc: ClaimCustomerDocument) => {
     console.log('✨ Nuevo documento extra subido:', newDoc);
@@ -279,7 +253,15 @@ export function ClaimCustomerDocuments({
     newStatus: 'approved' | 'rejected',
     notes?: string
   ) => {
-    setUpdatingDocId(docId);
+    // Add to updating set
+    setUpdatingDocIds(prev => new Set(prev).add(docId));
+    
+    // Optimistic update
+    setOptimisticStatus(prev => ({
+        ...prev,
+        [docId]: newStatus
+    }));
+
     try {
       const response = await fetch('/api/claim-documents/update-status', {
         method: 'POST',
@@ -313,8 +295,20 @@ export function ClaimCustomerDocuments({
     } catch (error) {
       console.error('Error updating document status:', error);
       toast.error('Error al actualizar el estado. Intente nuevamente.');
+      
+      // Revert optimistic update on error
+      setOptimisticStatus(prev => {
+          const newState = { ...prev };
+          delete newState[docId];
+          return newState;
+      });
     } finally {
-      setUpdatingDocId(null);
+      // Remove from updating set
+      setUpdatingDocIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(docId);
+          return newSet;
+      });
     }
   };
 
@@ -465,12 +459,13 @@ export function ClaimCustomerDocuments({
           ) : (
             <div className="space-y-3">
               {documents.map(doc => {
-                const isUpdating = updatingDocId === doc.id;
+                const isUpdating = updatingDocIds.has(doc.id);
+                const currentStatus = optimisticStatus[doc.id] || doc.status;
                 
                 return (
                   <div
                     key={doc.id}
-                    className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:border-gray-700 dark:hover:bg-gray-800/50 transition-colors ${isUpdating ? 'opacity-70 animate-pulse' : ''}`}
+                    className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 dark:border-gray-700 dark:hover:bg-gray-800/50 transition-colors ${isUpdating ? 'opacity-70' : ''}`}
                   >
                     <div className="flex items-center gap-3 flex-1">
                       <FileText className="h-8 w-8 text-primary shrink-0" />
@@ -506,7 +501,7 @@ export function ClaimCustomerDocuments({
                           Actualizando...
                         </Badge>
                       ) : (
-                        getStatusBadge(doc.status)
+                        getStatusBadge(currentStatus)
                       )}
 
                       <Button
