@@ -145,7 +145,11 @@ export function ClaimCustomerDocuments({
         let newFileName;
         if (doc.is_extra_document && doc.extra_document_label) {
           // Lógica para documentos extra (similar a ClaimAdditionalDocuments)
-          const cleanLabel = doc.extra_document_label.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          const cleanLabel = doc.extra_document_label
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '_');
           const timestamp = Date.now();
           newFileName = `extra_${cleanLabel}_${timestamp}.${fileExt}`;
         } else {

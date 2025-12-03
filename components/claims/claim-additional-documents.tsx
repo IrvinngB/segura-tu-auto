@@ -121,7 +121,11 @@ export function ClaimAdditionalDocuments({
     try {
       // 1. Subir archivo
       const fileExt = file.name.split('.').pop();
-      const cleanLabel = selectedLabel.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      const cleanLabel = selectedLabel
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_');
       const fileName = `extra_${cleanLabel}_${Date.now()}.${fileExt}`;
       const storagePath = `drafts/${fileName}`;
 
