@@ -144,24 +144,47 @@ export function AgentNotificationSystem() {
       const allNotifications: NotificationItem[] = [];
       const readIds = getReadNotificationIds();
 
+      console.log('🔔 Loading notifications for user:', userProfile?.id, userProfile?.role);
+      
       // 1. Fetch Claims (Submitted or Assigned)
-      const { data: claims } = await supabase
+      const { data: claims, error: claimsError } = await supabase
         .from('claims')
         .select(`
           id, claim_number, claim_type, priority, status, created_at, customer_id,
           customer:customers(user:users(first_name, last_name))
         `)
-        .or(`status.eq.submitted,adjuster_id.eq.${userProfile?.id}`)
+        // Mostrar submitted (nuevas), investigating (asignadas), under_review (devueltas), pending_documentation (devueltas)
+        .or(`status.eq.submitted,status.eq.investigating,status.eq.under_review,status.eq.pending_documentation`)
         .order('created_at', { ascending: false })
         .limit(20);
+
+      if (claimsError) {
+        console.error('❌ Error fetching claims for notifications:', claimsError);
+      } else {
+        console.log('✅ Claims fetched for notifications:', claims?.length);
+        if (claims && claims.length > 0) {
+            console.log('📋 First claim status:', claims[0].status);
+        }
+      }
 
       if (claims) {
         claims.forEach((claim: any) => {
           // Solo mostrar si no está cerrada o rechazada (opcional, depende de reglas de negocio)
           if (['closed', 'rejected', 'paid'].includes(claim.status)) return;
-          
-          // Check if read locally OR via status
-          const isRead = readIds.includes(claim.id) || (claim.status !== 'submitted' && claim.status !== 'assigned');
+
+          // Determine if this claim status is "new/unread" for the current role
+          let isInboxStatus = false;
+          if (userProfile?.role === 'agent') {
+             isInboxStatus = ['submitted', 'under_review', 'pending_documentation'].includes(claim.status);
+          } else if (userProfile?.role === 'adjuster' || userProfile?.role === 'admin') {
+             // Admin also sees investigating as inbox for testing/single-user purposes
+             isInboxStatus = ['investigating', 'waiting_approval'].includes(claim.status);
+          }
+
+          // It is read if:
+          // 1. Explicitly marked as read (in localStorage)
+          // 2. OR it is NOT an inbox status for this user (e.g. agent seeing 'investigating')
+          const isRead = readIds.includes(claim.id) || !isInboxStatus;
 
           allNotifications.push({
             id: claim.id,
@@ -284,9 +307,46 @@ export function AgentNotificationSystem() {
     await tryAutoAssignment(newClaim.id);
   };
 
-  const handleClaimUpdate = (updatedClaim: any) => {
+  // Marcar ID como NO leído (para re-notificar)
+  const markIdAsUnread = (id: string) => {
+    const current = getReadNotificationIds();
+    if (current.includes(id)) {
+      const updated = current.filter(readId => readId !== id);
+      localStorage.setItem('read_notifications', JSON.stringify(updated));
+    }
+  };
+
+  const handleClaimUpdate = (payload: any) => {
     // Solo recargar si cambia algo relevante
     loadNotifications();
+
+    const newStatus = payload.status;
+    const oldStatus = payload.old_status; // Note: payload usually has 'new' and 'old' objects if configured, but here we receive 'new' directly from the subscription callback wrapper? 
+    // Wait, the subscription passes payload.new to this function. We don't have old status here easily unless we change the subscription.
+    // However, if the status matches our "inbox" status, we should unmark it as read regardless of old status.
+    
+    // Lógica de re-notificación (bidireccional)
+    if (userProfile?.role === 'agent') {
+        // Si vuelve a 'under_review' o 'pending_documentation', es una notificación para el agente
+        if (['under_review', 'pending_documentation', 'submitted'].includes(newStatus)) {
+            markIdAsUnread(payload.id);
+            toast.info(`Actualización en reclamación: ${payload.claim_number || 'Sin número'}`);
+        }
+    } else if (userProfile?.role === 'adjuster') {
+        // Si vuelve a 'investigating', es una notificación para el ajustador
+        if (newStatus === 'investigating') {
+            markIdAsUnread(payload.id);
+            toast.info(`Reclamación asignada/actualizada: ${payload.claim_number || 'Sin número'}`);
+        }
+    }
+
+    // Notificar si me asignaron la reclamación (Legacy check, kept for safety)
+    if (
+      payload.adjuster_id === userProfile?.id && 
+      newStatus === 'investigating'
+    ) {
+      // Toast handled above
+    }
   };
 
   const handleNewQuote = (newQuote: any) => {

@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Search
 } from 'lucide-react';
+import { AgentNotificationSystem } from '@/components/notifications/agent-notification-system';
 
 interface AdjusterStats {
   assignedClaims: number;
@@ -134,11 +135,16 @@ export function AdjusterDashboard() {
   return (
     <div className="space-y-6">
       {/* Bienvenida */}
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Panel de Ajustador</h2>
-        <p className="text-muted-foreground">
-          Gestiona y evalúa las reclamaciones asignadas
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Panel de Ajustador</h2>
+          <p className="text-muted-foreground">
+            Gestiona y evalúa las reclamaciones asignadas
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <AgentNotificationSystem />
+        </div>
       </div>
 
       {/* Métricas Principales */}

@@ -194,7 +194,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
           ...(availableData.claims || [])
         ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       } else if (userProfile?.role === 'agent') {
-        const [unassignedRes, processRes, myClaimsRes] = await Promise.all([
+        const [unassignedRes, processRes, returnedRes, myClaimsRes] = await Promise.all([
           // 1. Reclamaciones sin asignar (Intake)
           supabase
             .from('claims')
@@ -220,7 +220,20 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
             .in('status', ['waiting_approval', 'approved', 'processing_payment', 'paid'])
             .order('created_at', { ascending: false }),
 
-          // 3. Mis reclamaciones asignadas
+          // 3. Reclamaciones devueltas o en revisión (con ajustador asignado pero requieren acción de agente)
+          supabase
+            .from('claims')
+            .select(`
+              *,
+              policy:policies(*,vehicle:vehicles(*)),
+              customer:customers(*,user:users(*)),
+              adjuster:users!claims_adjuster_id_fkey(*)
+            `)
+            .not('adjuster_id', 'is', null)
+            .in('status', ['under_review', 'pending_documentation'])
+            .order('created_at', { ascending: false }),
+
+          // 4. Mis reclamaciones asignadas
           fetch('/api/claims/my-claims')
         ]);
 
@@ -230,13 +243,22 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         const allClaims = [
           ...(myClaimsData.claims || []),
           ...(unassignedRes.data || []),
-          ...(processRes.data || [])
+          ...(processRes.data || []),
+          ...(returnedRes.data || []) // returnedRes is the 3rd result now
         ];
 
         const uniqueClaims = Array.from(new Map(allClaims.map(item => [item.id, item])).values());
 
-        data = uniqueClaims.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        error = unassignedRes.error || processRes.error;
+
+        
+        // Sort by updated_at to show most recent activity first (better for workflow)
+        data = uniqueClaims.sort((a, b) => {
+          const dateA = new Date(a.updated_at || a.created_at).getTime();
+          const dateB = new Date(b.updated_at || b.created_at).getTime();
+          return dateB - dateA;
+        });
+        
+        error = unassignedRes.error || processRes.error || returnedRes.error;
       } else if (userProfile?.role === 'admin') {
         const result = await supabase
           .from('claims')
@@ -650,15 +672,10 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                     </TableCell>
                     {(userProfile?.role === 'agent' || userProfile?.role === 'admin') && (
                       <TableCell>
-                        {claim.adjuster ? (
-                          <div className="text-sm">
-                            <div className="font-medium">
-                              {claim.adjuster.first_name} {claim.adjuster.last_name}
-                            </div>
-                            <Badge variant="secondary" className="text-xs mt-1">
-                              Asignado
-                            </Badge>
-                          </div>
+                        {claim.adjuster_id ? (
+                          <Badge variant="secondary" className="text-xs">
+                            Asignado
+                          </Badge>
                         ) : (
                           <Badge variant="outline" className="text-xs">
                             Sin asignar
@@ -768,9 +785,9 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                             </Button>
                           )}
 
-                        {/* AJUSTADOR: Botón de evaluar */}
+                        {/* AJUSTADOR: Botón de evaluar (Single Evaluator Mode: Evaluar cualquiera asignada) */}
                         {userProfile?.role === 'adjuster' &&
-                          claim.adjuster_id === userProfile.id &&
+                          claim.adjuster_id &&
                           ['investigating', 'waiting_approval'].includes(claim.status) && (
                             <Button
                               variant="default"
@@ -789,15 +806,6 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                             >
                               Evaluar
                             </Button>
-                          )}
-
-                        {/* AJUSTADOR: Indicador de reclamación de otro ajustador */}
-                        {userProfile?.role === 'adjuster' &&
-                          claim.adjuster_id &&
-                          claim.adjuster_id !== userProfile.id && (
-                            <Badge variant="outline" className="text-xs">
-                              Asignada a otro
-                            </Badge>
                           )}
 
                         {/* ADMINISTRADOR: Acceso completo */}

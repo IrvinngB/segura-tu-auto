@@ -307,14 +307,38 @@ export default function ClaimDetailPage() {
 
     try {
       console.log('💾 Ejecutando UPDATE en base de datos...');
+      const updateData: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Auto-asignar ajustador si pasa a 'investigating' y no tiene uno
+      if (newStatus === 'investigating' && !claim.adjuster_id) {
+        console.log('🔍 Buscando ajustador disponible...');
+        const { data: adjusters, error: adjError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'adjuster')
+          .eq('is_active', true)
+          .limit(1);
+
+        if (adjError) {
+          console.error('Error finding adjuster:', adjError);
+        } else if (adjusters && adjusters.length > 0) {
+          // Asignar al primer ajustador encontrado (simple round-robin o random podría ser mejor en futuro)
+          updateData.adjuster_id = adjusters[0].id;
+          console.log('✅ Ajustador asignado:', adjusters[0].id);
+        } else {
+          console.warn('⚠️ No se encontraron ajustadores disponibles');
+        }
+      }
+
       const { data, error } = await supabase
         .from('claims')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', params.id)
-        .select('id, status, updated_at');
+        .select('id, status, updated_at, adjuster_id')
+        .single();
 
       if (error) {
         console.error('❌ Error en UPDATE:', error);
@@ -322,7 +346,33 @@ export default function ClaimDetailPage() {
       }
 
       console.log('✅ UPDATE ejecutado correctamente:', data);
-      console.log('🔄 Status confirmado en DB:', data?.[0]?.status);
+      
+      const statusLabels: Record<string, string> = {
+        submitted: 'Enviada',
+        under_review: 'En Revisión',
+        pending_documentation: 'Documentos Pendientes',
+        investigating: 'En Investigación',
+        waiting_approval: 'Esperando Aprobación',
+        approved: 'Aprobada',
+        processing_payment: 'Procesando Pago',
+        paid: 'Pagada',
+        denied: 'Denegada',
+        closed: 'Cerrada'
+      };
+
+      let successMessage = `Estado actualizado correctamente a: ${statusLabels[newStatus] || newStatus}`;
+      if (newStatus === 'investigating' && data.adjuster_id) {
+        successMessage += `. Asignado a un ajustador.`;
+      }
+
+      setMessageModal({
+        show: true,
+        title: 'Estado Actualizado',
+        message: successMessage,
+        type: 'success',
+        hideButton: true,
+        onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
+      });
 
       // Refresh claim data
       console.log('🔄 Refrescando datos de la reclamación...');
@@ -343,32 +393,12 @@ export default function ClaimDetailPage() {
         console.error('❌ No se encontró customer_id. Claim:', claim);
       }
 
-      // Mapeo de estados para mostrar nombres amigables
-      const statusLabels: Record<string, string> = {
-        draft: 'Borrador',
-        submitted: 'Enviada',
-        under_review: 'En Revisión',
-        pending_documentation: 'Documentos Pendientes',
-        waiting_approval: 'Esperando Aprobación',
-        investigating: 'En Investigación',
-        approved: 'Aprobada',
-        denied: 'Denegada',
-        closed: 'Cerrada'
-      };
 
-      setMessageModal({
-        show: true,
-        title: 'Estado Actualizado',
-        message: `Estado actualizado correctamente a: ${statusLabels[newStatus] || newStatus}`,
-        type: 'success',
-        hideButton: true,
-        onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
-      });
 
-      // Auto-cerrar el modal después de 1.5 segundos
+      // Auto-cerrar el modal después de 2.5 segundos para dar tiempo a leer
       setTimeout(() => {
         setMessageModal(prev => ({ ...prev, show: false }));
-      }, 1500);
+      }, 2500);
     } catch (error) {
       console.error('Error updating claim status:', error);
       setMessageModal({
