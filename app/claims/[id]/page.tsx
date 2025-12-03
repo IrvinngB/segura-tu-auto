@@ -1270,11 +1270,11 @@ export default function ClaimDetailPage() {
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
-                          Aprobar Monto Final (SUPERVISOR)
+                          Aprobar Monto Final (ADMINISTRADOR)
                         </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
                           <XCircle className="h-4 w-4 mr-2" />
-                          Denegar Reclamación (SUPERVISOR)
+                          Denegar Reclamación (ADMINISTRADOR)
                         </Button>
                         <Button
                           variant="outline"
