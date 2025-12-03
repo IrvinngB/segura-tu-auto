@@ -20,6 +20,8 @@ interface ClaimAdditionalDocumentsProps {
   documents?: ClaimCustomerDocument[];
   currentUserRole?: string;
   onRefresh?: () => void;
+  agentId?: string;
+  claimNumber?: string;
 }
 
 interface RequestedDocument {
@@ -33,6 +35,8 @@ export function ClaimAdditionalDocuments({
   documents = [],
   currentUserRole,
   onRefresh,
+  agentId,
+  claimNumber,
 }: ClaimAdditionalDocumentsProps) {
   const [loading, setLoading] = useState(true);
   const [requestedDocs, setRequestedDocs] = useState<RequestedDocument[]>([]);
@@ -41,6 +45,23 @@ export function ClaimAdditionalDocuments({
   const [hasRequest, setHasRequest] = useState(false);
   
   const supabase = createClient();
+
+  // Helper para normalizar texto de forma robusta (Mapa directo)
+  const normalizeString = (str: string) => {
+    const map: { [key: string]: string } = {
+      'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+      'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u',
+      'ñ': 'n', 'Ñ': 'n',
+      'ü': 'u', 'Ü': 'u'
+    };
+    
+    return str
+      .split('')
+      .map(char => map[char] || char)
+      .join('')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_');
+  };
 
   useEffect(() => {
     fetchRequirements();
@@ -100,6 +121,120 @@ export function ClaimAdditionalDocuments({
     }
   };
 
+  const checkAndNotifyAgent = async () => {
+    console.log('🕵️ checkAndNotifyAgent START');
+    console.log('Props:', { agentId, claimNumber, claimId });
+
+    if (!claimNumber) {
+      console.log('❌ Missing claimNumber');
+      return;
+    }
+    
+    // Si no hay agente asignado, igual permitimos la notificación para que llegue al sistema general
+    if (!agentId) {
+       console.warn('⚠️ No agentId provided, but proceeding with notification check');
+    }
+
+    try {
+      // 1. Obtener etiquetas requeridas (misma lógica que fetchRequirements)
+      const { data: communications } = await supabase
+        .from('communications')
+        .select('*')
+        .eq('claim_id', claimId)
+        .ilike('subject', '%Docs requeridos%');
+      
+      console.log('📨 Communications found:', communications?.length);
+
+      if (!communications) return;
+
+      const uniqueLabels = new Set<string>();
+      communications.forEach(comm => {
+        const lines = comm.content.split('\n');
+        lines.forEach((line: string) => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+            const label = trimmed.substring(1).trim();
+            if (label) uniqueLabels.add(label);
+          }
+        });
+      });
+
+      console.log('🏷️ Unique labels required:', Array.from(uniqueLabels));
+
+      if (uniqueLabels.size === 0) return;
+
+      // 2. Obtener documentos subidos
+      const { data: uploadedDocs } = await supabase
+        .from('claim_customer_documents')
+        .select('*')
+        .eq('claim_id', claimId);
+      
+      console.log('📂 Uploaded docs count:', uploadedDocs?.length);
+      
+      if (!uploadedDocs) return;
+
+      // 3. Verificar si todos están presentes
+      const allUploaded = Array.from(uniqueLabels).every(label => {
+        const found = uploadedDocs.some(d => {
+          // Normalización robusta
+          const normLabel = normalizeString(label).replace(/_/g, ''); // Remove underscores for loose matching if needed, or keep consistent
+          
+          if (d.is_extra_document) {
+             if (d.extra_document_label === label) return true;
+             const normDocLabel = normalizeString(d.extra_document_label || '').replace(/_/g, '');
+             if (normDocLabel === normLabel) return true;
+          }
+          
+          const normalizedName = normalizeString(d.file_name).replace(/_/g, '');
+          return normalizedName.includes(normLabel);
+        });
+        console.log(`🔍 Checking label "${label}": ${found ? '✅ Found' : '❌ Missing'}`);
+        return found;
+      });
+
+      console.log('🏁 All uploaded?', allUploaded);
+
+      if (allUploaded) {
+        const subject = `Documentos completados - ${claimNumber}`;
+        
+        // Check for existing notification (reduced time window to 1 minute for testing)
+        const { data: existing } = await supabase
+          .from('communications')
+          .select('id')
+          .eq('claim_id', claimId)
+          .eq('subject', subject)
+          .gt('created_at', new Date(Date.now() - 60 * 1000).toISOString()) 
+          .single();
+
+        if (!existing) {
+          console.log('🚀 Sending notification...');
+          const { error: insertError } = await supabase.from('communications').insert({
+            claim_id: claimId,
+            customer_id: customerId,
+            subject: subject,
+            content: `El cliente ha subido todos los documentos adicionales solicitados para la reclamación ${claimNumber}.`,
+            communication_type: 'system',
+            direction: 'inbound',
+            status: 'unread'
+          });
+          
+          if (insertError) {
+            console.error('❌ Error inserting notification:', insertError);
+            toast.error(`Error al notificar al agente: ${insertError.message}`);
+          } else {
+            console.log('✅ Notificación enviada al agente: Documentos completados');
+            // toast.success('Se ha notificado al agente que los documentos están completos');
+          }
+        } else {
+          console.log('⚠️ Notification already sent recently');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking completion:', error);
+      toast.error('Error verificando documentos');
+    }
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !selectedLabel) return;
@@ -121,11 +256,7 @@ export function ClaimAdditionalDocuments({
     try {
       // 1. Subir archivo
       const fileExt = file.name.split('.').pop();
-      const cleanLabel = selectedLabel
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '_');
+      const cleanLabel = normalizeString(selectedLabel);
       const fileName = `extra_${cleanLabel}_${Date.now()}.${fileExt}`;
       const storagePath = `drafts/${fileName}`;
 
@@ -164,6 +295,9 @@ export function ClaimAdditionalDocuments({
       // Recargar para actualizar estado
       await fetchRequirements();
       if (onRefresh) onRefresh();
+      
+      // Verificar si se completaron todos y notificar
+      await checkAndNotifyAgent();
       
       if (onUploadComplete && insertedDoc) {
         onUploadComplete(insertedDoc);

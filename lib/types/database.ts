@@ -223,7 +223,7 @@ export interface Communication {
   agent_id?: string;
   policy_id?: string;
   claim_id?: string;
-  communication_type: 'email' | 'phone' | 'chat' | 'sms' | 'letter' | 'quote_approved' | 'quote_rejected';
+  communication_type: 'email' | 'phone' | 'chat' | 'sms' | 'letter' | 'quote_approved' | 'quote_rejected' | 'system';
   direction: 'inbound' | 'outbound';
   subject?: string;
   content: string;

@@ -82,11 +82,7 @@ export function AgentNotificationSystem() {
         { event: 'INSERT', schema: 'public', table: 'communications' },
         (payload) => handleNewCommunication(payload.new)
       )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'communications' },
-        (payload) => handleNewCommunication(payload.new)
-      )
+
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'policy_cancellation_requests' },
@@ -237,7 +233,7 @@ export function AgentNotificationSystem() {
       const { data: communications } = await supabase
         .from('communications')
         .select(`
-          id, subject, created_at, claim_id, direction,
+          id, subject, created_at, claim_id, direction, communication_type,
           claim:claims(claim_number)
         `)
         .eq('direction', 'inbound')
@@ -248,13 +244,20 @@ export function AgentNotificationSystem() {
          communications.forEach((comm: any) => {
             const isRecent = new Date(comm.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000;
             if (isRecent) {
+                let type: NotificationType = 'message';
+                let icon = undefined;
+                
+                if (comm.communication_type === 'system' || (comm.subject && comm.subject.includes('Documentos'))) {
+                    type = 'document';
+                }
+
                 allNotifications.push({
                     id: comm.id,
-                    type: 'message',
+                    type: type,
                     title: comm.subject || 'Nuevo Mensaje',
                     detail: comm.claim?.claim_number ? `Ref: ${comm.claim.claim_number}` : 'Sin referencia',
                     created_at: comm.created_at,
-                    link: comm.claim_id ? `/claims/${comm.claim_id}?tab=communications` : '#',
+                    link: comm.claim_id ? `/claims/${comm.claim_id}?tab=documents` : '#',
                     read: readIds.includes(comm.id)
                 });
             }
@@ -361,7 +364,11 @@ export function AgentNotificationSystem() {
 
   const handleNewCommunication = (newComm: any) => {
     if (newComm.direction === 'inbound') {
-        toast.info('Nuevo mensaje recibido');
+        if (newComm.communication_type === 'system' || (newComm.subject && newComm.subject.includes('Documentos'))) {
+            toast.success(`📄 ${newComm.subject || 'Documentos recibidos'}`);
+        } else {
+            toast.info('Nuevo mensaje recibido');
+        }
         loadNotifications();
     }
   };
@@ -620,8 +627,8 @@ export function AgentNotificationSystem() {
                 <TabsTrigger value="all" className="text-xs">Todas</TabsTrigger>
                 <TabsTrigger value="claim" className="text-xs">Reclamos</TabsTrigger>
                 <TabsTrigger value="quote" className="text-xs">Cotizaciones</TabsTrigger>
+                <TabsTrigger value="document" className="text-xs">Documentos</TabsTrigger>
                 <TabsTrigger value="message" className="text-xs">Mensajes</TabsTrigger>
-                <TabsTrigger value="cancellation" className="text-xs">Cancelaciones</TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>

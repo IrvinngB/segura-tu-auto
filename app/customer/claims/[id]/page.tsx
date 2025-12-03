@@ -356,6 +356,8 @@ export default function CustomerClaimDetailPage() {
                 customerId={customerId}
                 currentUserRole="customer"
                 documents={documents}
+                agentId={claim.adjuster_id || claim.policy?.agent_id}
+                claimNumber={claim.claim_number}
                 onRefresh={async () => {
                   // Re-fetch only documents or full claim
                   const { data } = await supabase

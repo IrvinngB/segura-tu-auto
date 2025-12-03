@@ -37,6 +37,8 @@ interface ClaimCustomerDocumentsProps {
   onDocumentCountChange?: (count: number) => void;
   documents?: ClaimCustomerDocument[];
   onRefresh?: () => void;
+  agentId?: string;
+  claimNumber?: string;
 }
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
@@ -76,6 +78,8 @@ export function ClaimCustomerDocuments({
   onDocumentCountChange,
   documents = [],
   onRefresh = () => {},
+  agentId,
+  claimNumber,
 }: ClaimCustomerDocumentsProps) {
   // const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]); // Removed local state
   // const [loading, setLoading] = useState(true); // Removed loading state (handled by parent)
@@ -429,6 +433,8 @@ export function ClaimCustomerDocuments({
         documents={documents}
         currentUserRole={currentUserRole}
         onRefresh={onRefresh}
+        agentId={agentId}
+        claimNumber={claimNumber}
       />
 
       <Card>
