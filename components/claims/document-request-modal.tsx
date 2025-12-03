@@ -28,7 +28,6 @@ interface DocumentRequestModalProps {
 
 const DOCUMENT_TYPES = [
   { id: 'photos', name: 'Fotos adicionales del daño', required: true },
-  { id: 'police_report', name: 'Reporte policial', required: false },
   { id: 'repair_estimate', name: 'Cotización de reparación', required: false },
   { id: 'medical_report', name: 'Reporte médico', required: false },
   { id: 'witness_statement', name: 'Declaración de testigos', required: false },
