@@ -537,39 +537,7 @@ export function ClaimCustomerDocuments({
                         <Eye className="h-4 w-4" />
                       </Button>
 
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={async () => {
-                          try {
-                            console.log('📥 Verificando archivo para descarga:', doc.file_url);
-                            const response = await fetch(doc.file_url, { method: 'HEAD' });
 
-                            if (response.ok) {
-                              const link = document.createElement('a');
-                              link.href = `${doc.file_url}?t=${Date.now()}`;
-                              link.download = translateFileName(doc.file_name);
-                              link.click();
-                            } else {
-                              console.error(
-                                '❌ Archivo no disponible para descarga (status:',
-                                response.status,
-                                ')'
-                              );
-                              toast.error(
-                                `El archivo no está disponible para descarga (Error ${response.status}).`
-                              );
-                            }
-                          } catch (error) {
-                            console.error('❌ Error descargando archivo:', error);
-                            toast.error('Error al descargar el archivo.');
-                          }
-                        }}
-                        className="dark:hover:bg-gray-700"
-                        disabled={isUpdating}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
 
                       {/* Reemplazo para TODOS los documentos (normales y extra) si es cliente */}
                       {currentUserRole === 'customer' && (
