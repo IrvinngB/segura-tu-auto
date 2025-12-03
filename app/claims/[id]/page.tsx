@@ -1349,14 +1349,15 @@ export default function ClaimDetailPage() {
           </Card>
         )}
 
-        {/* Payment Status for approved/processing/paid claims */}
         {claim && ['approved', 'processing_payment', 'paid'].includes(claim.status) && (
-          <PaymentStatus
-            claim={claim}
-            onProcessPayment={processPayment}
-            onConfirmPayment={confirmPayment}
-            currentUserRole={userProfile?.role}
-          />
+          <div className="mb-6">
+            <PaymentStatus
+              claim={claim}
+              onProcessPayment={processPayment}
+              onConfirmPayment={confirmPayment}
+              currentUserRole={userProfile?.role}
+            />
+          </div>
         )}
 
         <Tabs defaultValue={initialTab} className="space-y-6">
