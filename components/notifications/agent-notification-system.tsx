@@ -226,7 +226,7 @@ export function AgentNotificationSystem() {
             subDetail: `$${quote.premium_amount?.toLocaleString()} - ${quote.policy_type}`,
             status: quote.status,
             created_at: quote.created_at,
-            link: `/quotes`, 
+            link: `/quotes?highlight=${quote.id}`, 
             read: readIds.includes(quote.id),
             metadata: { quoteId: quote.id }
           });
@@ -350,7 +350,12 @@ export function AgentNotificationSystem() {
   };
 
   const handleNewQuote = (newQuote: any) => {
-    toast.info(`Nueva cotización recibida: ${newQuote.quote_number || 'Sin número'}`);
+    toast.info(`Nueva cotización recibida: ${newQuote.quote_number || 'Sin número'}`, {
+        action: {
+            label: 'Ver',
+            onClick: () => router.push(`/quotes?highlight=${newQuote.id}`)
+        }
+    });
     loadNotifications();
   };
 
@@ -495,9 +500,7 @@ export function AgentNotificationSystem() {
     }
 
     // Navegar (Resto de la lógica)
-    if (notification.type === 'quote') {
-        router.push('/quotes');
-    } else if (notification.type === 'cancellation') {
+    if (notification.type === 'cancellation') {
         // Fallback para otros roles (ej. admin)
         router.push('/policies'); 
     } else {

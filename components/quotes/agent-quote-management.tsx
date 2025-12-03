@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { PriorityBadge } from "@/components/ui/priority-badge";
 import { Button } from "@/components/ui/button";
@@ -52,10 +53,46 @@ export function AgentQuoteManagement() {
     const [successMessage, setSuccessMessage] = useState("");
     const [successTitle, setSuccessTitle] = useState("");
     const supabase = createClient();
+    
+    const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+    const searchParams = useSearchParams();
+    const highlightId = searchParams.get("highlight");
+    const lastHighlightedRef = useRef<string | null>(null);
 
     useEffect(() => {
         fetchQuotes();
     }, []);
+
+    useEffect(() => {
+        console.log("🔍 Highlight Effect Triggered:", { highlightId, loading, quotesLength: quotes.length, lastHighlighted: lastHighlightedRef.current });
+        
+        // Trigger highlight when data is ready and we haven't done it yet
+        if (highlightId && !loading && quotes.length > 0 && highlightId !== lastHighlightedRef.current) {
+            console.log("✨ Activating highlight for:", highlightId);
+            setActiveHighlightId(highlightId);
+            lastHighlightedRef.current = highlightId;
+            
+            // Scroll logic
+            setTimeout(() => {
+                const element = document.getElementById(`quote-${highlightId}`);
+                if (element) {
+                    element.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }, 100);
+        }
+    }, [highlightId, loading, quotes]);
+
+    // Separate effect for clearing the highlight
+    useEffect(() => {
+        if (activeHighlightId) {
+            const timer = setTimeout(() => {
+                console.log("🛑 Clearing highlight");
+                setActiveHighlightId(null);
+            }, 2000); // 2 seconds total visibility
+
+            return () => clearTimeout(timer);
+        }
+    }, [activeHighlightId]);
 
     const fetchQuotes = async () => {
         try {
@@ -217,8 +254,6 @@ export function AgentQuoteManagement() {
         return "low";
     };
 
-
-
     if (loading) {
         return (
             <div className="flex items-center justify-center py-8">
@@ -254,8 +289,13 @@ export function AgentQuoteManagement() {
                     <div className="grid gap-4">
                         {pendingQuotes.map((quote) => (
                             <Card
+                                id={`quote-${quote.id}`}
                                 key={quote.id}
-                                className="border-l-4 border-l-orange-400"
+                                className={`border-l-4 ${
+                                    activeHighlightId === quote.id 
+                                        ? "border-l-blue-600 ring-4 ring-blue-500/50 shadow-xl bg-blue-100/50 dark:bg-blue-900/40 animate-pulse" 
+                                        : "border-l-orange-400"
+                                } transition-all duration-500`}
                             >
                                 <CardHeader>
                                     <div className="flex justify-between items-start">
@@ -599,7 +639,7 @@ export function AgentQuoteManagement() {
                                                         monthly: "Mensual",
                                                         quarterly: "Trimestral",
                                                         biannual: "Semestral",
-                                                        yearly: "Anual",
+                                                        annual: "Anual",
                                                     }[selectedQuote.payment_frequency] || selectedQuote.payment_frequency
                                                 }
                                             </p>

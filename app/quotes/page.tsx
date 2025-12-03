@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { AgentQuoteManagement } from "@/components/quotes/agent-quote-management";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { FileText, Users } from "lucide-react";
@@ -21,7 +22,9 @@ export default function QuoteManagementPage() {
                     </p>
                 </div>
 
-                <AgentQuoteManagement />
+                <Suspense fallback={<div>Cargando...</div>}>
+                    <AgentQuoteManagement />
+                </Suspense>
             </div>
         </ProtectedRoute>
     );
