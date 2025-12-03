@@ -80,13 +80,6 @@ export async function GET(request: NextRequest) {
             ascending: false,
         });
 
-        console.log("📋 Quotes query result:", {
-            quotesCount: quotes?.length,
-            error: error?.message,
-            errorCode: error?.code,
-            errorDetails: error?.details,
-        });
-
         if (error) {
             console.log("❌ Database error:", error);
             return NextResponse.json(
@@ -99,8 +92,56 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        console.log("✅ Quotes fetched successfully:", quotes?.length || 0);
-        return NextResponse.json({ quotes });
+        // Fetch policies for this customer to link with quotes
+        let policies: any[] = [];
+        if (quotes && quotes.length > 0) {
+            const customerId = quotes[0].customer_id; // Assuming all quotes are for same customer if role is customer
+            // If agent/admin, we might need to fetch all policies or filter by IDs.
+            // For simplicity and performance, let's fetch policies for the customers in the quotes
+            const customerIds = Array.from(new Set(quotes.map(q => q.customer_id)));
+            
+            const { data: policiesData } = await supabase
+                .from('policies')
+                .select('id, status, vehicle_id, customer_id, created_at')
+                .in('customer_id', customerIds);
+                
+            if (policiesData) {
+                policies = policiesData;
+            }
+        }
+
+        // Map quotes to include policy info
+        const quotesWithPolicyInfo = quotes?.map(quote => {
+            // Find a policy for this vehicle created around the same time or after?
+            // Or just the latest policy for this vehicle?
+            // Let's find the latest policy for the vehicle
+            const vehiclePolicies = policies.filter(p => p.vehicle_id === quote.vehicle_id);
+            // Sort by created_at desc
+            vehiclePolicies.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            
+            const latestPolicy = vehiclePolicies.length > 0 ? vehiclePolicies[0] : null;
+            
+            let isPaid = false;
+            let policyId = null;
+
+            if (latestPolicy) {
+                // If the quote is approved or converted, link it to the policy
+                if (quote.status === 'approved' || quote.status === 'converted') {
+                    policyId = latestPolicy.id;
+                    // If policy is active, it's paid. If approved (pending payment), it's not paid.
+                    isPaid = latestPolicy.status === 'active';
+                }
+            }
+
+            return {
+                ...quote,
+                isPaid,
+                policyId
+            };
+        });
+
+        console.log("✅ Quotes fetched successfully:", quotesWithPolicyInfo?.length || 0);
+        return NextResponse.json({ quotes: quotesWithPolicyInfo });
     } catch (error) {
         console.error("💥 Unexpected error fetching quotes:", error);
         return NextResponse.json(

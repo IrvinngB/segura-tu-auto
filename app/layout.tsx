@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AppLayout } from "@/components/layout/app-layout";
 import { ReactQueryProvider } from "@/lib/react-query-provider";
 import "./globals.css";
+import "./notification-scrollbar.css";
 
 const inter = Inter({
     variable: "--font-inter",

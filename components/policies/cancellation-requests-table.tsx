@@ -70,6 +70,8 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
     const [showPolicyModal, setShowPolicyModal] = useState(false);
     const [loadingPolicy, setLoadingPolicy] = useState(false);
 
+    const [viewRequest, setViewRequest] = useState<CancellationRequest | null>(null);
+
     const supabase = createClient();
 
     const fetchRequests = async () => {
@@ -142,9 +144,8 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
             // In a real app, we'd have separate columns for admin_notes and penalty_applied
             let adminNote = "";
             if (type === "approve") {
-                adminNote = applyPenalty === "yes"
-                    ? "\n[Admin: Aprobado CON MULTA]"
-                    : "\n[Admin: Aprobado SIN MULTA]";
+                // No appending for approval to keep it clean as requested
+                adminNote = "";
             } else {
                 adminNote = rejectionReason ? `\n[Admin: Rechazado - ${rejectionReason}]` : "\n[Admin: Rechazado]";
             }
@@ -169,9 +170,47 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
                 if (policyError) throw policyError;
             }
 
+            // 3. Create Communication for Customer
+            const communicationData = {
+                customer_id: request.customer_id,
+                policy_id: request.policy_id,
+                communication_type: 'email', // Default to email style
+                direction: 'outbound',
+                status: 'sent',
+                subject: type === "approve" 
+                    ? `Cancelación aprobada – Póliza ${request.policy?.policy_number}`
+                    : `Cancelación rechazada – Póliza ${request.policy?.policy_number}`,
+                content: type === "approve"
+                    ? `Estimado cliente,
+
+Le informamos que la solicitud de cancelación de su póliza ${request.policy?.policy_number} ha sido aprobada.
+La cancelación será efectiva a partir del ${format(new Date(), 'dd/MM/yyyy', { locale: es })}.
+
+Si tiene alguna duda, por favor contacte a su agente o a nuestro centro de atención.`
+                    : `Estimado cliente,
+
+Le informamos que la solicitud de cancelación de su póliza ${request.policy?.policy_number} ha sido rechazada.
+
+Motivo: ${rejectionReason || 'No especificado'}
+
+Si requiere más información, por favor contacte a su agente.`
+            };
+
+            const { error: commError } = await supabase
+                .from('communications')
+                .insert(communicationData);
+
+            if (commError) {
+                console.error("Error creating communication:", commError);
+                // Don't block the flow, just log it
+                toast.error("Solicitud procesada, pero falló el envío de la notificación al cliente");
+            } else {
+                toast.success("Notificación enviada al cliente");
+            }
+
             toast.success(
                 type === "approve"
-                    ? `Solicitud aprobada ${applyPenalty === "yes" ? "CON" : "SIN"} multa`
+                    ? "Solicitud aprobada correctamente"
                     : "Solicitud rechazada correctamente"
             );
 
@@ -197,6 +236,32 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
             other: "Otro",
         };
         return reasons[reason] || reason;
+    };
+
+    const parseComments = (rawComments: string) => {
+        if (!rawComments) return { customerComment: "", adminDecision: null };
+
+        const adminRegex = /\[Admin:\s*(.+?)\]/i;
+        const match = rawComments.match(adminRegex);
+
+        let customerComment = rawComments;
+        let adminDecision = null;
+
+        if (match) {
+            customerComment = rawComments.replace(adminRegex, "").trim();
+            adminDecision = match[1].trim();
+
+            // Clean up common admin codes to readable text
+            if (adminDecision === "Aprobado SIN MULTA") adminDecision = "Aprobado sin multa";
+            if (adminDecision === "Aprobado CON MULTA") adminDecision = "Aprobado con multa";
+            if (adminDecision === "Rechazado") adminDecision = "Rechazado";
+            // Handle rejection with reason
+            if (adminDecision.startsWith("Rechazado - ")) {
+                 adminDecision = `Rechazado (${adminDecision.replace("Rechazado - ", "")})`;
+            }
+        }
+
+        return { customerComment, adminDecision };
     };
 
     const getStatusBadge = (status: string, policyStatus?: string) => {
@@ -236,7 +301,7 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
                             <TableHead>Cliente</TableHead>
                             <TableHead>Motivo</TableHead>
                             <TableHead>Estado</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
+                            <TableHead>Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -262,19 +327,29 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
                                     <TableCell>
                                         <div className="flex flex-col gap-1">
                                             <span>{getReasonLabel(req.reason)}</span>
-                                            {req.comments && (
-                                                <span className="text-xs text-muted-foreground italic">"{req.comments}"</span>
-                                            )}
+                                            {(() => {
+                                                const { customerComment } = parseComments(req.comments);
+                                                return (
+                                                    <>
+                                                        {customerComment && (
+                                                            <span className="text-xs text-muted-foreground italic">"{customerComment}"</span>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </TableCell>
                                     <TableCell>{getStatusBadge(req.status, req.policy?.status)}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell>
                                         <div className="flex justify-end gap-2">
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
-                                                onClick={() => fetchPolicyDetails(req.policy_id)}
-                                                title="Ver Póliza"
+                                                onClick={() => {
+                                                    setViewRequest(req);
+                                                    fetchPolicyDetails(req.policy_id);
+                                                }}
+                                                title="Ver Detalles"
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </Button>
@@ -323,22 +398,6 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
                         </DialogDescription>
                     </DialogHeader>
 
-                    {confirmDialog.type === "approve" && (
-                        <div className="py-4">
-                            <Label className="mb-2 block">Aplicar penalización por cancelación anticipada:</Label>
-                            <RadioGroup value={applyPenalty} onValueChange={setApplyPenalty} className="flex flex-col space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="no" id="no-penalty" />
-                                    <Label htmlFor="no-penalty">Sin Multa (Devolución estándar)</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="yes" id="yes-penalty" />
-                                    <Label htmlFor="yes-penalty">Con Multa (Aplicar cargos administrativos)</Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
-                    )}
-
                     {confirmDialog.type === "reject" && (
                         <div className="py-2">
                             <Textarea
@@ -376,48 +435,115 @@ export function CancellationRequestsTable({ onUpdate }: CancellationRequestsTabl
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <FileText className="h-5 w-5" />
-                            Detalles de Póliza {viewPolicy?.policy_number}
+                            Detalles de Solicitud de Cancelación
                         </DialogTitle>
-                        <DialogDescription>Información completa de la póliza</DialogDescription>
+                        <DialogDescription>Información completa de la solicitud y la póliza</DialogDescription>
                     </DialogHeader>
 
-                    {viewPolicy && (
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <span className="font-medium">Estado Actual:</span>
-                                <Badge variant="outline">{viewPolicy.status}</Badge>
+                    <div className="space-y-6">
+                        {/* Request Details Section */}
+                        {viewRequest && (
+                            <div className="bg-muted/30 p-4 rounded-lg border space-y-3">
+                                <h3 className="font-semibold text-sm flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                    Información de la Solicitud
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase">Motivo</span>
+                                        <p className="font-medium">{getReasonLabel(viewRequest.reason)}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase">Fecha Solicitud</span>
+                                        <p className="text-sm">{format(new Date(viewRequest.created_at), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <span className="text-xs font-medium text-muted-foreground uppercase">Comentario del Cliente</span>
+                                        <p className="text-sm italic text-muted-foreground">
+                                            "{parseComments(viewRequest.comments).customerComment || 'Sin comentarios adicionales'}"
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
+                        )}
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <span className="font-medium">Cliente:</span>
-                                    <p className="text-muted-foreground">
-                                        {viewPolicy.customer?.user?.first_name} {viewPolicy.customer?.user?.last_name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">{viewPolicy.customer?.user?.email}</p>
-                                </div>
-                                <div>
-                                    <span className="font-medium">Vehículo:</span>
-                                    <p className="text-muted-foreground">
-                                        {viewPolicy.vehicle?.year} {viewPolicy.vehicle?.make} {viewPolicy.vehicle?.model}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">{viewPolicy.vehicle?.license_plate}</p>
-                                </div>
-                                <div>
-                                    <span className="font-medium">Vigencia:</span>
-                                    <p className="text-muted-foreground">
-                                        {format(new Date(viewPolicy.start_date), 'dd/MM/yyyy')} - {format(new Date(viewPolicy.end_date), 'dd/MM/yyyy')}
-                                    </p>
-                                </div>
-                                <div>
-                                    <span className="font-medium">Prima:</span>
-                                    <p className="text-lg font-bold text-primary">
-                                        ${viewPolicy.premium_amount?.toLocaleString()}
-                                    </p>
+                        {/* Agent Decision Section */}
+                        {viewRequest && viewRequest.status !== 'pending' && (
+                            <div className={`p-4 rounded-lg border space-y-3 ${
+                                viewRequest.status === 'approved' 
+                                    ? 'bg-green-50/50 border-green-100 dark:bg-[#2B2F3A] dark:border-[rgba(255,255,255,0.12)]' 
+                                    : 'bg-red-50/50 border-red-100 dark:bg-[#2B2F3A] dark:border-[rgba(255,255,255,0.12)]'
+                            }`}>
+                                <h3 className={`font-semibold text-sm flex items-center gap-2 ${
+                                    viewRequest.status === 'approved' ? 'text-green-700 dark:text-[#E6EAF3]' : 'text-red-700 dark:text-[#E6EAF3]'
+                                }`}>
+                                    {viewRequest.status === 'approved' 
+                                        ? <CheckCircle className="h-4 w-4 text-green-600 dark:text-[#4CAF50]" /> 
+                                        : <XCircle className="h-4 w-4 text-red-600 dark:text-[#E57373]" />
+                                    }
+                                    Decisión del Agente
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase dark:text-[#AEB7C4]">Estado de Resolución</span>
+                                        <div className="mt-1">
+                                            {viewRequest.status === 'approved' ? (
+                                                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 dark:bg-[#4CAF50]/20 dark:text-[#4CAF50] dark:border-[#4CAF50]/30">Aprobada</Badge>
+                                            ) : (
+                                                <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200 dark:bg-[#E57373]/20 dark:text-[#E57373] dark:border-[#E57373]/30">Rechazada</Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase dark:text-[#AEB7C4]">Comentario del Agente</span>
+                                        <p className="text-sm italic text-muted-foreground mt-1 dark:text-[#C5CEDA]">
+                                            {parseComments(viewRequest.comments).adminDecision || (viewRequest.status === 'approved' ? 'Aprobado' : 'Sin comentarios')}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {/* Policy Details Section */}
+                        {viewPolicy && (
+                            <div className="space-y-4 pt-2 border-t">
+                                <h3 className="font-semibold text-sm">Detalles de la Póliza {viewPolicy.policy_number}</h3>
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium">Estado Actual:</span>
+                                    <Badge variant="outline">{viewPolicy.status}</Badge>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="font-medium">Cliente:</span>
+                                        <p className="text-muted-foreground">
+                                            {viewPolicy.customer?.user?.first_name} {viewPolicy.customer?.user?.last_name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">{viewPolicy.customer?.user?.email}</p>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Vehículo:</span>
+                                        <p className="text-muted-foreground">
+                                            {viewPolicy.vehicle?.year} {viewPolicy.vehicle?.make} {viewPolicy.vehicle?.model}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">{viewPolicy.vehicle?.license_plate}</p>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Vigencia:</span>
+                                        <p className="text-muted-foreground">
+                                            {format(new Date(viewPolicy.start_date), 'dd/MM/yyyy')} - {format(new Date(viewPolicy.end_date), 'dd/MM/yyyy')}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium">Prima:</span>
+                                        <p className="text-lg font-bold text-primary">
+                                            ${viewPolicy.premium_amount?.toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

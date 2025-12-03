@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import {
   Select,
   SelectContent,
@@ -46,6 +47,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [forceRefreshKey, setForceRefreshKey] = useState(0);
+  const [rejectedClaimsMap, setRejectedClaimsMap] = useState<Record<string, boolean>>({});
   const supabase = createClient();
 
   // ✅ OPTIMIZACIÓN: Debounce de búsqueda para evitar filtrado en cada keystroke
@@ -147,6 +149,24 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
           .order('created_at', { ascending: false });
         data = result.data;
         error = result.error;
+
+        // Fetch rejected documents for this customer to update UI status
+        if (data) {
+          const { data: rejectedDocs } = await supabase
+            .from('claim_customer_documents')
+            .select('claim_id')
+            .eq('customer_id', customerId)
+            .eq('status', 'rejected');
+
+          if (rejectedDocs) {
+            const rejectedMap: Record<string, boolean> = {};
+            rejectedDocs.forEach(doc => {
+              rejectedMap[doc.claim_id] = true;
+            });
+            setRejectedClaimsMap(rejectedMap);
+          }
+        }
+
       } else if (policyId) {
         const result = await supabase
           .from('claims')
@@ -172,9 +192,10 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         data = [
           ...(myClaimsData.claims || []),
           ...(availableData.claims || [])
-        ];
+        ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       } else if (userProfile?.role === 'agent') {
-        const [unassignedRes, myClaimsRes] = await Promise.all([
+        const [unassignedRes, processRes, returnedRes, myClaimsRes] = await Promise.all([
+          // 1. Reclamaciones sin asignar (Intake)
           supabase
             .from('claims')
             .select(`
@@ -184,18 +205,60 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               adjuster:users!claims_adjuster_id_fkey(*)
             `)
             .is('adjuster_id', null)
-            .eq('status', 'submitted')
+            .in('status', ['submitted', 'under_review', 'pending_documentation', 'investigating'])
             .order('created_at', { ascending: false }),
+          
+          // 2. Reclamaciones en proceso post-ajuste (Visibles para todos los agentes)
+          supabase
+            .from('claims')
+            .select(`
+              *,
+              policy:policies(*,vehicle:vehicles(*)),
+              customer:customers(*,user:users(*)),
+              adjuster:users!claims_adjuster_id_fkey(*)
+            `)
+            .in('status', ['waiting_approval', 'approved', 'processing_payment', 'paid'])
+            .order('created_at', { ascending: false }),
+
+          // 3. Reclamaciones devueltas o en revisión (con ajustador asignado pero requieren acción de agente)
+          supabase
+            .from('claims')
+            .select(`
+              *,
+              policy:policies(*,vehicle:vehicles(*)),
+              customer:customers(*,user:users(*)),
+              adjuster:users!claims_adjuster_id_fkey(*)
+            `)
+            .not('adjuster_id', 'is', null)
+            .in('status', ['under_review', 'pending_documentation'])
+            .order('created_at', { ascending: false }),
+
+          // 4. Mis reclamaciones asignadas
           fetch('/api/claims/my-claims')
         ]);
 
         const myClaimsData = await myClaimsRes.json();
-
-        data = [
+        
+        // Combinar y deduplicar por ID
+        const allClaims = [
           ...(myClaimsData.claims || []),
-          ...(unassignedRes.data || [])
+          ...(unassignedRes.data || []),
+          ...(processRes.data || []),
+          ...(returnedRes.data || []) // returnedRes is the 3rd result now
         ];
-        error = unassignedRes.error;
+
+        const uniqueClaims = Array.from(new Map(allClaims.map(item => [item.id, item])).values());
+
+
+        
+        // Sort by updated_at to show most recent activity first (better for workflow)
+        data = uniqueClaims.sort((a, b) => {
+          const dateA = new Date(a.updated_at || a.created_at).getTime();
+          const dateB = new Date(b.updated_at || b.created_at).getTime();
+          return dateB - dateA;
+        });
+        
+        error = unassignedRes.error || processRes.error || returnedRes.error;
       } else if (userProfile?.role === 'admin') {
         const result = await supabase
           .from('claims')
@@ -276,7 +339,12 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
     setFilteredClaims(filtered);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, claimId?: string) => {
+    // Si es cliente y tiene documentos rechazados, mostrar estado especial
+    if (userProfile?.role === 'customer' && claimId && rejectedClaimsMap[claimId]) {
+      return <span className="status-badge status-denied">Documento inválido</span>;
+    }
+
     // Determinar el label para 'submitted' según el rol
     const submittedLabel = (userProfile?.role === 'agent' || userProfile?.role === 'adjuster')
       ? 'Por revisar'
@@ -342,26 +410,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
     return <span className={config.classes}>{config.label}</span>;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { label: 'Baja', classes: 'priority-badge priority-low' },
-      medium: {
-        label: 'Media',
-        classes: 'priority-badge priority-medium',
-      },
-      high: { label: 'Alta', classes: 'priority-badge priority-high' },
-      urgent: {
-        label: 'Urgente',
-        classes: 'priority-badge priority-urgent',
-      },
-    };
 
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || {
-      label: priority,
-      classes: 'priority-badge priority-low',
-    };
-    return <span className={config.classes}>{config.label}</span>;
-  };
 
   const getClaimTypeLabel = (type: string) => {
     // Los tipos en la base de datos ya están en español
@@ -559,14 +608,14 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                 {!customerId && <TableHead>Cliente</TableHead>}
                 <TableHead>Póliza</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead className="text-center">Estado</TableHead>
-                <TableHead className="text-center">Prioridad</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Prioridad</TableHead>
                 {(userProfile?.role === 'agent' || userProfile?.role === 'admin') && (
                   <TableHead>Ajustador</TableHead>
                 )}
-                <TableHead>Fecha</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead className="text-center">Fecha</TableHead>
+                <TableHead className="text-center">Monto</TableHead>
+                <TableHead className="text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -609,13 +658,13 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                       </div>
                     </TableCell>
                     <TableCell>{getClaimTypeLabel(claim.claim_type)}</TableCell>
-                    <TableCell className="text-center">{getStatusBadge(claim.status)}</TableCell>
+                    <TableCell className="text-center">{getStatusBadge(claim.status, claim.id)}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex flex-col gap-1 items-center">
-                        {getPriorityBadge(claim.priority)}
+                        <PriorityBadge priority={claim.priority} />
                         {claim.injury_involved && (
                           <Badge variant="destructive" className="text-xs">
-                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            <AlertTriangle className="h-3 w-3" />
                             Lesiones
                           </Badge>
                         )}
@@ -623,15 +672,10 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                     </TableCell>
                     {(userProfile?.role === 'agent' || userProfile?.role === 'admin') && (
                       <TableCell>
-                        {claim.adjuster ? (
-                          <div className="text-sm">
-                            <div className="font-medium">
-                              {claim.adjuster.first_name} {claim.adjuster.last_name}
-                            </div>
-                            <Badge variant="secondary" className="text-xs mt-1">
-                              Asignado
-                            </Badge>
-                          </div>
+                        {claim.adjuster_id ? (
+                          <Badge variant="secondary" className="text-xs">
+                            Asignado
+                          </Badge>
                         ) : (
                           <Badge variant="outline" className="text-xs">
                             Sin asignar
@@ -639,22 +683,22 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                         )}
                       </TableCell>
                     )}
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
+                    <TableCell className="text-center">
+                      <div className="flex items-center gap-1 text-sm justify-center">
                         <Calendar className="h-3 w-3" />
                         <span>
                           {format(new Date(claim.incident_date), 'dd/MM/yyyy', { locale: es })}
                         </span>
                       </div>
                       {getClaimAgeDisplay(claim.created_at) && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground justify-center">
                           <Clock className="h-3 w-3" />
                           <span>{getClaimAgeDisplay(claim.created_at)}</span>
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
+                    <TableCell className="text-center">
+                      <div className="text-sm flex flex-col items-center">
                         {claim.estimated_damage_cost && (
                           <div className="flex items-center gap-1">
                             <span>${claim.estimated_damage_cost.toLocaleString()}</span>
@@ -668,8 +712,8 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2 justify-end">
+                    <TableCell className="text-center">
+                      <div className="flex gap-2 justify-center">
                         {/* Botón Ver - Mejorado y Visible */}
                         <Button
                           variant="outline"
@@ -741,9 +785,9 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                             </Button>
                           )}
 
-                        {/* AJUSTADOR: Botón de evaluar */}
+                        {/* AJUSTADOR: Botón de evaluar (Single Evaluator Mode: Evaluar cualquiera asignada) */}
                         {userProfile?.role === 'adjuster' &&
-                          claim.adjuster_id === userProfile.id &&
+                          claim.adjuster_id &&
                           ['investigating', 'waiting_approval'].includes(claim.status) && (
                             <Button
                               variant="default"
@@ -762,15 +806,6 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                             >
                               Evaluar
                             </Button>
-                          )}
-
-                        {/* AJUSTADOR: Indicador de reclamación de otro ajustador */}
-                        {userProfile?.role === 'adjuster' &&
-                          claim.adjuster_id &&
-                          claim.adjuster_id !== userProfile.id && (
-                            <Badge variant="outline" className="text-xs">
-                              Asignada a otro
-                            </Badge>
                           )}
 
                         {/* ADMINISTRADOR: Acceso completo */}
@@ -812,7 +847,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                   <div className="text-2xl font-bold text-gray-400">
                     {filteredClaims.filter(c => c.status === 'submitted').length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Por revisar</div>
+                  <div className="text-sm text-muted-foreground">Enviadas</div>
                 </CardContent>
               </Card>
               <Card>
@@ -828,7 +863,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                   <div className="text-2xl font-bold text-purple-500">
                     {filteredClaims.filter(c => c.status === 'waiting_approval').length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Para aprobación</div>
+                  <div className="text-sm text-muted-foreground">Esperando aprobación</div>
                 </CardContent>
               </Card>
               <Card>

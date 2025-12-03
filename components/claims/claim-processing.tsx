@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -127,18 +128,6 @@ export function ClaimProcessing({ claim, onClaimUpdated }: ClaimProcessingProps)
     return types[type as keyof typeof types] || type;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { label: 'Baja', variant: 'secondary' as const },
-      medium: { label: 'Media', variant: 'outline' as const },
-      high: { label: 'Alta', variant: 'destructive' as const },
-      urgent: { label: 'Urgente', variant: 'destructive' as const },
-    };
-
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.medium;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
   const handleStatusChange = async (newStatus: string) => {
     if (!canProcess) {
       setError('No tienes permisos para procesar esta reclamación');
@@ -254,7 +243,7 @@ export function ClaimProcessing({ claim, onClaimUpdated }: ClaimProcessingProps)
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {getPriorityBadge(claim.priority)}
+              <PriorityBadge priority={claim.priority} />
               {getStatusBadge(claim.status)}
             </div>
           </div>

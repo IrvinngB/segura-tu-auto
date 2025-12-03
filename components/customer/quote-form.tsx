@@ -35,6 +35,7 @@ import {
   Star,
   Crown,
   Download,
+  Clock,
 } from 'lucide-react';
 
 interface QuoteFormProps {
@@ -106,6 +107,7 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [vehiclesWithPolicies, setVehiclesWithPolicies] = useState<Set<string>>(new Set());
   const [loadingVehiclePolicies, setLoadingVehiclePolicies] = useState(false);
+  const [isLoadingVehicles, setIsLoadingVehicles] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
@@ -197,81 +199,64 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
   const fetchVehicles = async () => {
     if (!customerData) return;
 
+    setIsLoadingVehicles(true);
     try {
-      console.log('Buscando vehículos del cliente:', customerData.id);
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('customer_id', customerData.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching vehicles:', error);
+      console.log('Buscando vehículos del cliente con estado:', customerData.id);
+      const response = await fetch('/api/customer/vehicles-with-status');
+      
+      if (!response.ok) {
+        console.error('Error fetching vehicles with status');
         return;
       }
 
-      if (data) {
-        console.log('Vehículos encontrados:', data.length);
-        setVehicles(data);
-        // Verificar cuáles vehículos ya tienen pólizas activas
-        await checkVehicleActivePolicies(data);
+      const data = await response.json();
 
-        // Auto-select first available vehicle (without active policy)
+      if (data && Array.isArray(data)) {
+        console.log('Vehículos encontrados (RAW):', data);
+        data.forEach((v: any) => {
+             console.log(`Vehicle ${v.id} availability:`, v.quoteAvailability, 'Status:', v.latestQuoteStatus);
+        });
+        setVehicles(data);
+        
+        // No need to call checkVehicleActivePolicies anymore as the API handles it
+        // But we might need to update vehiclesWithPolicies set for compatibility if used elsewhere
+        const policiesSet = new Set<string>();
+        data.forEach((v: any) => {
+          if (
+            v.quoteAvailability === 'ACTIVE_POLICY' ||
+            v.quoteAvailability === 'PENDING_QUOTE' ||
+            v.quoteAvailability === 'APPROVED_QUOTE'
+          ) {
+            policiesSet.add(v.id);
+          }
+        });
+        setVehiclesWithPolicies(policiesSet);
+
+        // Auto-select first available vehicle
         if (data.length > 0) {
-          // Primero intentar con vehículos sin póliza activa
-          const availableVehicle = data.find(vehicle => !vehiclesWithPolicies.has(vehicle.id));
+          // Primero intentar con vehículos disponibles (AVAILABLE)
+          const availableVehicle = data.find((vehicle: any) => vehicle.quoteAvailability === 'AVAILABLE');
+          
           if (availableVehicle) {
             setSelectedVehicleId(availableVehicle.id);
           } else {
-            // Si todos tienen póliza, seleccionar el primero pero mostrar advertencia
-            setSelectedVehicleId(data[0].id);
+            // Si no hay disponibles, no seleccionar ninguno automáticamente o seleccionar el primero
+            // Mejor no seleccionar ninguno para obligar al usuario a ver el estado
+            // O seleccionar el primero para mostrar la info aunque esté deshabilitado
+            // setSelectedVehicleId(data[0].id);
           }
         }
       } else {
         console.log('No se encontraron vehículos');
         setVehicles([]);
       }
-    } catch (error) {
-      console.error('Error fetching vehicles:', error);
-    }
-  };
 
-  const checkVehicleActivePolicies = async (vehicleList: Vehicle[]) => {
-    if (vehicleList.length === 0) return;
 
-    try {
-      setLoadingVehiclePolicies(true);
-
-      // Obtener todas las pólizas activas para estos vehículos
-      const vehicleIds = vehicleList.map(v => v.id);
-      const { data: activePolicies } = await supabase
-        .from('policies')
-        .select('vehicle_id')
-        .in('vehicle_id', vehicleIds)
-        .in('status', ['active', 'suspended']); // Considera activas y suspendidas como ocupadas
-
-      // También verificar cotizaciones pendientes
-      const { data: pendingQuotes } = await supabase
-        .from('quotes')
-        .select('vehicle_id')
-        .in('vehicle_id', vehicleIds)
-        .in('status', ['pending', 'approved']);
-
-      const vehiclesWithActivePolicies = new Set<string>();
-
-      if (activePolicies) {
-        activePolicies.forEach(policy => vehiclesWithActivePolicies.add(policy.vehicle_id));
-      }
-
-      if (pendingQuotes) {
-        pendingQuotes.forEach(quote => vehiclesWithActivePolicies.add(quote.vehicle_id));
-      }
-
-      setVehiclesWithPolicies(vehiclesWithActivePolicies);
     } catch (error) {
       console.error('Error checking vehicle policies:', error);
     } finally {
       setLoadingVehiclePolicies(false);
+      setIsLoadingVehicles(false);
     }
   };
 
@@ -913,6 +898,10 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
     }
   };
 
+  const allVehiclesUnavailable = vehicles.length > 0 && vehicles.every(v => 
+    (v as any).quoteAvailability !== 'AVAILABLE'
+  );
+
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
@@ -959,23 +948,89 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Vehicle Selection - Only if vehicles exist */}
-              {vehicles.length > 0 ? (
-                <div className="space-y-4">
+              {isLoadingVehicles ? (
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    <p className="text-muted-foreground">Cargando tus vehículos...</p>
+                  </div>
+                </div>
+              ) : vehicles.length > 0 ? (
+                allVehiclesUnavailable ? (
+                  <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                    <Car className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-medium mb-2">Todos tus vehículos ya tienen cotizaciones</h3>
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm">
+                      No puedes crear nuevas cotizaciones mientras tengas cotizaciones pendientes o pólizas activas para todos tus vehículos registrados.
+                    </p>
+
+                    <div className="bg-muted/50 rounded-lg p-4 mb-6 max-w-lg mx-auto text-left">
+                      <h4 className="text-sm font-medium mb-3 text-muted-foreground">Estado de tus vehículos:</h4>
+                      <div className="space-y-2">
+                        {vehicles.map(vehicle => (
+                          <div key={vehicle.id} className="flex items-center justify-between text-sm p-2 bg-background rounded border">
+                            <span className="truncate mr-2 font-medium">
+                              {vehicle.year} {vehicle.make} {vehicle.model}
+                            </span>
+                            {(vehicle as any).quoteAvailability === 'ACTIVE_POLICY' && (
+                              <Badge variant="default" className="bg-green-600 hover:bg-green-700">Asegurado</Badge>
+                            )}
+                            {(vehicle as any).quoteAvailability === 'PENDING_QUOTE' && (
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">En cotización</Badge>
+                            )}
+                            {(vehicle as any).quoteAvailability === 'APPROVED_QUOTE' && (
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">Aprobada</Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 justify-center">
+                      <Button onClick={() => router.push('/customer/quotes')}>Ver Mis Cotizaciones</Button>
+                      <Button variant="outline" onClick={() => router.push('/customer/vehicles')}>Registrar Nuevo Vehículo</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="vehicleSelect">Seleccionar Vehículo Registrado</Label>
                     <Select
                       value={selectedVehicleId}
                       onValueChange={value => {
-                        if (vehiclesWithPolicies.has(value)) {
+                        const selectedVehicle = vehicles.find(v => v.id === value);
+                        const status = (selectedVehicle as any)?.quoteAvailability;
+
+                        if (status === 'ACTIVE_POLICY') {
                           setNotificationModal({
                             open: true,
                             type: 'warning',
                             title: 'Vehículo Ya Asegurado',
-                            message:
-                              'Este vehículo ya tiene una póliza activa. Un vehículo solo puede tener una póliza activa a la vez. Puedes cotizar para otros vehículos disponibles.',
+                            message: 'Este vehículo ya tiene una póliza activa. No es posible crear una nueva cotización.',
                           });
                           return;
                         }
+                        
+                        if (status === 'PENDING_QUOTE') {
+                          setNotificationModal({
+                            open: true,
+                            type: 'warning',
+                            title: 'Cotización Pendiente',
+                            message: 'Este vehículo ya tiene una cotización en proceso. Por favor espera la respuesta del agente.',
+                          });
+                          return;
+                        }
+
+                        if (status === 'APPROVED_QUOTE') {
+                          setNotificationModal({
+                            open: true,
+                            type: 'info',
+                            title: 'Cotización Aprobada',
+                            message: 'Este vehículo ya tiene una cotización aprobada. Por favor procede al pago para activar tu póliza.',
+                          });
+                          return;
+                        }
+
                         setSelectedVehicleId(value);
                       }}
                     >
@@ -989,19 +1044,42 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                             <SelectItem
                               key={vehicle.id}
                               value={vehicle.id}
-                              disabled={hasActivePolicy}
-                              className={hasActivePolicy ? 'opacity-50' : ''}
+                              disabled={
+                                (vehicle as any).quoteAvailability === 'ACTIVE_POLICY' ||
+                                (vehicle as any).quoteAvailability === 'PENDING_QUOTE' ||
+                                (vehicle as any).quoteAvailability === 'APPROVED_QUOTE'
+                              }
+                              className={
+                                (vehicle as any).quoteAvailability !== 'AVAILABLE' ? 'opacity-70' : ''
+                              }
                             >
-                              <div className="flex items-center justify-between w-full">
+                              <div className="flex items-center justify-between w-full gap-4">
                                 <div className="flex items-center gap-2">
                                   <Car className="h-4 w-4" />
-                                  {vehicle.year} {vehicle.make} {vehicle.model} -{' '}
-                                  {vehicle.license_plate}
+                                  <span className="truncate max-w-[200px] sm:max-w-md">
+                                    {vehicle.year} {vehicle.make} {vehicle.model} -{' '}
+                                    {vehicle.license_plate}
+                                  </span>
                                 </div>
-                                {hasActivePolicy && (
-                                  <Badge variant="destructive" className="ml-2">
+                                
+                                {(vehicle as any).quoteAvailability === 'ACTIVE_POLICY' && (
+                                  <Badge variant="default" className="bg-green-600 hover:bg-green-700 ml-2 whitespace-nowrap">
                                     <Shield className="h-3 w-3 mr-1" />
                                     Asegurado
+                                  </Badge>
+                                )}
+                                
+                                {(vehicle as any).quoteAvailability === 'PENDING_QUOTE' && (
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200 ml-2 whitespace-nowrap">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    En cotización
+                                  </Badge>
+                                )}
+                                
+                                {(vehicle as any).quoteAvailability === 'APPROVED_QUOTE' && (
+                                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200 ml-2 whitespace-nowrap">
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Cotización aprobada
                                   </Badge>
                                 )}
                               </div>
@@ -1116,7 +1194,8 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
                       </div>
                     </div>
                   )}
-                </div>
+                  </div>
+                )
               ) : (
                 // No vehicles registered - Show message
                 <div className="text-center p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg">
@@ -1311,75 +1390,77 @@ export function QuoteForm({ onSuccess, onCancel }: QuoteFormProps) {
           )}
 
           {/* Actions */}
-          {vehicles.length > 0 ? (
-            <div className="space-y-4 pt-6">
-              {/* Contract Policy Button - shown when quote is calculated */}
-              {calculatedQuote > 0 && (
-                <Button
-                  type="button"
-                  variant="default"
-                  size="lg"
-                  className={`w-full font-semibold py-3 ${
-                    hasActivePolicyForVehicle || validationErrors.length > 0 || checkingPolicies
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700'
-                  } text-white`}
-                  onClick={handleShowConfirmModal}
-                  disabled={
-                    isProcessing ||
-                    hasActivePolicyForVehicle ||
-                    validationErrors.length > 0 ||
-                    checkingPolicies
-                  }
-                >
-                  {checkingPolicies ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Verificando pólizas...
-                    </>
-                  ) : hasActivePolicyForVehicle ? (
-                    <>
-                      <Shield className="h-5 w-5 mr-2" />
-                      Vehículo ya asegurado
-                    </>
-                  ) : validationErrors.length > 0 ? (
-                    <>
-                      <X className="h-5 w-5 mr-2" />
-                      Corregir errores primero
-                    </>
-                  ) : isProcessing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Procesando...
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="h-5 w-5 mr-2" />
-                      <Download className="h-4 w-4 mr-1" />
-                      {`Solicitar Cotización + PDF - $${calculatedQuote.toLocaleString()}/año`}
-                    </>
-                  )}
-                </Button>
-              )}
+          {!allVehiclesUnavailable && (
+            vehicles.length > 0 ? (
+              <div className="space-y-4 pt-6">
+                {/* Contract Policy Button - shown when quote is calculated */}
+                {calculatedQuote > 0 && (
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="lg"
+                    className={`w-full font-semibold py-3 ${
+                      hasActivePolicyForVehicle || validationErrors.length > 0 || checkingPolicies
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    } text-white`}
+                    onClick={handleShowConfirmModal}
+                    disabled={
+                      isProcessing ||
+                      hasActivePolicyForVehicle ||
+                      validationErrors.length > 0 ||
+                      checkingPolicies
+                    }
+                  >
+                    {checkingPolicies ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Verificando pólizas...
+                      </>
+                    ) : hasActivePolicyForVehicle ? (
+                      <>
+                        <Shield className="h-5 w-5 mr-2" />
+                        Vehículo ya asegurado
+                      </>
+                    ) : validationErrors.length > 0 ? (
+                      <>
+                        <X className="h-5 w-5 mr-2" />
+                        Corregir errores primero
+                      </>
+                    ) : isProcessing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-5 w-5 mr-2" />
+                        <Download className="h-4 w-4 mr-1" />
+                        {`Solicitar Cotización + PDF - $${calculatedQuote.toLocaleString()}/año`}
+                      </>
+                    )}
+                  </Button>
+                )}
 
-              {onCancel && (
-                <Button type="button" variant="outline" onClick={onCancel} className="w-full">
-                  Cancelar
+                {onCancel && (
+                  <Button type="button" variant="outline" onClick={onCancel} className="w-full">
+                    Cancelar
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="pt-6 text-center">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Registra un vehículo para poder obtener una cotización
+                </p>
+                <Button asChild variant="default">
+                  <a href="/customer/vehicles">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ir a Mis Vehículos
+                  </a>
                 </Button>
-              )}
-            </div>
-          ) : (
-            <div className="pt-6 text-center">
-              <p className="text-sm text-muted-foreground mb-4">
-                Registra un vehículo para poder obtener una cotización
-              </p>
-              <Button asChild variant="default">
-                <a href="/customer/vehicles">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ir a Mis Vehículos
-                </a>
-              </Button>
-            </div>
+              </div>
+            )
           )}
         </div>
       </CardContent>

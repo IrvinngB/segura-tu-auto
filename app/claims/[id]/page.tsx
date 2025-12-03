@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DamageAssessmentForm } from '@/components/claims/damage-assessment-form';
 import { ClaimProcessing } from '@/components/claims/claim-processing';
@@ -47,6 +48,13 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DocumentRequestModal } from '@/components/claims/document-request-modal';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import type { ClaimCustomerDocument } from '@/lib/types/database';
 
 export default function ClaimDetailPage() {
   const params = useParams();
@@ -56,9 +64,12 @@ export default function ClaimDetailPage() {
   const [claim, setClaim] = useState<Claim | null>(null);
   const [assessments, setAssessments] = useState<DamageAssessment[]>([]);
   const [documents, setDocuments] = useState<ClaimDocument[]>([]);
+  const [fullCustomerDocuments, setFullCustomerDocuments] = useState<ClaimCustomerDocument[]>([]);
+  const [communications, setCommunications] = useState<any[]>([]);
   const [customerDocumentsCount, setCustomerDocumentsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Estados para modales
   const [confirmModal, setConfirmModal] = useState<{
@@ -102,6 +113,7 @@ export default function ClaimDetailPage() {
     message: string;
     onClose: () => void;
     type?: 'success' | 'warning' | 'error' | 'info';
+    hideButton?: boolean;
   }>({
     show: false,
     title: '',
@@ -188,21 +200,97 @@ export default function ClaimDetailPage() {
       if (documentError) throw documentError;
       setDocuments(documentData || []);
 
-      // Fetch customer documents count
+      // Fetch customer documents (full data)
       const { data: customerDocData, error: customerDocError } = await supabase
         .from('claim_customer_documents')
-        .select('id')
-        .eq('claim_id', params.id);
+        .select('*')
+        .eq('claim_id', params.id)
+        .order('upload_date', { ascending: false });
 
       if (customerDocError) {
-        console.error('Error fetching customer documents count:', customerDocError);
+        console.error('Error fetching customer documents:', customerDocError);
       } else {
+        setFullCustomerDocuments(customerDocData || []);
         setCustomerDocumentsCount(customerDocData?.length || 0);
+      }
+
+      // Fetch communications to check for requested documents
+      const { data: commData, error: commError } = await supabase
+        .from('communications')
+        .select('*')
+        .eq('claim_id', params.id)
+        .ilike('subject', '%Docs requeridos%');
+
+      if (commError) {
+        console.error('Error fetching communications:', commError);
+      } else {
+        setCommunications(commData || []);
       }
     } catch (error) {
       console.error('Error fetching claim details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createClaimStatusNotification = async (customerId: string, statusChange: { claimNumber: string, oldStatus: string, newStatus: string, updatedBy?: string }) => {
+    const statusLabels: Record<string, string> = {
+      'submitted': 'Enviada',
+      'under_review': 'En Revisión',
+      'pending_documentation': 'Documentos Pendientes',
+      'waiting_approval': 'Esperando Aprobación',
+      'investigating': 'En Investigación',
+      'approved': 'Aprobada',
+      'denied': 'Denegada',
+      'processing_payment': 'Procesando Pago',
+      'paid': 'Pagada',
+      'closed': 'Cerrada'
+    };
+
+    let content = `Tu reclamación ${statusChange.claimNumber} ha cambiado de estado de "${statusLabels[statusChange.oldStatus] || statusChange.oldStatus}" a "${statusLabels[statusChange.newStatus] || statusChange.newStatus}".`;
+
+    // Mensajes específicos
+    if (statusChange.oldStatus === 'submitted' && statusChange.newStatus === 'under_review') {
+      content = `Tu reclamación ${statusChange.claimNumber} está siendo revisada por nuestro equipo.`;
+    } else if (statusChange.oldStatus === 'under_review' && statusChange.newStatus === 'investigating') {
+      content = `Tu reclamación ${statusChange.claimNumber} ha sido asignada a un evaluador técnico.`;
+    } else if (statusChange.oldStatus === 'investigating' && statusChange.newStatus === 'waiting_approval') {
+      content = `La evaluación técnica de tu reclamación ${statusChange.claimNumber} ha sido completada, esperando aprobación final.`;
+    } else if (statusChange.oldStatus === 'waiting_approval' && statusChange.newStatus === 'approved') {
+      content = `¡Buenas noticias! Tu reclamación ${statusChange.claimNumber} ha sido aprobada.`;
+    } else if (statusChange.newStatus === 'denied') {
+      content = `Tu reclamación ${statusChange.claimNumber} ha sido denegada. Contacta con nosotros para más información.`;
+    }
+
+    console.log('🔔 Datos a insertar:', {
+      customer_id: customerId,
+      claim_id: params.id,
+      subject: 'Estado de Reclamación Actualizado',
+      content: content,
+      communication_type: 'email' // Usamos 'email' para evitar error de constraint
+    });
+
+    const { data, error } = await supabase
+      .from('communications')
+      .insert({
+        customer_id: customerId,
+        claim_id: params.id,
+        subject: 'Estado de Reclamación Actualizado',
+        content: content,
+        communication_type: 'email', // Usamos 'email' para evitar error de constraint
+        direction: 'outbound',
+        status: 'unread',
+        created_at: new Date().toISOString()
+      })
+      .select();
+
+    if (error) {
+      console.error('❌ Error completo:', error);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error details:', error.details);
+      console.error('❌ Error hint:', error.hint);
+    } else {
+      console.log('✅ Notificación creada:', data);
     }
   };
 
@@ -220,14 +308,38 @@ export default function ClaimDetailPage() {
 
     try {
       console.log('💾 Ejecutando UPDATE en base de datos...');
+      const updateData: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Auto-asignar ajustador si pasa a 'investigating' y no tiene uno
+      if (newStatus === 'investigating' && !claim.adjuster_id) {
+        console.log('🔍 Buscando ajustador disponible...');
+        const { data: adjusters, error: adjError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'adjuster')
+          .eq('is_active', true)
+          .limit(1);
+
+        if (adjError) {
+          console.error('Error finding adjuster:', adjError);
+        } else if (adjusters && adjusters.length > 0) {
+          // Asignar al primer ajustador encontrado (simple round-robin o random podría ser mejor en futuro)
+          updateData.adjuster_id = adjusters[0].id;
+          console.log('✅ Ajustador asignado:', adjusters[0].id);
+        } else {
+          console.warn('⚠️ No se encontraron ajustadores disponibles');
+        }
+      }
+
       const { data, error } = await supabase
         .from('claims')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', params.id)
-        .select('id, status, updated_at');
+        .select('id, status, updated_at, adjuster_id')
+        .single();
 
       if (error) {
         console.error('❌ Error en UPDATE:', error);
@@ -235,39 +347,59 @@ export default function ClaimDetailPage() {
       }
 
       console.log('✅ UPDATE ejecutado correctamente:', data);
-      console.log('🔄 Status confirmado en DB:', data?.[0]?.status);
+      
+      const statusLabels: Record<string, string> = {
+        submitted: 'Enviada',
+        under_review: 'En Revisión',
+        pending_documentation: 'Documentos Pendientes',
+        investigating: 'En Investigación',
+        waiting_approval: 'Esperando Aprobación',
+        approved: 'Aprobada',
+        processing_payment: 'Procesando Pago',
+        paid: 'Pagada',
+        denied: 'Denegada',
+        closed: 'Cerrada'
+      };
+
+      let successMessage = `Estado actualizado correctamente a: ${statusLabels[newStatus] || newStatus}`;
+      if (newStatus === 'investigating' && data.adjuster_id) {
+        successMessage += `. Asignado a un ajustador.`;
+      }
+
+      setMessageModal({
+        show: true,
+        title: 'Estado Actualizado',
+        message: successMessage,
+        type: 'success',
+        hideButton: true,
+        onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
+      });
 
       // Refresh claim data
       console.log('🔄 Refrescando datos de la reclamación...');
       await fetchClaimDetails();
       console.log('✅ Datos refrescados completamente');
 
-      // Mapeo de estados para mostrar nombres amigables
-      const statusLabels: Record<string, string> = {
-        draft: 'Borrador',
-        submitted: 'Enviada',
-        under_review: 'En Revisión',
-        pending_documentation: 'Documentos Pendientes',
-        waiting_approval: 'Esperando Aprobación',
-        investigating: 'En Investigación',
-        approved: 'Aprobada',
-        denied: 'Denegada',
-        closed: 'Cerrada'
-      };
+      // Crear notificación para el cliente
+      console.log('🔔 Intentando crear notificación...');
+      if (claim && claim.customer_id) {
+        console.log('✅ Customer ID encontrado:', claim.customer_id);
+        await createClaimStatusNotification(claim.customer_id, {
+          claimNumber: claim.claim_number,
+          oldStatus: claim.status,
+          newStatus: newStatus,
+          updatedBy: userProfile?.role
+        });
+      } else {
+        console.error('❌ No se encontró customer_id. Claim:', claim);
+      }
 
-      setMessageModal({
-        show: true,
-        title: 'Estado Actualizado',
-        message: `Estado actualizado correctamente a: ${statusLabels[newStatus] || newStatus}`,
-        type: 'success',
-        hideButton: true,
-        onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
-      });
 
-      // Auto-cerrar el modal después de 1.5 segundos
+
+      // Auto-cerrar el modal después de 2.5 segundos para dar tiempo a leer
       setTimeout(() => {
         setMessageModal(prev => ({ ...prev, show: false }));
-      }, 1500);
+      }, 2500);
     } catch (error) {
       console.error('Error updating claim status:', error);
       setMessageModal({
@@ -318,7 +450,20 @@ export default function ClaimDetailPage() {
 
           if (error) throw error;
 
+          if (error) throw error;
+
+          // Crear notificación para el cliente
+          if (claim && claim.customer_id) {
+            await createClaimStatusNotification(claim.customer_id, {
+              claimNumber: claim.claim_number,
+              oldStatus: claim.status,
+              newStatus: 'approved',
+              updatedBy: userProfile?.role
+            });
+          }
+
           await fetchClaimDetails();
+          setInputModal(prev => ({ ...prev, show: false }));
           setMessageModal({
             show: true,
             title: 'Reclamación Aprobada',
@@ -362,7 +507,20 @@ export default function ClaimDetailPage() {
 
           if (error) throw error;
 
+          if (error) throw error;
+
+          // Crear notificación para el cliente
+          if (claim && claim.customer_id) {
+            await createClaimStatusNotification(claim.customer_id, {
+              claimNumber: claim.claim_number,
+              oldStatus: claim.status,
+              newStatus: 'processing_payment',
+              updatedBy: userProfile?.role
+            });
+          }
+
           await fetchClaimDetails();
+          setConfirmModal(prev => ({ ...prev, show: false }));
           setMessageModal({
             show: true,
             title: 'Proceso Iniciado',
@@ -388,32 +546,72 @@ export default function ClaimDetailPage() {
   const confirmPayment = async () => {
     if (!claim || !userProfile) return;
 
-    const paymentReference = prompt('Ingrese la referencia o número de transacción del pago:');
+    setInputModal({
+      show: true,
+      title: 'Confirmar Pago',
+      message: 'Por favor, ingrese la referencia o número de transacción del pago realizado.',
+      inputLabel: 'Referencia de Pago',
+      inputPlaceholder: 'Ej. TRANS-123456',
+      inputType: 'text',
+      type: 'info',
+      onConfirm: async (paymentReference) => {
+        if (!paymentReference) {
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Debe ingresar una referencia de pago',
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
+          });
+          return;
+        }
 
-    if (!paymentReference) {
-      alert('Debe ingresar una referencia de pago');
-      return;
-    }
+        try {
+          // Actualizar estado a paid con monto pagado
+          const { error } = await supabase
+            .from('claims')
+            .update({
+              status: 'paid',
+              paid_amount: claim.approved_amount,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', params.id);
 
-    try {
-      // Actualizar estado a paid con monto pagado
-      const { error } = await supabase
-        .from('claims')
-        .update({
-          status: 'paid',
-          paid_amount: claim.approved_amount,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
+          if (error) throw error;
 
-      if (error) throw error;
+          // Crear notificación para el cliente
+          if (claim && claim.customer_id) {
+            await createClaimStatusNotification(claim.customer_id, {
+              claimNumber: claim.claim_number,
+              oldStatus: claim.status,
+              newStatus: 'paid',
+              updatedBy: userProfile?.role
+            });
+          }
 
-      await fetchClaimDetails();
-      alert(`Pago confirmado. Referencia: ${paymentReference}`);
-    } catch (error) {
-      console.error('Error confirming payment:', error);
-      alert('Error al confirmar el pago: ' + (error as Error).message);
-    }
+          await fetchClaimDetails();
+          setInputModal(prev => ({ ...prev, show: false }));
+          
+          setMessageModal({
+            show: true,
+            title: 'Pago Confirmado',
+            message: `El pago ha sido registrado exitosamente. Referencia: ${paymentReference}`,
+            type: 'success',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
+          });
+        } catch (error) {
+          console.error('Error confirming payment:', error);
+          setMessageModal({
+            show: true,
+            title: 'Error',
+            message: 'Error al confirmar el pago: ' + (error as Error).message,
+            type: 'error',
+            onClose: () => setMessageModal(prev => ({ ...prev, show: false })),
+          });
+        }
+      },
+      onCancel: () => setInputModal(prev => ({ ...prev, show: false })),
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -475,27 +673,6 @@ export default function ClaimDetailPage() {
     return <span className={config.classes}>{config.label}</span>;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { label: 'Baja', classes: 'priority-badge priority-low' },
-      medium: {
-        label: 'Media',
-        classes: 'priority-badge priority-medium',
-      },
-      high: { label: 'Alta', classes: 'priority-badge priority-high' },
-      urgent: {
-        label: 'Urgente',
-        classes: 'priority-badge priority-urgent',
-      },
-    };
-
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || {
-      label: priority,
-      classes: 'priority-badge priority-low',
-    };
-    return <span className={config.classes}>{config.label}</span>;
-  };
-
   const getClaimTypeLabel = (type: string) => {
     const types = {
       collision: 'Colisión',
@@ -509,6 +686,57 @@ export default function ClaimDetailPage() {
     };
     return types[type as keyof typeof types] || type;
   };
+
+  // Lógica para verificar si se puede asignar a evaluador técnico
+  const getAssignmentStatus = () => {
+    // 1. Hay algún documento base pendiente de revisión?
+    const hasPendingBaseDocs = fullCustomerDocuments
+      .filter(doc => !doc.is_extra_document)
+      .some(doc => doc.status === 'pending');
+
+    // 2. Hay algún documento extra pendiente de revisión?
+    const hasPendingExtraDocs = fullCustomerDocuments
+      .filter(doc => doc.is_extra_document)
+      .some(doc => doc.status === 'pending');
+
+    // 3. Hay alguna solicitud de documentos adicionales que siga "Pendiente de carga"?
+    // Parsear labels de comunicaciones
+    const uniqueLabels = new Set<string>();
+    communications.forEach(comm => {
+      const lines = comm.content.split('\n');
+      lines.forEach((line: string) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+          const label = trimmed.substring(1).trim();
+          if (label) uniqueLabels.add(label);
+        }
+      });
+    });
+
+    const requestedLabels = Array.from(uniqueLabels);
+    const hasPendingUploads = requestedLabels.some(label => {
+      // Verificar si existe un documento para este label
+      const docsForLabel = fullCustomerDocuments.filter(d => {
+        if (d.is_extra_document && d.extra_document_label === label) return true;
+        // Fallback legacy
+        const normalizedLabel = label.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normalizedName = d.file_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normalizedName.includes(normalizedLabel);
+      });
+      return docsForLabel.length === 0; // Si es 0, falta subirlo
+    });
+
+    const isBlocked = hasPendingBaseDocs || hasPendingExtraDocs || hasPendingUploads;
+    
+    return {
+      isBlocked,
+      reason: isBlocked 
+        ? 'Debe revisar y aprobar/rechazar todos los documentos (incluyendo los documentos solicitados) antes de asignar a un Evaluador Técnico.' 
+        : null
+    };
+  };
+
+  const assignmentStatus = getAssignmentStatus();
 
   if (loading) {
     return (
@@ -578,10 +806,10 @@ export default function ClaimDetailPage() {
           </div>
           <div className="flex items-center gap-2 justify-center">
             {getStatusBadge(claim.status)}
-            {getPriorityBadge(claim.priority)}
+            <PriorityBadge priority={claim.priority} />
             {claim.injury_involved && (
               <Badge variant="destructive">
-                <AlertTriangle className="h-3 w-3 mr-1" />
+                <AlertTriangle className="h-3 w-3" />
                 Lesiones
               </Badge>
             )}
@@ -596,7 +824,7 @@ export default function ClaimDetailPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Acciones de Estado</CardTitle>
+                  <CardTitle className="mb-3">Acciones de Estado</CardTitle>
                   <CardDescription>
                     {userProfile?.role === 'agent' &&
                       'Funciones de Agente - Revisión Documental y Asignación'}
@@ -609,19 +837,19 @@ export default function ClaimDetailPage() {
                 <Badge variant="outline" className="ml-2">
                   {userProfile?.role === 'agent' && (
                     <>
-                      <FileText className="h-3 w-3 mr-1" />
+                      <FileText className="h-3 w-3" />
                       AGENTE
                     </>
                   )}
                   {userProfile?.role === 'adjuster' && (
                     <>
-                      <Search className="h-3 w-3 mr-1" />
+                      <Search className="h-3 w-3" />
                       AJUSTADOR
                     </>
                   )}
                   {userProfile?.role === 'admin' && (
                     <>
-                      <Shield className="h-3 w-3 mr-1" />
+                      <Shield className="h-3 w-3" />
                       ADMIN
                     </>
                   )}
@@ -655,23 +883,45 @@ export default function ClaimDetailPage() {
                         </Button>
                         <DocumentRequestModal
                           claimId={Array.isArray(params.id) ? params.id[0] : params.id}
-                          onDocumentRequested={fetchClaimDetails}
+                          onDocumentRequested={() => {
+                            console.log('🔄 Agent DocumentRequestModal (1) callback triggered!');
+                            fetchClaimDetails();
+                            setRefreshTrigger(prev => prev + 1);
+                          }}
                         />
                       </>
                     )}
 
                     {claim.status === 'under_review' && (
                       <>
-                        <Button
-                          onClick={() => updateClaimStatus('investigating')}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Search className="h-4 w-4 mr-2" />
-                          Asignar a Evaluador Técnico
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span tabIndex={0}> {/* Wrapper para que el tooltip funcione en botón disabled */}
+                                <Button
+                                  onClick={() => updateClaimStatus('investigating')}
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                  disabled={assignmentStatus.isBlocked}
+                                >
+                                  <Search className="h-4 w-4 mr-2" />
+                                  Asignar a Evaluador Técnico
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {assignmentStatus.isBlocked && (
+                              <TooltipContent>
+                                <p className="max-w-xs text-sm">{assignmentStatus.reason}</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
                         <DocumentRequestModal
                           claimId={Array.isArray(params.id) ? params.id[0] : params.id}
-                          onDocumentRequested={fetchClaimDetails}
+                          onDocumentRequested={() => {
+                            console.log('🔄 Agent DocumentRequestModal (2) callback triggered!');
+                            fetchClaimDetails();
+                            setRefreshTrigger(prev => prev + 1);
+                          }}
                         />
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
                           <XCircle className="h-4 w-4 mr-2" />
@@ -696,18 +946,67 @@ export default function ClaimDetailPage() {
                       </>
                     )}
 
-                    {[
-                      'investigating',
-                      'waiting_approval',
-                      'approved',
-                      'processing_payment',
-                      'paid',
-                    ].includes(claim.status) && (
+                    {claim.status === 'investigating' && (
                       <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 p-3 rounded-lg">
                         <p className="text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           <strong>Caso en proceso técnico:</strong> El ajustador está manejando la
                           evaluación y aprobación.
+                        </p>
+                      </div>
+                    )}
+
+                    {claim.status === 'approved' && (
+                      <div className="space-y-3">
+                        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3 rounded-lg">
+                          <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <strong>¡Reclamación Aprobada!</strong> El monto ha sido autorizado. Puedes proceder con el pago.
+                          </p>
+                        </div>
+                        <Button onClick={processPayment} className="w-full sm:w-auto bg-green-600 hover:bg-green-700">
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Iniciar Proceso de Pago
+                        </Button>
+                      </div>
+                    )}
+
+                    {claim.status === 'processing_payment' && (
+                      <div className="space-y-3">
+                        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
+                          <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            <strong>Pago en Proceso:</strong> Realiza la transferencia y confirma el pago.
+                          </p>
+                        </div>
+                        <Button onClick={confirmPayment} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Confirmar Pago Realizado
+                        </Button>
+                      </div>
+                    )}
+
+                    {claim.status === 'paid' && (
+                      <div className="space-y-3">
+                        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3 rounded-lg">
+                          <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4" />
+                            <strong>Pago Completado:</strong> El pago ha sido registrado exitosamente.
+                          </p>
+                        </div>
+                        <Button onClick={() => updateClaimStatus('closed')} className="w-full sm:w-auto">
+                          <FolderOpen className="h-4 w-4 mr-2" />
+                          Cerrar Reclamación
+                        </Button>
+                      </div>
+                    )}
+
+                    {claim.status === 'waiting_approval' && (
+                      <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 p-3 rounded-lg">
+                        <p className="text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          <strong>Esperando aprobación directiva:</strong> El ajustador ha completado la evaluación técnica. 
+                          Un supervisor debe aprobar el monto de indemnización.
                         </p>
                       </div>
                     )}
@@ -799,27 +1098,23 @@ export default function ClaimDetailPage() {
                     )}
 
                     {claim.status === 'waiting_approval' && (
-                      <>
-                        <Button
-                          onClick={approveClaimWithAmount}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Aprobar con Monto Final
-                        </Button>
-                        <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Denegar Reclamación
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => updateClaimStatus('investigating')}
-                          className="border-green-600 text-green-600"
-                        >
-                          <Search className="h-4 w-4 mr-2" />
-                          Continuar Investigación Técnica
-                        </Button>
-                      </>
+                      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
+                        <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          <strong>Evaluación enviada a aprobación:</strong> Tu evaluación técnica ha sido enviada al supervisor 
+                          para aprobación del monto de indemnización.
+                        </p>
+                        <div className="mt-2 flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => updateClaimStatus('investigating')}
+                            className="border-green-600 text-green-600"
+                          >
+                            <Search className="h-4 w-4 mr-2" />
+                            Revisar Evaluación Técnica
+                          </Button>
+                        </div>
+                      </div>
                     )}
 
                     {claim.status === 'approved' && (
@@ -914,7 +1209,15 @@ export default function ClaimDetailPage() {
                         </Button>
                         <DocumentRequestModal
                           claimId={Array.isArray(params.id) ? params.id[0] : params.id}
-                          onDocumentRequested={fetchClaimDetails}
+                          onDocumentRequested={() => {
+                            console.log('🔄 DocumentRequestModal callback triggered! Incrementing refreshTrigger...');
+                            fetchClaimDetails();
+                            setRefreshTrigger(prev => {
+                              const newVal = prev + 1;
+                              console.log('🔄 New refreshTrigger value:', newVal);
+                              return newVal;
+                            });
+                          }}
                         />
                       </>
                     )}
@@ -962,20 +1265,24 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'waiting_approval' && (
                       <>
-                        <Button onClick={approveClaimWithAmount}>
+                        <Button
+                          onClick={approveClaimWithAmount}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
                           <CheckCircle className="h-4 w-4 mr-2" />
-                          Aprobar con Monto
+                          Aprobar Monto Final (ADMINISTRADOR)
                         </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
                           <XCircle className="h-4 w-4 mr-2" />
-                          Denegar Reclamación
+                          Denegar Reclamación (ADMINISTRADOR)
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => updateClaimStatus('investigating')}
+                          className="border-green-600 text-green-600"
                         >
-                          <Search className="h-4 w-4 mr-2" />
-                          Regresar a Investigación
+                          <ArrowLeft className="h-4 w-4 mr-2" />
+                          Devolver al Ajustador para Revisión
                         </Button>
                       </>
                     )}
@@ -1042,13 +1349,15 @@ export default function ClaimDetailPage() {
           </Card>
         )}
 
-        {/* Payment Status for approved/processing/paid claims */}
         {claim && ['approved', 'processing_payment', 'paid'].includes(claim.status) && (
-          <PaymentStatus
-            claim={claim}
-            onProcessPayment={processPayment}
-            onConfirmPayment={confirmPayment}
-          />
+          <div className="mb-6">
+            <PaymentStatus
+              claim={claim}
+              onProcessPayment={processPayment}
+              onConfirmPayment={confirmPayment}
+              currentUserRole={userProfile?.role}
+            />
+          </div>
         )}
 
         <Tabs defaultValue={initialTab} className="space-y-6">
@@ -1271,6 +1580,9 @@ export default function ClaimDetailPage() {
                 customerId={claim.customer_id}
                 currentUserRole={userProfile?.role}
                 onDocumentCountChange={setCustomerDocumentsCount}
+                documents={fullCustomerDocuments}
+                onRefresh={fetchClaimDetails}
+                refreshTrigger={refreshTrigger}
               />
             </div>
           </TabsContent>

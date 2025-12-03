@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PriorityBadge } from '@/components/ui/priority-badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/auth-provider';
-import { ClaimNotificationSystem } from '@/components/claims/claim-notification-system';
+import { AgentNotificationSystem } from '@/components/notifications/agent-notification-system';
 import { AdminClaimMonitor } from '@/components/admin/admin-claim-monitor';
 import {
   FileText,
@@ -389,26 +390,7 @@ export function AgentDashboard() {
     return <span className={config.classes}>{config.label}</span>;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { label: 'Baja', classes: 'priority-badge priority-low' },
-      medium: {
-        label: 'Media',
-        classes: 'priority-badge priority-medium',
-      },
-      high: { label: 'Alta', classes: 'priority-badge priority-high' },
-      urgent: {
-        label: 'Urgente',
-        classes: 'priority-badge priority-urgent',
-      },
-    };
 
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || {
-      label: priority,
-      classes: 'priority-badge priority-low',
-    };
-    return <span className={config.classes}>{config.label}</span>;
-  };
 
   if (!userProfile || !['admin', 'agent', 'adjuster'].includes(userProfile.role)) {
     return (
@@ -440,7 +422,7 @@ export function AgentDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <ClaimNotificationSystem />
+          <AgentNotificationSystem />
           <Link href="/claims">
             <Button>
               <FileText className="h-4 w-4 mr-2" />
@@ -542,7 +524,7 @@ export function AgentDashboard() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-semibold">{claim.claim_number}</span>
-                          {getPriorityBadge(claim.priority)}
+                          <PriorityBadge priority={claim.priority} />
                           {getStatusBadge(claim.status)}
                         </div>
                         <div className="text-sm text-muted-foreground space-y-1">
@@ -609,7 +591,7 @@ export function AgentDashboard() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium">{claim.claim_number}</span>
-                        {getPriorityBadge(claim.priority)}
+                        <PriorityBadge priority={claim.priority} />
                         {getStatusBadge(claim.status)}
                       </div>
                       <div className="text-sm text-muted-foreground">

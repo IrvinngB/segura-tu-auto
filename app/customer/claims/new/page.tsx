@@ -152,6 +152,7 @@ export default function NewClaimPage() {
                     customerId={customerData?.id || ""}
                     onSuccess={handleSuccess}
                     onCancel={handleCancel}
+                    isCustomerView={true}
                 />
             </div>
         </ProtectedRoute>

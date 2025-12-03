@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +35,7 @@ import {
   Edit,
   Plus,
   Car,
+  CreditCard,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import jsPDF from 'jspdf';
@@ -50,11 +52,37 @@ export function QuoteList({ customerId }: QuoteListProps) {
   const [error, setError] = useState('');
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [highlightedQuoteId, setHighlightedQuoteId] = useState<string | null>(null);
+  
   const supabase = createClient();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     fetchQuotes();
   }, [customerId]);
+
+  useEffect(() => {
+    const highlightId = searchParams.get('highlightQuoteId');
+    if (highlightId && quotes.length > 0) {
+      setHighlightedQuoteId(highlightId);
+      
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        const el = document.getElementById(`quote-card-${highlightId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('quote-card--highlight');
+          
+          const timer = setTimeout(() => {
+            el.classList.remove('quote-card--highlight');
+            setHighlightedQuoteId(null);
+          }, 1000);
+          
+          return () => clearTimeout(timer);
+        }
+      }, 100);
+    }
+  }, [searchParams, quotes]);
 
   const fetchQuotes = async () => {
     try {
@@ -303,43 +331,49 @@ export function QuoteList({ customerId }: QuoteListProps) {
     window.location.href = `/customer/quote?edit=${quote.id}`;
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (quote: Quote) => {
+    const status = quote.status;
     switch (status) {
       case 'pending':
         return (
-          <Badge variant="secondary" className="flex items-center gap-1">
+          <Badge variant="secondary">
             <Clock className="h-3 w-3" />
             Pendiente
           </Badge>
         );
       case 'approved':
-        return (
-          <div className="flex items-center gap-1.5">
-            <Badge variant="default" className="flex items-center gap-1 bg-green-600">
-              <CheckCircle className="h-3 w-3" />
-              Aprobada
-            </Badge>
-            <InfoTooltip
-              content="Tu cotización fue aprobada. Ahora puedes convertirla en una póliza activa realizando el pago correspondiente."
-              side="right"
-            />
-          </div>
-        );
-      case 'rejected':
-        return (
-          <Badge variant="destructive" className="flex items-center gap-1">
-            <XCircle className="h-3 w-3" />
-            Rechazada
-          </Badge>
-        );
+        if (!(quote as any).isPaid) {
+            return (
+              <div className="flex items-center gap-1.5">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Aprobada — Pendiente de pago
+                </Badge>
+                <InfoTooltip
+                  content="Tu cotización fue aprobada. Realiza el pago para activar tu póliza."
+                  side="right"
+                />
+              </div>
+            );
+        }
+        // Fallthrough if paid (should be treated as converted)
       case 'converted':
         return (
-          <Badge variant="default" className="flex items-center gap-1 bg-blue-600">
-            <FileText className="h-3 w-3" />
+          <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+            <FileText className="h-3 w-3 mr-1" />
             Convertida a Póliza
           </Badge>
         );
       default:
+        // Check if it's approved but paid (handled above but just in case)
+        if (status === 'approved' && (quote as any).isPaid) {
+             return (
+              <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                <FileText className="h-3 w-3 mr-1" />
+                Convertida a Póliza
+              </Badge>
+            );
+        }
         return <Badge variant="outline">{status}</Badge>;
     }
   };
@@ -400,7 +434,7 @@ export function QuoteList({ customerId }: QuoteListProps) {
   return (
     <div className="space-y-6">
       {quotes.map(quote => (
-        <Card key={quote.id} className="w-full">
+        <Card key={quote.id} id={`quote-card-${quote.id}`} className="w-full transition-colors duration-300">
           <CardHeader>
             <div className="flex justify-between items-start">
               <div>
@@ -412,7 +446,7 @@ export function QuoteList({ customerId }: QuoteListProps) {
                   Creada el {format(new Date(quote.created_at), 'dd/MM/yyyy')}
                 </CardDescription>
               </div>
-              {getStatusBadge(quote.status)}
+              {getStatusBadge(quote)}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -505,12 +539,10 @@ export function QuoteList({ customerId }: QuoteListProps) {
                 </Button>
               )}
 
-              {quote.status === 'approved' && (
-                <Button size="sm" asChild>
-                  <a href={`/customer/policies/new?quote=${quote.id}`}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Contratar Póliza
-                  </a>
+              {quote.status === 'approved' && !(quote as any).isPaid && (
+                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => window.location.href = `/customer/payments?payQuoteId=${quote.id}`}>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pagar
                 </Button>
               )}
 
@@ -523,7 +555,7 @@ export function QuoteList({ customerId }: QuoteListProps) {
                 </Button>
               )}
 
-              {quote.status === 'converted' && (
+              {((quote.status === 'converted') || ((quote as any).isPaid)) && (
                 <Button size="sm" asChild>
                   <a href="/customer/policies">
                     <FileText className="h-4 w-4 mr-2" />
@@ -552,7 +584,7 @@ export function QuoteList({ customerId }: QuoteListProps) {
               {/* Status */}
               <div className="flex items-center justify-between">
                 <span className="font-medium">Estado:</span>
-                {getStatusBadge(selectedQuote.status)}
+                {getStatusBadge(selectedQuote)}
               </div>
 
               {/* Quote Info */}

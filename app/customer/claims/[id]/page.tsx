@@ -1,193 +1,171 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ProtectedRoute } from '@/components/auth/protected-route';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth/auth-provider';
-import { ClaimCommunication } from '@/components/claims/claim-communication';
+import { ProtectedRoute } from '@/components/auth/protected-route';
+import type { Claim, ClaimCustomerDocument } from '@/lib/types/database';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PriorityBadge } from '@/components/ui/priority-badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InfoTooltip } from '@/components/ui/info-tooltip';
 import { ClaimCustomerDocuments } from '@/components/claims/claim-customer-documents';
-import type { Claim } from '@/lib/types/database';
-import {
-  ArrowLeft,
-  FileText,
-  Calendar,
-  MapPin,
-  DollarSign,
-  User,
-  Car,
-  AlertTriangle,
-  Clock,
-  CheckCircle,
-  XCircle,
-  MessageCircle,
+import { ClaimCommunication } from '@/components/claims/claim-communication';
+import { 
+  ArrowLeft, 
+  AlertTriangle, 
+  Calendar, 
+  MapPin, 
+  DollarSign, 
+  CheckCircle, 
+  Car, 
+  MessageCircle, 
+  FileText, 
+  User 
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { InfoTooltip } from '@/components/ui/info-tooltip';
 
 export default function CustomerClaimDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { userProfile } = useAuth();
   const [claim, setClaim] = useState<Claim | null>(null);
+  const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [customerId, setCustomerId] = useState<string>('');
+  
+  // Inicializar tab desde la URL si existe
+  const initialTab = searchParams.get('tab');
+  const validTabs = ['details', 'documents', 'communication', 'status'];
+  const [activeTab, setActiveTab] = useState(
+    (initialTab && validTabs.includes(initialTab)) ? initialTab : 'details'
+  );
+  
   const supabase = createClient();
 
+  // Mantener sincronizado si cambia la URL (ej. navegación atrás/adelante)
   useEffect(() => {
-    if (userProfile) {
-      fetchCustomerId();
+    const tab = searchParams.get('tab');
+    if (tab && validTabs.includes(tab)) {
+      setActiveTab(tab);
     }
-  }, [userProfile]);
+  }, [searchParams]);
 
   useEffect(() => {
-    if (params.id && customerId) {
-      fetchClaimDetails();
-    }
-  }, [params.id, customerId]);
+    const fetchClaim = async () => {
+      try {
+        if (!userProfile) return;
 
-  const fetchCustomerId = async () => {
-    try {
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('user_id', userProfile?.id)
-        .single();
+        // Obtener el ID del cliente asociado al usuario actual
+        const { data: customerData, error: customerError } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('user_id', userProfile.id)
+          .single();
 
-      if (customer) {
-        setCustomerId(customer.id);
-      }
-    } catch (error) {
-      console.error('Error fetching customer ID:', error);
-    }
-  };
+        if (customerError) throw customerError;
+        setCustomerId(customerData.id);
 
-  const fetchClaimDetails = async () => {
-    try {
-      const { data: claimData, error: claimError } = await supabase
-        .from('claims')
-        .select(
-          `
-          *,
-          policy:policies(
+        // Obtener la reclamación
+        const { data: claimData, error: claimError } = await supabase
+          .from('claims')
+          .select(`
             *,
-            vehicle:vehicles(*)
-          ),
-          adjuster:users!claims_adjuster_id_fkey(*)
-        `
-        )
-        .eq('id', params.id)
-        .eq('customer_id', customerId) // Solo permitir ver sus propias reclamaciones
-        .single();
+            policy:policies(*,vehicle:vehicles(*)),
+            adjuster:users!claims_adjuster_id_fkey(*)
+          `)
+          .eq('id', params.id)
+          .eq('customer_id', customerData.id)
+          .single();
 
-      if (claimError) {
-        console.error('Error fetching claim:', claimError);
-        throw claimError;
+        if (claimError) throw claimError;
+        setClaim(claimData);
+
+        // Fetch documents
+        const { data: documentsData, error: documentsError } = await supabase
+          .from('claim_customer_documents')
+          .select('*')
+          .eq('claim_id', params.id)
+          .order('upload_date', { ascending: false });
+
+        if (documentsError) console.error('Error fetching documents:', documentsError);
+        setDocuments(documentsData || []);
+      } catch (error) {
+        console.error('Error fetching claim:', error);
+        router.push('/customer/claims');
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setClaim(claimData);
-    } catch (error) {
-      console.error('Error fetching claim details:', error);
-      router.push('/customer/claims');
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchClaim();
+  }, [params.id, userProfile, router, supabase]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
+      pending: {
+        label: 'Pendiente',
+        classes: 'status-badge status-pending',
+      },
       submitted: {
         label: 'Enviada',
-        variant: 'outline' as const,
-        icon: Clock,
-        tooltip: 'Tu reclamación ha sido recibida y está esperando ser asignada a un ajustador.'
+        classes: 'status-badge status-submitted',
       },
       under_review: {
         label: 'En Revisión',
-        variant: 'secondary' as const,
-        icon: FileText,
-        tooltip: 'Un ajustador está revisando tu caso. Puede contactarte si necesita más información.'
+        classes: 'status-badge status-under-review',
       },
       pending_documentation: {
         label: 'Documentos Pendientes',
-        variant: 'outline' as const,
-        icon: FileText,
-        tooltip: 'Se requieren documentos adicionales. Revisa la pestaña de Comunicación para ver qué documentos se solicitan.'
+        classes: 'status-badge status-pending',
       },
       waiting_approval: {
         label: 'Esperando Aprobación',
-        variant: 'secondary' as const,
-        icon: Clock,
-        tooltip: 'Tu caso está siendo evaluado por un supervisor para aprobación final.'
+        classes: 'status-badge status-waiting',
       },
       investigating: {
-        label: 'Investigando',
-        variant: 'default' as const,
-        icon: AlertTriangle,
-        tooltip: 'El ajustador está realizando una investigación detallada del incidente. Este proceso puede tomar algunos días.'
+        label: 'En Investigación',
+        classes: 'status-badge status-investigating',
       },
       approved: {
         label: 'Aprobada',
-        variant: 'default' as const,
-        icon: CheckCircle,
-        tooltip: '¡Buenas noticias! Tu reclamación ha sido aprobada. El pago será procesado pronto.'
+        classes: 'status-badge status-approved',
       },
       processing_payment: {
         label: 'Procesando Pago',
-        variant: 'secondary' as const,
-        icon: DollarSign,
-        tooltip: 'El departamento financiero está procesando tu pago. Recibirás una notificación cuando se complete.'
+        classes: 'status-badge status-processing',
+      },
+      rejected: {
+        label: 'Rechazada',
+        classes: 'status-badge status-denied',
       },
       denied: {
         label: 'Denegada',
-        variant: 'destructive' as const,
-        icon: XCircle,
-        tooltip: 'Tu reclamación no fue aprobada. Revisa la pestaña de Comunicación para conocer los motivos.'
+        classes: 'status-badge status-denied',
       },
       closed: {
         label: 'Cerrada',
-        variant: 'outline' as const,
-        icon: CheckCircle,
-        tooltip: 'Este caso ha sido cerrado y completado.'
+        classes: 'status-badge status-closed',
       },
       paid: {
         label: 'Pagada',
-        variant: 'default' as const,
-        icon: CheckCircle,
-        tooltip: 'El pago ha sido procesado exitosamente. Revisa tu cuenta bancaria.'
+        classes: 'status-badge status-paid',
       },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.submitted;
-    const Icon = config.icon;
-
-    return (
-      <div className="flex items-center gap-1.5">
-        <Badge variant={config.variant} className="flex items-center gap-1">
-          <Icon className="h-3 w-3" />
-          {config.label}
-        </Badge>
-        <InfoTooltip content={config.tooltip} side="right" />
-      </div>
-    );
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const priorityConfig = {
-      low: { label: 'Baja', variant: 'outline' as const },
-      medium: { label: 'Media', variant: 'secondary' as const },
-      high: { label: 'Alta', variant: 'default' as const },
-      urgent: { label: 'Urgente', variant: 'destructive' as const },
+    const config = statusConfig[status as keyof typeof statusConfig] || {
+      label: status,
+      classes: 'status-badge status-submitted',
     };
 
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.medium;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <span className={config.classes}>{config.label}</span>;
   };
+
+
 
   const getClaimTypeLabel = (type: string) => {
     const types = {
@@ -198,6 +176,14 @@ export default function CustomerClaimDetailPage() {
       'Daño por clima': 'Daño por clima',
       'Daño por granizo': 'Daño por granizo',
       Otros: 'Otros',
+      collision: 'Colisión',
+      theft: 'Robo',
+      vandalism: 'Vandalismo',
+      fire: 'Incendio',
+      flood: 'Daño por clima',
+      hail: 'Daño por granizo',
+      glass: 'Otros',
+      other: 'Otros',
     };
     return types[type as keyof typeof types] || type;
   };
@@ -205,32 +191,15 @@ export default function CustomerClaimDetailPage() {
   if (loading) {
     return (
       <ProtectedRoute allowedRoles={['customer']}>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Cargando detalles de la reclamación...</p>
-          </div>
+        <div className="container mx-auto py-8 px-4 flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </ProtectedRoute>
     );
   }
 
   if (!claim) {
-    return (
-      <ProtectedRoute allowedRoles={['customer']}>
-        <div className="container mx-auto py-8 px-4">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Reclamación no encontrada</h1>
-            <p className="text-muted-foreground mb-4">
-              La reclamación que buscas no existe o no tienes permisos para verla.
-            </p>
-            <Button onClick={() => router.push('/customer/claims')}>
-              Volver a Mis Reclamaciones
-            </Button>
-          </div>
-        </div>
-      </ProtectedRoute>
-    );
+    return null;
   }
 
   return (
@@ -251,11 +220,11 @@ export default function CustomerClaimDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             {getStatusBadge(claim.status)}
-            {getPriorityBadge(claim.priority)}
+            <PriorityBadge priority={claim.priority} />
           </div>
         </div>
 
-        <Tabs defaultValue="details" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="details">Detalles</TabsTrigger>
             <TabsTrigger value="documents">Documentos y Evidencia</TabsTrigger>
@@ -386,6 +355,18 @@ export default function CustomerClaimDetailPage() {
                 claimId={claim.id}
                 customerId={customerId}
                 currentUserRole="customer"
+                documents={documents}
+                agentId={claim.adjuster_id || claim.policy?.agent_id}
+                claimNumber={claim.claim_number}
+                onRefresh={async () => {
+                  // Re-fetch only documents or full claim
+                  const { data } = await supabase
+                    .from('claim_customer_documents')
+                    .select('*')
+                    .eq('claim_id', claim.id)
+                    .order('upload_date', { ascending: false });
+                  setDocuments(data || []);
+                }}
               />
             </div>
           </TabsContent>

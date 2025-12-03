@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useCustomerDataSimple } from "@/hooks/use-customer-data-simple";
 import { createClient } from "@/lib/supabase/client";
@@ -20,6 +21,14 @@ import {
     Calendar,
     User,
     FileText,
+    Trash2,
+    AlertCircle,
+    CheckSquare,
+    Square,
+    Info,
+    CheckCircle,
+    XCircle,
+    Bell
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -33,6 +42,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CommunicationsPageEffect } from "@/components/communications/communications-page-effect";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DeleteConfirmationModal } from "@/components/communications/delete-confirmation-modal";
 
 interface Communication {
     id: string;
@@ -42,6 +54,7 @@ interface Communication {
     content: string;
     status: string;
     created_at: string;
+    claim_id?: string;
     agent: {
         first_name: string;
         last_name: string;
@@ -50,9 +63,11 @@ interface Communication {
     policy: {
         policy_number: string;
     };
+    metadata?: any;
 }
 
 export default function CustomerCommunicationsPage() {
+    const router = useRouter();
     const {
         customerData,
         loading: customerLoading,
@@ -65,12 +80,20 @@ export default function CustomerCommunicationsPage() {
     const [filterDirection, setFilterDirection] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
     const [newCommunication, setNewCommunication] = useState({
         type: "email",
         direction: "outbound",
         subject: "",
         content: "",
     });
+    
+    // Estados para el modal de eliminación
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemsToDelete, setItemsToDelete] = useState<string[]>([]);
+    const [isDeletingAll, setIsDeletingAll] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const supabase = createClient();
 
     useEffect(() => {
@@ -79,8 +102,27 @@ export default function CustomerCommunicationsPage() {
         }
     }, [customerData, customerLoading]);
 
-    // REMOVIDO: Ya no marcamos como leído automáticamente al montar
-    // El sistema de re-entrada en el hook se encarga de esto
+    const markMessagesAsRead = async () => {
+        if (!customerData) return;
+
+        try {
+            const { error } = await supabase
+                .from('communications')
+                .update({ status: 'read' })
+                .eq('customer_id', customerData.id)
+                .eq('direction', 'outbound')
+                .neq('status', 'read');
+
+            if (error) {
+                console.error('Error marking messages as read:', error);
+            } else {
+                // Dispatch event to update badge immediately
+                window.dispatchEvent(new Event('communications-read'));
+            }
+        } catch (error) {
+            console.error('Error in markMessagesAsRead:', error);
+        }
+    };
 
     const fetchCommunications = async () => {
         if (!customerData) return;
@@ -101,6 +143,7 @@ export default function CustomerCommunicationsPage() {
                     .select(
                         `
           *,
+          claim_id,
           agent:users!communications_agent_id_fkey(
             first_name,
             last_name,
@@ -128,52 +171,12 @@ export default function CustomerCommunicationsPage() {
                     communicationsData?.length || 0
                 );
                 setCommunications(communicationsData || []);
-                
-                // REMOVIDO: Ya no marcamos como leído al cargar - solo en re-entrada
             }
         } catch (error) {
             console.error("Error inesperado:", error);
             setError("Error inesperado al cargar las comunicaciones");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const markCommunicationsAsRead = async () => {
-        if (!customerData) return;
-
-        try {
-            console.log('🔄 Marcando comunicaciones como leídas para cliente:', customerData.id);
-            
-            // Primero verificar cuántas comunicaciones no leídas hay
-            const { count: unreadCount } = await supabase
-                .from('communications')
-                .select('*', { count: 'exact', head: true })
-                .eq('customer_id', customerData.id)
-                .eq('direction', 'outbound')
-                .neq('status', 'read');
-            
-            console.log('📊 Comunicaciones no leídas encontradas:', unreadCount);
-
-            if (unreadCount && unreadCount > 0) {
-                // Marcar todas las comunicaciones no leídas como leídas
-                const { error } = await supabase
-                    .from('communications')
-                    .update({ status: 'read' })
-                    .eq('customer_id', customerData.id)
-                    .eq('direction', 'outbound')
-                    .neq('status', 'read');
-
-                if (error) {
-                    console.error('❌ Error marking communications as read:', error);
-                } else {
-                    console.log('✅ Comunicaciones marcadas como leídas correctamente');
-                }
-            } else {
-                console.log('ℹ️ No hay comunicaciones no leídas para marcar');
-            }
-        } catch (error) {
-            console.error('💥 Error in markCommunicationsAsRead:', error);
         }
     };
 
@@ -185,6 +188,12 @@ export default function CustomerCommunicationsPage() {
                 return <Phone className="h-4 w-4" />;
             case "sms":
                 return <MessageSquare className="h-4 w-4" />;
+            case "quote_approved":
+                return <CheckCircle className="h-4 w-4 text-green-600" />;
+            case "quote_rejected":
+                return <XCircle className="h-4 w-4 text-red-600" />;
+            case "claim_status_update":
+                return <Bell className="h-4 w-4 text-blue-600" />;
             default:
                 return <FileText className="h-4 w-4" />;
         }
@@ -222,10 +231,10 @@ export default function CustomerCommunicationsPage() {
         return (
             <Badge
                 variant="default"
-                className={isRead 
+                className={`${isRead 
                     ? "bg-green-100 text-green-800" 
                     : "bg-orange-100 text-orange-800"
-                }
+                }`}
             >
                 {isRead ? "Leído" : "No Leído"}
             </Badge>
@@ -287,6 +296,73 @@ export default function CustomerCommunicationsPage() {
         }
     };
 
+    // Gestión de selección y eliminación
+    const toggleSelection = (id: string) => {
+        setSelectedMessageIds(prev => 
+            prev.includes(id) 
+                ? prev.filter(msgId => msgId !== id)
+                : [...prev, id]
+        );
+    };
+
+    const handleDelete = (idsToDelete: string[]) => {
+        setItemsToDelete(idsToDelete);
+        setIsDeletingAll(false);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleDeleteAll = () => {
+        setIsDeletingAll(true);
+        setItemsToDelete([]);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!customerData) return;
+        
+        setIsDeleting(true);
+        try {
+            let error;
+            
+            if (isDeletingAll) {
+                const { error: deleteError } = await supabase
+                    .from('communications')
+                    .delete()
+                    .eq('customer_id', customerData.id);
+                error = deleteError;
+            } else {
+                const { error: deleteError } = await supabase
+                    .from('communications')
+                    .delete()
+                    .in('id', itemsToDelete)
+                    .eq('customer_id', customerData.id);
+                error = deleteError;
+            }
+
+            if (error) throw error;
+
+            // Actualizar estado local
+            if (isDeletingAll) {
+                setCommunications([]);
+                setSelectedMessageIds([]);
+            } else {
+                setCommunications(prev => prev.filter(c => !itemsToDelete.includes(c.id)));
+                setSelectedMessageIds(prev => prev.filter(id => !itemsToDelete.includes(id)));
+            }
+            
+            setIsDeleteModalOpen(false);
+            
+            // Dispatch event to update badge immediately after deletion
+            window.dispatchEvent(new Event('communications-read'));
+            
+        } catch (error) {
+            console.error("Error deleting communications:", error);
+            alert("Error al eliminar los mensajes");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     if (customerLoading || loading) {
         return (
             <ProtectedRoute allowedRoles={["customer"]}>
@@ -323,7 +399,7 @@ export default function CustomerCommunicationsPage() {
             <CommunicationsPageEffect />
             <div className="container mx-auto py-8 px-4">
                 {/* Header */}
-                <div className="mb-8 flex justify-between items-center">
+                <div className="mb-6 flex justify-between items-center">
                     <div>
                         <h1 className="text-4xl font-extrabold text-primary">
                             Comunicaciones
@@ -341,82 +417,211 @@ export default function CustomerCommunicationsPage() {
                     </Button>
                 </div>
 
-                {/* Filtros */}
-                <div className="mb-6 flex gap-4">
-                    <select
-                        className="border border-border rounded-md p-2"
-                        value={filterType}
-                        onChange={(e) => setFilterType(e.target.value)}
-                    >
-                        <option value="">Todos los Tipos</option>
-                        <option value="email">Email</option>
-                        <option value="phone">Teléfono</option>
-                        <option value="sms">SMS</option>
-                    </select>
-                    <select
-                        className="border border-border rounded-md p-2"
-                        value={filterDirection}
-                        onChange={(e) => setFilterDirection(e.target.value)}
-                    >
-                        <option value="">Todas las Direcciones</option>
-                        <option value="inbound">Recibido</option>
-                        <option value="outbound">Enviado</option>
-                    </select>
-                    <select
-                        className="border border-border rounded-md p-2"
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                    >
-                        <option value="">Todos los Estados</option>
-                        <option value="read">Leído</option>
-                        <option value="unread">No Leído</option>
-                    </select>
+                {/* Nota Informativa */}
+                <Alert className="mb-6 bg-blue-50 border-blue-200">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <AlertTitle className="text-blue-800 font-semibold">Nota Importante</AlertTitle>
+                    <AlertDescription className="text-blue-700">
+                        Puedes hacer clic en los mensajes de "Documento rechazado" o "Docs requeridos" para ir directamente a la reclamación en la pestaña "Documentos y evidencia" y gestionar tus documentos.
+                    </AlertDescription>
+                </Alert>
+
+                {/* Barra de Acciones y Filtros */}
+                <div className="mb-6 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                    <div className="flex gap-2 items-center w-full md:w-auto">
+                        <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleDelete(selectedMessageIds)}
+                            disabled={selectedMessageIds.length === 0}
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar seleccionados ({selectedMessageIds.length})
+                        </Button>
+                        
+                        {communications.length > 0 && (
+                            <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={handleDeleteAll}
+                            >
+                                Eliminar todos
+                            </Button>
+                        )}
+                    </div>
+
+                    <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                        <select
+                            className="border border-border rounded-md p-2 text-sm"
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
+                        >
+                            <option value="">Todos los Tipos</option>
+                            <option value="email">Email</option>
+                            <option value="phone">Teléfono</option>
+                            <option value="sms">SMS</option>
+                        </select>
+                        <select
+                            className="border border-border rounded-md p-2 text-sm"
+                            value={filterDirection}
+                            onChange={(e) => setFilterDirection(e.target.value)}
+                        >
+                            <option value="">Todas las Direcciones</option>
+                            <option value="inbound">Recibido</option>
+                            <option value="outbound">Enviado</option>
+                        </select>
+                        <select
+                            className="border border-border rounded-md p-2 text-sm"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="">Todos los Estados</option>
+                            <option value="read">Leído</option>
+                            <option value="unread">No Leído</option>
+                        </select>
+                    </div>
                 </div>
 
                 {/* Lista de comunicaciones */}
                 <div className="space-y-4">
-                    {filteredCommunications.map((communication) => (
-                        <Card
-                            key={communication.id}
-                            className="hover:shadow-lg transition-shadow"
-                        >
-                            <CardHeader>
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        {getCommunicationIcon(
-                                            communication.communication_type
-                                        )}
-                                        <div>
-                                            <CardTitle className="text-lg font-semibold">
-                                                {communication.subject}
-                                            </CardTitle>
-                                            <CardDescription className="flex items-center gap-2 mt-1">
-                                                <Calendar className="h-4 w-4" />
-                                                {format(
-                                                    new Date(
-                                                        communication.created_at
-                                                    ),
-                                                    "dd/MM/yyyy HH:mm",
-                                                    { locale: es }
+                    {filteredCommunications.length === 0 ? (
+                        <div className="text-center py-12 bg-muted/20 rounded-lg border border-dashed">
+                            <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                            <h3 className="text-lg font-medium text-foreground">No tienes comunicaciones</h3>
+                            <p className="text-muted-foreground">No hay mensajes para mostrar en este momento.</p>
+                        </div>
+                    ) : (
+                        filteredCommunications.map((communication) => {
+                            const isRejectedDoc = communication.subject.includes('Documento rechazado') || communication.content.includes('rechazado');
+                            const isDocsRequired = communication.subject.includes('Docs requeridos');
+                            const isQuoteUpdate = communication.communication_type === 'quote_approved' || communication.communication_type === 'quote_rejected';
+                            const isClaimUpdate = communication.communication_type === 'claim_status_update' || (communication.communication_type === 'email' && communication.subject === 'Estado de Reclamación Actualizado');
+                            const isClickable = isRejectedDoc || isDocsRequired || isQuoteUpdate || isClaimUpdate;
+                            
+                            return (
+                                <Card
+                                    key={communication.id}
+                                    className={`transition-all duration-150 group relative ${
+                                        isRejectedDoc || communication.communication_type === 'quote_rejected'
+                                        ? 'border-l-4 border-l-red-500' 
+                                        : communication.communication_type === 'quote_approved'
+                                        ? 'border-l-4 border-l-green-500'
+                                        : isClaimUpdate
+                                        ? 'border-l-4 border-l-blue-500'
+                                        : ''
+                                    } ${
+                                        isClickable 
+                                        ? 'hover:shadow-lg hover:-translate-y-1 cursor-pointer' 
+                                        : 'hover:shadow-md'
+                                    } ${selectedMessageIds.includes(communication.id) ? 'bg-muted/30 border-primary/50' : ''}`}
+                                    onClick={() => {
+                                        if (isClickable) {
+                                            let targetClaimId = communication.claim_id;
+                                            
+                                            if (!targetClaimId) {
+                                                const match = communication.subject.match(/CLM-\d+-\d+/);
+                                                if (match) {
+                                                    console.log("Intento de extracción de ID:", match[0]);
+                                                }
+                                            }
+
+                                            if (targetClaimId) {
+                                                router.push(`/customer/claims/${targetClaimId}?tab=documents`);
+                                            } else if (isQuoteUpdate) {
+                                                const quoteId = communication.metadata?.quoteId;
+                                                if (quoteId) {
+                                                    router.push(`/customer/quotes?highlightQuoteId=${quoteId}`);
+                                                } else {
+                                                    router.push('/customer/quotes');
+                                                }
+                                            } else if (isClaimUpdate) {
+                                                // Try to extract claim ID from metadata if available, otherwise use claim_id
+                                                if (communication.claim_id) {
+                                                    router.push(`/customer/claims/${communication.claim_id}`);
+                                                } else {
+                                                    // Fallback to regex if claim_id is missing (shouldn't happen with new trigger)
+                                                    const match = communication.subject.match(/(CLM-\d+-\d+)/) || communication.content.match(/(CLM-\d+-\d+)/);
+                                                    if (match) {
+                                                        // We can't easily redirect to ID from number without a lookup, but we can try to find it in the list or just go to claims list
+                                                        router.push('/customer/claims');
+                                                    } else {
+                                                        router.push('/customer/claims');
+                                                    }
+                                                }
+                                            } else {
+                                                const match = communication.subject.match(/(CLM-\d+-\d+)/);
+                                                if (match) {
+                                                    console.log("Redirigiendo usando claim number del asunto:", match[1]);
+                                                }
+                                                console.log("No se encontró ID de reclamación explícito para redirigir");
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <CardHeader className="pb-2">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                                        checked={selectedMessageIds.includes(communication.id)}
+                                                        onChange={() => {}} // Controlled by onClick
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleSelection(communication.id);
+                                                        }}
+                                                    />
+                                                    {communication.communication_type === 'email' ? (
+                                                        <Mail className="w-5 h-5 text-white/80" />
+                                                    ) : (
+                                                        getCommunicationIcon(communication.communication_type)
+                                                    )}
+                                                    <h2 className="font-semibold text-lg">
+                                                        {communication.subject}
+                                                    </h2>
+                                                </div>
+                                                <CardDescription className="flex items-center gap-2 mt-1 pl-6">
+                                                    <Calendar className="h-4 w-4" />
+                                                    {format(
+                                                        new Date(
+                                                            communication.created_at
+                                                        ),
+                                                        "dd/MM/yyyy HH:mm",
+                                                        { locale: es }
+                                                    )}
+                                                </CardDescription>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {getDirectionBadge(
+                                                    communication.direction
                                                 )}
-                                            </CardDescription>
+                                                {getStatusBadge(communication.status)}
+                                                
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive ml-2"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete([communication.id]);
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {getDirectionBadge(
-                                            communication.direction
-                                        )}
-                                        {getStatusBadge(communication.status)}
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    {communication.content}
-                                </p>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                            {communication.content}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })
+                    )}
                 </div>
 
                 {/* Modal para nueva comunicación */}
@@ -490,6 +695,16 @@ export default function CustomerCommunicationsPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Modal de confirmación de eliminación */}
+                <DeleteConfirmationModal 
+                    isOpen={isDeleteModalOpen}
+                    onClose={() => setIsDeleteModalOpen(false)}
+                    onConfirm={confirmDelete}
+                    count={itemsToDelete.length}
+                    isDeletingAll={isDeletingAll}
+                    isLoading={isDeleting}
+                />
             </div>
         </ProtectedRoute>
     );

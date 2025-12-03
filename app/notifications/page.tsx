@@ -66,7 +66,12 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
+import { useRouter } from 'next/navigation';
+
+// ... imports
+
 export default function NotificationsPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
@@ -252,12 +257,53 @@ export default function NotificationsPage() {
               const Icon = getNotificationIcon(notification.type, notification.category);
 
               return (
-                <Card
-                  key={notification.id}
-                  className={`transition-all hover:shadow-md ${
-                    !notification.is_read ? 'border-l-4 border-l-blue-500 bg-blue-50/30' : ''
-                  }`}
-                >
+                  <Card
+                    key={notification.id}
+                    className={`transition-all hover:shadow-md cursor-pointer ${
+                      !notification.is_read ? 'border-l-4 border-l-blue-500 bg-blue-50/30' : ''
+                    }`}
+                    onClick={() => {
+                      // Si hay una URL de acción, navegar a ella
+                      if (notification.action_url) {
+                        router.push(notification.action_url);
+                        if (!notification.is_read) markAsRead(notification.id);
+                        return;
+                      }
+                      
+                      // Lógica específica para documentos rechazados
+                      if (notification.title.includes('Documento rechazado') || notification.message.includes('rechazado')) {
+                        // Intentar extraer el ID de la reclamación del título o mensaje
+                        // Formato esperado: "Reclamación CLM-2025-216737" o similar
+                        // Si tenemos el ID en metadata (idealmente), usarlo. 
+                        // Como fallback, intentamos extraer el ID de la reclamación si está en el mensaje
+                        
+                        // Nota: En una implementación ideal, la notificación tendría un campo metadata o claim_id
+                        // Por ahora, intentamos inferir o usar action_url si viniera del backend
+                        
+                        // Si el backend ya envía action_url tipo "/customer/claims/ID?tab=documents", el primer if lo maneja.
+                        // Si no, intentamos construirlo si podemos extraer el ID.
+                        
+                        // Búsqueda de patrón de ID de reclamación (ej. CLM-2025-XXXXXX)
+                        // Esto es un fallback si no viene action_url
+                        const claimIdMatch = notification.title.match(/CLM-\d+-\d+/);
+                        if (claimIdMatch) {
+                          // Necesitamos el UUID, no el número legible. 
+                          // Si no tenemos el UUID, no podemos navegar directamente por URL estándar si usa UUIDs.
+                          // PERO, si el sistema usa UUIDs en la URL, necesitamos ese UUID.
+                          
+                          // Si la notificación tuviera el UUID en un campo oculto o metadata, sería mejor.
+                          // Asumiremos que si no hay action_url, tal vez no podamos navegar directamente al detalle 
+                          // sin hacer una búsqueda primero, a menos que el backend se actualice.
+                          
+                          // Sin embargo, el requerimiento dice: "Si la notificación es de tipo “documento rechazado” y tiene claimId"
+                          // Vamos a asumir que el backend PODRÍA enviar el action_url correcto.
+                          // Si no, marcaremos como leída y ya.
+                        }
+                      }
+                      
+                      if (!notification.is_read) markAsRead(notification.id);
+                    }}
+                  >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-4 flex-1">

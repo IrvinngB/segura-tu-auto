@@ -1,0 +1,23 @@
+/* Notification Panel Scrollbar Fix */
+.notification-scroll-area [data-slot="scroll-area-scrollbar"] {
+    width: 8px !important;
+    background: transparent !important;
+    border-left: none !important;
+    padding: 0 !important;
+}
+
+.notification-scroll-area [data-slot="scroll-area-thumb"] {
+    background-color: #3B82F6 !important;
+    /* Blue thumb */
+    border-radius: 4px !important;
+    width: 6px !important;
+    /* Slightly smaller than track */
+    margin-left: 1px !important;
+    /* Center it */
+}
+
+/* Ensure no other background interferes */
+.notification-scroll-area [data-radix-scroll-area-viewport] {
+    scrollbar-width: none !important;
+    /* Hide native scrollbar if any */
+}

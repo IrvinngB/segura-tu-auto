@@ -74,7 +74,6 @@ export async function POST(request: NextRequest) {
             last_four,
             expiry_date,
             is_primary,
-            billing_address,
         } = body;
 
         // Get customer_id from user
@@ -110,7 +109,6 @@ export async function POST(request: NextRequest) {
                 expiry_date,
                 is_primary: is_primary || false,
                 is_active: true,
-                billing_address,
             })
             .select()
             .single();

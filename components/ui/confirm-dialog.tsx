@@ -22,6 +22,7 @@ interface ConfirmDialogProps {
     onConfirm: () => void;
     variant?: "default" | "destructive";
     icon?: ReactNode;
+    showCancel?: boolean;
 }
 
 export function ConfirmDialog({
@@ -34,6 +35,7 @@ export function ConfirmDialog({
     onConfirm,
     variant = "default",
     icon,
+    showCancel = true,
 }: ConfirmDialogProps) {
     const handleConfirm = () => {
         onConfirm();
@@ -63,7 +65,7 @@ export function ConfirmDialog({
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+                    {showCancel && <AlertDialogCancel>{cancelText}</AlertDialogCancel>}
                     <AlertDialogAction
                         onClick={handleConfirm}
                         className={

@@ -91,7 +91,7 @@ export interface Policy {
   vehicle_id: string;
   agent_id?: string;
   policy_type: string;
-  status: 'draft' | 'active' | 'expired' | 'cancelled' | 'suspended';
+  status: 'draft' | 'active' | 'expired' | 'cancelled' | 'suspended' | 'approved';
   start_date: string;
   end_date: string;
   premium_amount: number;
@@ -223,10 +223,11 @@ export interface Communication {
   agent_id?: string;
   policy_id?: string;
   claim_id?: string;
-  communication_type: 'email' | 'phone' | 'chat' | 'sms' | 'letter';
+  communication_type: 'email' | 'phone' | 'chat' | 'sms' | 'letter' | 'quote_approved' | 'quote_rejected' | 'system';
   direction: 'inbound' | 'outbound';
   subject?: string;
   content: string;
+  metadata?: any;
   status: 'draft' | 'sent' | 'delivered' | 'read' | 'failed';
   priority: 'low' | 'normal' | 'high' | 'urgent';
   created_at: string;
@@ -264,4 +265,6 @@ export interface ClaimCustomerDocument {
   customer?: Customer;
   claim?: Claim;
   reviewer?: User;
+  is_extra_document?: boolean;
+  extra_document_label?: string;
 }

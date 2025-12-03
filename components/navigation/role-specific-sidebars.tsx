@@ -53,6 +53,12 @@ const adminNavigation: NavigationItem[] = [
   },
   { name: 'Clientes', href: '/clients', icon: Users, description: 'Gestión de clientes' },
   {
+    name: 'Reclamaciones',
+    href: '/claims',
+    icon: AlertTriangle,
+    description: 'Gestión de reclamos',
+  },
+  {
     name: 'Evaluación de Riesgo',
     href: '/risk-assessment',
     icon: TrendingUp,
@@ -114,7 +120,7 @@ const agentNavigation: NavigationItem[] = [
     description: 'Gestión de reclamos',
   },
   {
-    name: 'Solicitudes',
+    name: 'Solicitudes de Cancelación',
     href: '/agent/requests',
     icon: FileX,
     description: 'Solicitudes de cancelación',
@@ -211,6 +217,7 @@ const SidebarContent = memo(function SidebarContent({ navigation, userProfile }:
         'Cotizaciones',
         'Mis Reclamaciones',
         'Reclamaciones',
+        'Solicitudes de Cancelación',
         'Mis Casos',
       ].includes(item.name)
     );
@@ -302,7 +309,7 @@ const SidebarContent = memo(function SidebarContent({ navigation, userProfile }:
 
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -535,7 +542,7 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
 
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 flex flex-col',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -567,7 +574,29 @@ const CustomerSidebarContent = memo(function CustomerSidebarContent({
           </div>
         )}
 
-        <nav className="flex-1 px-4 py-4 overflow-y-auto">
+        {/* Botón Mi Perfil */}
+        <div className="px-4 pt-4 pb-2">
+          <OptimizedLink
+            href="/customer/profile"
+            className={cn(
+              'flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors group',
+              pathname === '/customer/profile'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}
+          >
+            <span
+              className="flex items-center w-full"
+              onClick={() => setIsOpen(false)}
+              title="Ver mi perfil"
+            >
+              <User className="mr-3 h-5 w-5 shrink-0" />
+              <span className="truncate">Mi Perfil</span>
+            </span>
+          </OptimizedLink>
+        </div>
+
+        <nav className="flex-1 px-4 py-2 overflow-y-auto">
           {renderNavigationGroup(groupedNavigation.main, 'Principal')}
           {renderNavigationGroup(groupedNavigation.management, 'Gestión')}
           {renderNavigationGroup(groupedNavigation.tools, 'Herramientas')}

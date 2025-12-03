@@ -12,9 +12,10 @@ interface PaymentStatusProps {
   claim: Claim;
   onProcessPayment?: () => void;
   onConfirmPayment?: () => void;
+  currentUserRole?: string;
 }
 
-export function PaymentStatus({ claim, onProcessPayment, onConfirmPayment }: PaymentStatusProps) {
+export function PaymentStatus({ claim, onProcessPayment, onConfirmPayment, currentUserRole }: PaymentStatusProps) {
   const getPaymentStatusInfo = () => {
     switch (claim.status) {
       case 'approved':
@@ -79,23 +80,23 @@ export function PaymentStatus({ claim, onProcessPayment, onConfirmPayment }: Pay
             Resumen de Pago
           </h4>
 
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="flex justify-between">
+          <div className="flex flex-col gap-3 text-sm">
+            <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Monto Aprobado:</span>
               <span className="font-medium">${claim.approved_amount?.toLocaleString() || '0'}</span>
             </div>
 
-            {claim.deductible_amount && (
-              <div className="flex justify-between">
+            {claim.deductible_amount ? (
+              <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Deducible:</span>
                 <span className="font-medium text-red-600">
                   -${claim.deductible_amount.toLocaleString()}
                 </span>
               </div>
-            )}
+            ) : null}
 
-            <div className="flex justify-between border-t pt-2 col-span-2">
-              <span className="font-semibold">Monto a Pagar:</span>
+            <div className="flex justify-between items-center border-t pt-2">
+              <span className="font-bold">Monto a Pagar:</span>
               <span className="font-bold text-green-600 text-lg">
                 ${netAmount.toLocaleString()}
               </span>
@@ -125,7 +126,7 @@ export function PaymentStatus({ claim, onProcessPayment, onConfirmPayment }: Pay
         </div>
 
         {/* Acciones */}
-        {statusInfo.action && (
+        {statusInfo.action && (!currentUserRole || currentUserRole !== 'adjuster') && (
           <div className="flex gap-2 pt-2">
             <Button onClick={statusInfo.action} className="flex items-center gap-2">
               {claim.status === 'approved' && (

@@ -113,16 +113,46 @@ export async function POST(request: NextRequest) {
             payment_date: new Date().toISOString(),
         };
 
-        console.log("💾 Creating payment record:", paymentData);
-
-        const { data: payment, error: paymentError } = await supabase
+        // Check for existing pending payment for this policy
+        const { data: pendingPayment } = await supabase
             .from("payments")
-            .insert(paymentData)
-            .select()
+            .select("id")
+            .eq("policy_id", policy_id)
+            .eq("status", "pending")
             .single();
 
+        let payment;
+        let paymentError;
+
+        if (pendingPayment) {
+            console.log("🔄 Updating existing pending payment:", pendingPayment.id);
+            const { data: updatedPayment, error: updateError } = await supabase
+                .from("payments")
+                .update({
+                    ...paymentData,
+                    status: "completed", // Ensure status is updated to completed
+                    updated_at: new Date().toISOString()
+                })
+                .eq("id", pendingPayment.id)
+                .select()
+                .single();
+            
+            payment = updatedPayment;
+            paymentError = updateError;
+        } else {
+            console.log("💾 Creating new payment record:", paymentData);
+            const { data: newPayment, error: insertError } = await supabase
+                .from("payments")
+                .insert(paymentData)
+                .select()
+                .single();
+            
+            payment = newPayment;
+            paymentError = insertError;
+        }
+
         if (paymentError) {
-            console.error("❌ Payment creation error:", paymentError);
+            console.error("❌ Payment processing error:", paymentError);
             return NextResponse.json(
                 { error: `Error al procesar el pago: ${paymentError.message}` },
                 { status: 500 }

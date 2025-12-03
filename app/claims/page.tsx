@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ClaimList } from '@/components/claims/claim-list';
 import { ClaimForm } from '@/components/claims/claim-form';
 import { ClaimAlerts } from '@/components/claims/claim-alerts';
-import { ClaimNotificationSystem } from '@/components/claims/claim-notification-system';
+import { AgentNotificationSystem } from '@/components/notifications/agent-notification-system';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { Plus } from 'lucide-react';
 import type { Claim } from '@/lib/types/database';
@@ -33,7 +33,7 @@ export default function ClaimsPage() {
             <p className="text-muted-foreground">Administra las reclamaciones de seguros</p>
           </div>
           <div className="flex items-center gap-3">
-            <ClaimNotificationSystem />
+            <AgentNotificationSystem />
             <Button onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Nueva Reclamación

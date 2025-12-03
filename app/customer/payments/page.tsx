@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useAuth } from "@/components/auth/auth-provider";
 import { createClient } from "@/lib/supabase/client";
@@ -71,12 +72,14 @@ import {
     isAfter,
     isBefore,
     differenceInDays,
+    parseISO,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "@/components/ui/use-toast";
 import { CustomerPaymentModal } from "@/components/customer/customer-payment-modal";
 import { PaymentMethods } from "@/components/customer/payment-methods";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { formatDueDate, isDueDatePassed, getPaymentStatus } from "@/lib/utils/payments";
 
 interface Payment {
     id: string;
@@ -147,6 +150,20 @@ interface UpcomingPayment {
     status: "upcoming" | "overdue" | "grace_period";
 }
 
+// Helper to parse date string as local date (avoiding UTC conversion issues)
+const parseLocalDate = (dateString: string) => {
+    if (!dateString) return new Date();
+    // If it's a full ISO string with time, parseISO handles it well usually, 
+    // but if it's YYYY-MM-DD, new Date() treats it as UTC midnight.
+    // We want YYYY-MM-DD to be treated as local midnight.
+    if (dateString.includes('T')) {
+        return new Date(dateString);
+    }
+    // Append time to force local interpretation or parse manually
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+};
+
 export default function CustomerPaymentsPage() {
     const { userProfile } = useAuth();
     const [payments, setPayments] = useState<Payment[]>([]);
@@ -167,7 +184,109 @@ export default function CustomerPaymentsPage() {
         paymentType: string;
     } | null>(null);
     const [customerId, setCustomerId] = useState<string>("");
+    const searchParams = useSearchParams();
+    const policyIdToHighlight = searchParams.get("policyId");
+    const payQuoteId = searchParams.get("payQuoteId");
+    const highlightedRef = useRef<HTMLDivElement>(null);
     const supabase = createClient();
+
+    useEffect(() => {
+        if ((policyIdToHighlight || payQuoteId) && upcomingPayments.length > 0) {
+            // Dar un pequeño tiempo para que se renderice
+            const timer = setTimeout(() => {
+                // If payQuoteId is present, we need to find the corresponding policy/payment
+                // The upcoming payments have IDs like `approved_${policyId}` or `upcoming_${policyId}`
+                
+                let elementId = '';
+                if (payQuoteId) {
+                    // Find the upcoming payment that corresponds to this quote
+                    // We need to know which policy corresponds to the quote.
+                    // Since we don't have quote info here directly, we might need to fetch it or rely on policy matching.
+                    // However, for approved quotes, we created a policy with status 'approved'.
+                    // So we can look for an upcoming payment with type 'Pago Inicial (Activación)'?
+                    // Or we can try to find the policy ID from the quote ID if we had it.
+                    // But we don't have it easily here without fetching.
+                    
+                    // Let's try to find the element by data attribute if we add it, or just search DOM.
+                    // But we render based on `upcomingPayments`.
+                    
+                    // Alternative: Fetch the quote to get the policy ID first?
+                    // Or just iterate through upcoming payments and see if any matches?
+                    // We don't have quote ID in upcoming payments.
+                    
+                    // Let's fetch the quote details if payQuoteId is present to get the policy ID.
+                    // This is done in loadPaymentData or a separate effect?
+                    // Better to do it in a separate effect or inside loadPaymentData.
+                } else if (policyIdToHighlight) {
+                     // Try to find element with ID containing policyId
+                     const el = document.getElementById(`payment-card-approved_${policyIdToHighlight}`) || 
+                                document.getElementById(`payment-card-upcoming_${policyIdToHighlight}`);
+                     if (el) {
+                         el.scrollIntoView({ behavior: "smooth", block: "center" });
+                         el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+                         setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+                     }
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [policyIdToHighlight, payQuoteId, upcomingPayments]);
+
+    // Effect to fetch quote details if payQuoteId is present
+    useEffect(() => {
+        const fetchQuoteAndHighlight = async () => {
+            if (!payQuoteId) return;
+            
+            try {
+                // We need to find the policy associated with this quote.
+                // Since we don't have a direct endpoint for "get policy by quote id" easily accessible here without auth check etc.
+                // We can fetch the quote details.
+                // But wait, we are in the customer payments page.
+                // We can just fetch the quote using supabase client.
+                
+                const { data: quote, error } = await supabase
+                    .from('quotes')
+                    .select('vehicle_id, customer_id, status')
+                    .eq('id', payQuoteId)
+                    .single();
+                    
+                if (quote && quote.vehicle_id) {
+                    // Now find the approved policy for this vehicle
+                    const { data: policy } = await supabase
+                        .from('policies')
+                        .select('id')
+                        .eq('vehicle_id', quote.vehicle_id)
+                        .eq('customer_id', quote.customer_id)
+                        .eq('status', 'approved')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+                        
+                    if (policy) {
+                        // Now we have the policy ID, we can highlight the card
+                        const elementId = `payment-card-approved_${policy.id}`;
+                        const el = document.getElementById(elementId);
+                        if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                            el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+                            setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+                            
+                            // Also open the payment modal automatically?
+                            // Maybe better to just highlight.
+                            // If user wants to pay, they click "Pagar".
+                            // But the requirement says "destaque".
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching quote for highlight:", err);
+            }
+        };
+        
+        if (payQuoteId && upcomingPayments.length > 0) {
+            fetchQuoteAndHighlight();
+        }
+    }, [payQuoteId, upcomingPayments, supabase]);
 
     // Función auxiliar para obtener la frecuencia de pago de una póliza
     const getPaymentFrequencyFromPolicy = (policy: any) => {
@@ -329,19 +448,47 @@ export default function CustomerPaymentsPage() {
             if (sortedPolicies) {
                 const upcomingPaymentsData: UpcomingPayment[] = [];
 
+                // Agregar pagos pendientes reales de la base de datos primero
+                if (paymentsData) {
+                    paymentsData.filter(p => p.status === 'pending').forEach(p => {
+                        upcomingPaymentsData.push({
+                            id: p.id,
+                            policy_id: p.policy_id || '',
+                            policy_number: p.policy?.policy_number || '',
+                            amount: p.amount,
+                            due_date: p.due_date || new Date().toISOString(),
+                            payment_type: p.payment_type === 'activation' ? 'Pago Inicial (Activación)' : 
+                                         p.payment_type === 'premium' ? 'Prima Mensual' : p.payment_type,
+                            status: getUpcomingPaymentStatus(p.due_date || new Date().toISOString())
+                        });
+                    });
+                }
+
                 // Agregar pólizas aprobadas como próximos pagos (pendientes de pago inicial)
+                // Solo si no existe ya un pago pendiente real para esta póliza
                 sortedPolicies
                     .filter((policy) => policy.status === "approved")
                     .forEach((policy) => {
-                        upcomingPaymentsData.push({
-                            id: `approved_${policy.id}`,
-                            policy_id: policy.id,
-                            policy_number: policy.policy_number,
-                            amount: policy.premium_amount,
-                            due_date: policy.start_date,
-                            payment_type: "Pago Inicial (Activación)",
-                            status: "upcoming",
-                        });
+                        const hasPending = upcomingPaymentsData.some(up => up.policy_id === policy.id);
+                        
+                        if (!hasPending) {
+                            // Calcular la fecha de vencimiento con gracia de 15 días desde la última actualización
+                            const gracePeriod = parseInt(process.env.NEXT_PUBLIC_PAYMENT_GRACE_DAYS || '15');
+                            const approvalDate = new Date(policy.updated_at);
+                            const dueDate = new Date(approvalDate);
+                            dueDate.setDate(dueDate.getDate() + gracePeriod);
+                            dueDate.setUTCHours(23, 59, 59, 999);
+                            
+                            upcomingPaymentsData.push({
+                                id: `approved_${policy.id}`,
+                                policy_id: policy.id,
+                                policy_number: policy.policy_number,
+                                amount: policy.premium_amount,
+                                due_date: dueDate.toISOString(),
+                                payment_type: "Pago Inicial (Activación)",
+                                status: "upcoming",
+                            });
+                        }
                     });
 
                 // Agregar pólizas activas con renovación automática
@@ -499,22 +646,7 @@ export default function CustomerPaymentsPage() {
     };
 
     const getUpcomingPaymentStatus = (dueDate: string) => {
-        const today = new Date();
-        const due = new Date(dueDate);
-        const daysUntilDue = differenceInDays(due, today);
-
-        if (daysUntilDue < 0) {
-            // Si ya pasó la fecha de vencimiento
-            const daysPastDue = Math.abs(daysUntilDue);
-            if (daysPastDue <= 30) {
-                // Período de gracia: hasta 30 días después del vencimiento
-                return "grace_period";
-            } else {
-                // Después de 30 días, está vencido
-                return "overdue";
-            }
-        }
-        return "upcoming";
+        return getPaymentStatus(dueDate);
     };
 
     const getTotalPaid = () => {
@@ -743,10 +875,18 @@ export default function CustomerPaymentsPage() {
                                                     new Date()
                                                 );
 
+                                            const isHighlighted = payment.policy_id === policyIdToHighlight;
+
                                             return (
                                                 <div
                                                     key={payment.id}
-                                                    className="flex items-center justify-between p-4 border rounded-lg"
+                                                    id={`payment-card-${payment.id}`}
+                                                    ref={isHighlighted ? highlightedRef : null}
+                                                    className={`flex items-center justify-between p-4 border rounded-lg transition-all duration-500 ${
+                                                        isHighlighted 
+                                                            ? "border-emerald-400/80 bg-emerald-500/10 ring-2 ring-emerald-400/40 shadow-lg shadow-emerald-900/20" 
+                                                            : ""
+                                                    }`}
                                                 >
                                                     <div className="flex items-center space-x-4">
                                                         <div
@@ -771,15 +911,7 @@ export default function CustomerPaymentsPage() {
                                                                     payment.payment_type
                                                                 }{" "}
                                                                 - Vence{" "}
-                                                                {format(
-                                                                    new Date(
-                                                                        payment.due_date
-                                                                    ),
-                                                                    "dd 'de' MMMM",
-                                                                    {
-                                                                        locale: es,
-                                                                    }
-                                                                )}
+                                                                {formatDueDate(payment.due_date)}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -1148,14 +1280,7 @@ export default function CustomerPaymentsPage() {
                                                             }
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Vence:{" "}
-                                                            {format(
-                                                                new Date(
-                                                                    payment.due_date
-                                                                ),
-                                                                "dd 'de' MMMM yyyy",
-                                                                { locale: es }
-                                                            )}
+                                                            Vence: {formatDueDate(payment.due_date)}
                                                         </p>
                                                     </div>
                                                 </div>

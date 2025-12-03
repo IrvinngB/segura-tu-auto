@@ -50,8 +50,7 @@ export async function GET() {
       `)
       .is('adjuster_id', null)
       .in('status', ['submitted', 'investigating'])
-      .order('priority', { ascending: false })
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false });
 
     if (error) {
       throw error;

@@ -46,7 +46,8 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (userProfile?.role === 'adjuster') {
-      query = query.eq('adjuster_id', user.id);
+      // Mostrar todas las reclamaciones asignadas a CUALQUIER ajustador (Single Evaluator Mode)
+      query = query.not('adjuster_id', 'is', null);
     } else if (userProfile?.role === 'agent') {
       query = query.eq('agent_id', user.id);
     }

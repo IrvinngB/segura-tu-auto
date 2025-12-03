@@ -103,6 +103,8 @@ export function PaymentMethods({
     const [deletingMethodId, setDeletingMethodId] = useState<string | null>(
         null
     );
+    const [expiryError, setExpiryError] = useState<string | null>(null);
+    const [showWarningModal, setShowWarningModal] = useState(false);
     const supabase = createClient();
 
     // Form data for new/edit payment method
@@ -180,6 +182,15 @@ export function PaymentMethods({
     };
 
     const handleAddMethod = () => {
+        if (paymentMethods.length >= 5) {
+            toast({
+                title: "Límite alcanzado",
+                description: "Has alcanzado el número máximo de métodos de pago guardados (5).",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setFormData({
             type: "credit_card",
             card_number: "",
@@ -192,6 +203,7 @@ export function PaymentMethods({
             wallet_email: "",
             is_primary: paymentMethods.length === 0,
         });
+        setExpiryError(null);
         setEditingMethod(null);
         setShowAddModal(true);
     };
@@ -210,6 +222,7 @@ export function PaymentMethods({
             wallet_email: "",
             is_primary: method.is_primary,
         });
+        setExpiryError(null);
         setShowAddModal(true);
     };
 
@@ -230,7 +243,7 @@ export function PaymentMethods({
                 }
                 if (!validateCardNumber(formData.card_number)) {
                     throw new Error(
-                        "El número de tarjeta no es válido (debe tener 13-19 dígitos)"
+                        "El número de tarjeta no es válido (debe tener exactamente 16 dígitos)"
                     );
                 }
                 if (!formData.expiry_date) {
@@ -292,7 +305,7 @@ export function PaymentMethods({
                     formData.bank_name ||
                     "Método de Pago",
                 last_four:
-                    formData.card_number.slice(-4) ||
+                    formData.card_number.replace(/\s+/g, "").slice(-4) ||
                     formData.account_number.slice(-4) ||
                     "****",
                 expiry_date: formData.expiry_date || null,
@@ -361,15 +374,78 @@ export function PaymentMethods({
     };
 
     const handleSetPrimary = async (methodId: string) => {
-        setPaymentMethods((methods) =>
-            methods.map((method) => ({
-                ...method,
-                is_primary: method.id === methodId,
-            }))
-        );
+        try {
+            // Optimistic update
+            setPaymentMethods((methods) =>
+                methods.map((method) => ({
+                    ...method,
+                    is_primary: method.id === methodId,
+                }))
+            );
+
+            // Backend update
+            // First, set all to false (optional if backend handles it, but safer here)
+            await supabase
+                .from("payment_methods")
+                .update({ is_primary: false })
+                .eq("customer_id", customerData!.id);
+
+            // Then set the selected one to true
+            const { error } = await supabase
+                .from("payment_methods")
+                .update({ is_primary: true })
+                .eq("id", methodId);
+
+            if (error) throw error;
+
+            toast({
+                title: "Método principal actualizado",
+                description: "Se ha establecido el nuevo método de pago principal.",
+            });
+        } catch (error) {
+            console.error("Error setting primary method:", error);
+            toast({
+                title: "Error",
+                description: "No se pudo actualizar el método principal.",
+                variant: "destructive",
+            });
+            // Revert optimistic update (reload)
+            fetchPaymentMethods();
+        }
     };
 
     const handleDeleteMethod = (methodId: string, methodName: string) => {
+        if (paymentMethods.length === 1) {
+            // Show warning instead of delete dialog
+            // We can reuse the delete dialog state but with a specific flag or just use a separate alert
+            // For simplicity, let's use a toast or a specific modal if requested.
+            // User requested a modal: "No puedes eliminar tu único método de pago"
+            // We'll use a standard alert dialog for this specific case or reuse ConfirmDialog with different props?
+            // Let's use a simple alert via toast for now OR modify the ConfirmDialog usage.
+            // Actually, the requirement says "Modal de advertencia".
+            // Let's use a simple window.alert or a custom dialog. 
+            // Since we have `ConfirmDialog`, let's check if we can use it for info only.
+            // Or better, let's just use the existing `deleteDialog` state but add a `isWarning` flag?
+            // No, let's just block it and show a toast for now as it's faster and cleaner, 
+            // OR if strictly following "Modal", I'd need to add a new state for "WarningModal".
+            // Let's try to use the existing ConfirmDialog but change the text and remove the cancel button?
+            // The ConfirmDialog component might not support "Info only".
+            
+            // Let's stick to the requirement: "Modal de advertencia".
+            // I will use the existing deleteDialog but with a special ID or flag to render differently?
+            // No, let's just add a simple state for this warning.
+            
+            // Actually, I'll just use the `ConfirmDialog` but with a "Entendido" action that does nothing.
+            // But `ConfirmDialog` usually has Cancel/Confirm.
+            
+            // Let's use a toast for simplicity unless strictly enforced. 
+            // "Si es el único método de pago guardado y el usuario intenta eliminarlo, mostrar un modal de advertencia"
+            
+            // Okay, I'll add a `showWarningModal` state.
+            setShowWarningModal(true);
+            return;
+        }
+
         // Abrir el diálogo de confirmación
         setDeleteDialog({
             open: true,
@@ -445,9 +521,28 @@ export function PaymentMethods({
         return true;
     };
 
+    const isDatePast = (expiry: string): boolean => {
+        const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
+        if (!regex.test(expiry)) return false; // Invalid format is not "past" per se, but we handle it in validation
+
+        const [month, year] = expiry.split("/");
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear() % 100;
+        const currentMonth = currentDate.getMonth() + 1;
+
+        const expiryYear = parseInt(year);
+        const expiryMonth = parseInt(month);
+
+        if (expiryYear < currentYear) return true;
+        if (expiryYear === currentYear && expiryMonth < currentMonth)
+            return true;
+
+        return false;
+    };
+
     const validateCardNumber = (cardNumber: string): boolean => {
         const cleaned = cardNumber.replace(/\s+/g, "");
-        return /^\d{13,19}$/.test(cleaned);
+        return /^\d{16}$/.test(cleaned);
     };
 
     const validateCVV = (cvv: string): boolean => {
@@ -473,6 +568,28 @@ export function PaymentMethods({
         if (formError) {
             setFormError("");
         }
+    };
+
+    const isFormValid = () => {
+        if (formData.type === "credit_card" || formData.type === "debit_card") {
+            return (
+                validateCardNumber(formData.card_number) &&
+                validateExpiryDate(formData.expiry_date) &&
+                validateCVV(formData.cvv) &&
+                formData.cardholder_name.trim() !== ""
+            );
+        }
+        if (formData.type === "bank_account") {
+            return (
+                validateAccountNumber(formData.account_number) &&
+                validateRoutingNumber(formData.routing_number) &&
+                formData.bank_name.trim() !== ""
+            );
+        }
+        if (formData.type === "digital_wallet") {
+            return validateEmail(formData.wallet_email);
+        }
+        return false;
     };
 
     if (loading) {
@@ -619,9 +736,37 @@ export function PaymentMethods({
                                 </div>
                             ))}
                         </div>
+
+                    )}
+                    
+                    {/* Add button below list if methods exist */}
+                    {paymentMethods.length > 0 && showAddButton && (
+                        <div className="mt-6">
+                            <Button onClick={handleAddMethod} variant="outline" className="w-full sm:w-auto">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Agregar Método de Pago
+                            </Button>
+                        </div>
                     )}
                 </CardContent>
             </Card>
+
+            {/* Warning Modal for Single Method Deletion */}
+            <Dialog open={showWarningModal} onOpenChange={setShowWarningModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>No puedes eliminar tu único método de pago</DialogTitle>
+                        <DialogDescription>
+                            Debes tener al menos un método de pago para poder contratar y pagar tus pólizas.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={() => setShowWarningModal(false)}>
+                            Entendido
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Add/Edit Payment Method Modal */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
@@ -701,15 +846,22 @@ export function PaymentMethods({
                                         id="card_number"
                                         value={formData.card_number}
                                         onChange={(e) => {
-                                            const value = e.target.value
-                                                .replace(/\D/g, "")
-                                                .slice(0, 16);
+                                            // Remove non-digits and limit to 16 digits
+                                            const rawValue = e.target.value.replace(/\D/g, "").slice(0, 16);
+                                            // Format with spaces every 4 digits
+                                            const formatted = rawValue.replace(/(\d{4})(?=\d)/g, "$1 ");
+                                            
                                             updateFormData({
-                                                card_number: value,
+                                                card_number: formatted,
                                             });
+                                            
+                                            // Clear error if valid length is reached
+                                            if (formError && rawValue.length === 16) {
+                                                setFormError("");
+                                            }
                                         }}
-                                        placeholder="1234 5678 9012 3456"
-                                        maxLength={16}
+                                        placeholder="1111 2222 3333 4444"
+                                        maxLength={19} // 16 digits + 3 spaces
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -721,25 +873,59 @@ export function PaymentMethods({
                                             id="expiry_date"
                                             value={formData.expiry_date}
                                             onChange={(e) => {
-                                                let value =
-                                                    e.target.value.replace(
-                                                        /\D/g,
-                                                        ""
-                                                    );
-                                                if (value.length >= 2) {
-                                                    value =
-                                                        value.slice(0, 2) +
-                                                        "/" +
-                                                        value.slice(2, 4);
+                                                let value = e.target.value;
+
+                                                // Permitir borrar todo, incluyendo el "/"
+                                                if (/^[0-9/]*$/.test(value) === false) return;
+
+                                                // Eliminar "/" si el usuario lo borra
+                                                value = value.replace(/[^0-9]/g, "");
+
+                                                // Insertar "/" automáticamente después de 2 dígitos
+                                                if (value.length > 2) {
+                                                    value = value.slice(0, 2) + "/" + value.slice(2, 4);
                                                 }
+
+                                                // Limitar longitud max 5 (MM/AA)
+                                                if (value.length > 5) return;
+
                                                 setFormData((prev) => ({
                                                     ...prev,
                                                     expiry_date: value,
                                                 }));
+
+                                                // Validación automática cuando MM/AA esté completo
+                                                if (value.length === 5) {
+                                                    const [mm, yy] = value.split("/").map(Number);
+
+                                                    if (mm < 1 || mm > 12) {
+                                                        setExpiryError("El mes de vencimiento no es válido. Debe estar entre 01 y 12.");
+                                                        return;
+                                                    }
+
+                                                    const currentYear = Number(new Date().getFullYear().toString().slice(-2));
+                                                    const currentMonth = new Date().getMonth() + 1;
+
+                                                    if (yy < currentYear || (yy === currentYear && mm < currentMonth)) {
+                                                        setExpiryError("La fecha de vencimiento no puede estar en el pasado.");
+                                                        return;
+                                                    }
+
+                                                    setExpiryError(""); // OK
+                                                } else {
+                                                    // Si aún está incompleto, no mostrar error
+                                                    setExpiryError("");
+                                                }
                                             }}
                                             placeholder="MM/AA"
                                             maxLength={5}
+                                            className={expiryError ? "border-red-500" : ""}
                                         />
+                                        {expiryError && (
+                                            <p className="text-xs text-red-500 mt-1">
+                                                {expiryError}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="cvv">CVV</Label>
@@ -799,7 +985,44 @@ export function PaymentMethods({
                                         placeholder="1234567890"
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="routing_number">
+                                        Número de Ruta
+                                    </Label>
+                                    <Input
+                                        id="routing_number"
+                                        value={formData.routing_number}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                routing_number: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="123456789"
+                                    />
+                                </div>
                             </>
+                        )}
+
+                        {/* Digital Wallet Fields */}
+                        {formData.type === "digital_wallet" && (
+                            <div className="space-y-2">
+                                <Label htmlFor="wallet_email">
+                                    Correo Electrónico
+                                </Label>
+                                <Input
+                                    id="wallet_email"
+                                    type="email"
+                                    value={formData.wallet_email}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            wallet_email: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="correo@ejemplo.com"
+                                />
+                            </div>
                         )}
 
                         {/* Primary checkbox */}
@@ -842,7 +1065,7 @@ export function PaymentMethods({
                         </Button>
                         <Button
                             onClick={handleSubmitMethod}
-                            disabled={submitting}
+                            disabled={submitting || !isFormValid()}
                         >
                             {submitting ? (
                                 <>
