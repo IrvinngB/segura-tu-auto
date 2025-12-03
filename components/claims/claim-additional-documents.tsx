@@ -22,6 +22,7 @@ interface ClaimAdditionalDocumentsProps {
   onRefresh?: () => void;
   agentId?: string;
   claimNumber?: string;
+  refreshTrigger?: number;
 }
 
 interface RequestedDocument {
@@ -37,13 +38,16 @@ export function ClaimAdditionalDocuments({
   onRefresh,
   agentId,
   claimNumber,
+  refreshTrigger = 0,
 }: ClaimAdditionalDocumentsProps) {
   const [loading, setLoading] = useState(true);
   const [requestedDocs, setRequestedDocs] = useState<RequestedDocument[]>([]);
   const [selectedLabel, setSelectedLabel] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [hasRequest, setHasRequest] = useState(false);
-  
+
+  console.log('🔄 ClaimAdditionalDocuments RENDER:', { claimId, refreshTrigger });
+
   const supabase = createClient();
 
   // Helper para normalizar texto de forma robusta (Mapa directo)
@@ -64,8 +68,44 @@ export function ClaimAdditionalDocuments({
   };
 
   useEffect(() => {
+    console.log('⚡ useEffect triggered by:', { claimId, refreshTrigger });
     fetchRequirements();
-  }, [claimId]);
+
+    // Suscribirse a nuevas comunicaciones para actualizar en tiempo real
+    console.log('🔌 Setting up subscription for claim:', claimId);
+    const channel = supabase
+      .channel(`claim-docs-${claimId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'communications'
+        },
+        (payload) => {
+          console.log('📨 Realtime event received (unfiltered):', payload);
+          
+          // Filter client-side to debug
+          if (payload.new.claim_id === claimId) {
+             console.log('🎯 Event matches current claim!');
+             if (payload.new.subject && payload.new.subject.includes('Docs requeridos')) {
+                console.log('🔔 Nueva solicitud de documentos detectada, actualizando...');
+                fetchRequirements();
+                toast.info('Nueva solicitud de documentos recibida');
+             }
+          } else {
+             console.log(`⚠️ Event for different claim: ${payload.new.claim_id} vs ${claimId}`);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log(`📡 Subscription status for ${claimId}:`, status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [claimId, refreshTrigger]);
 
   const fetchRequirements = async () => {
     try {

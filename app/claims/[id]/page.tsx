@@ -69,6 +69,7 @@ export default function ClaimDetailPage() {
   const [customerDocumentsCount, setCustomerDocumentsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Estados para modales
   const [confirmModal, setConfirmModal] = useState<{
@@ -882,7 +883,11 @@ export default function ClaimDetailPage() {
                         </Button>
                         <DocumentRequestModal
                           claimId={Array.isArray(params.id) ? params.id[0] : params.id}
-                          onDocumentRequested={fetchClaimDetails}
+                          onDocumentRequested={() => {
+                            console.log('🔄 Agent DocumentRequestModal (1) callback triggered!');
+                            fetchClaimDetails();
+                            setRefreshTrigger(prev => prev + 1);
+                          }}
                         />
                       </>
                     )}
@@ -912,7 +917,11 @@ export default function ClaimDetailPage() {
                         </TooltipProvider>
                         <DocumentRequestModal
                           claimId={Array.isArray(params.id) ? params.id[0] : params.id}
-                          onDocumentRequested={fetchClaimDetails}
+                          onDocumentRequested={() => {
+                            console.log('🔄 Agent DocumentRequestModal (2) callback triggered!');
+                            fetchClaimDetails();
+                            setRefreshTrigger(prev => prev + 1);
+                          }}
                         />
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
                           <XCircle className="h-4 w-4 mr-2" />
@@ -1200,7 +1209,15 @@ export default function ClaimDetailPage() {
                         </Button>
                         <DocumentRequestModal
                           claimId={Array.isArray(params.id) ? params.id[0] : params.id}
-                          onDocumentRequested={fetchClaimDetails}
+                          onDocumentRequested={() => {
+                            console.log('🔄 DocumentRequestModal callback triggered! Incrementing refreshTrigger...');
+                            fetchClaimDetails();
+                            setRefreshTrigger(prev => {
+                              const newVal = prev + 1;
+                              console.log('🔄 New refreshTrigger value:', newVal);
+                              return newVal;
+                            });
+                          }}
                         />
                       </>
                     )}
@@ -1564,6 +1581,7 @@ export default function ClaimDetailPage() {
                 onDocumentCountChange={setCustomerDocumentsCount}
                 documents={fullCustomerDocuments}
                 onRefresh={fetchClaimDetails}
+                refreshTrigger={refreshTrigger}
               />
             </div>
           </TabsContent>

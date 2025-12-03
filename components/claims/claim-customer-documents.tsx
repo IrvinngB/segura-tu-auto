@@ -39,6 +39,7 @@ interface ClaimCustomerDocumentsProps {
   onRefresh?: () => void;
   agentId?: string;
   claimNumber?: string;
+  refreshTrigger?: number;
 }
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
@@ -80,6 +81,7 @@ export function ClaimCustomerDocuments({
   onRefresh = () => {},
   agentId,
   claimNumber,
+  refreshTrigger = 0,
 }: ClaimCustomerDocumentsProps) {
   // const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]); // Removed local state
   // const [loading, setLoading] = useState(true); // Removed loading state (handled by parent)
@@ -435,6 +437,7 @@ export function ClaimCustomerDocuments({
         onRefresh={onRefresh}
         agentId={agentId}
         claimNumber={claimNumber}
+        refreshTrigger={refreshTrigger}
       />
 
       <Card>
