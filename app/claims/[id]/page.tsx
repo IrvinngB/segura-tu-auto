@@ -1006,7 +1006,7 @@ export default function ClaimDetailPage() {
                         <p className="text-sm text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           <strong>Esperando aprobación directiva:</strong> El ajustador ha completado la evaluación técnica. 
-                          Un supervisor debe aprobar el monto de indemnización.
+                          Un admin debe aprobar el monto de indemnización.
                         </p>
                       </div>
                     )}
@@ -1060,13 +1060,7 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'investigating' && (
                       <>
-                        <Button
-                          onClick={() => setShowAssessmentForm(true)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <ClipboardCheck className="h-4 w-4 mr-2" />
-                          Realizar Evaluación Técnica de Daños
-                        </Button>
+
                         <Button
                           variant="secondary"
                           onClick={() => updateClaimStatus('waiting_approval')}
@@ -1101,7 +1095,7 @@ export default function ClaimDetailPage() {
                       <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-3 rounded-lg">
                         <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
                           <CheckCircle className="h-4 w-4" />
-                          <strong>Evaluación enviada a aprobación:</strong> Tu evaluación técnica ha sido enviada al supervisor 
+                          <strong>Evaluación enviada a aprobación:</strong> Tu evaluación técnica ha sido enviada al admin 
                           para aprobación del monto de indemnización.
                         </p>
                         <div className="mt-2 flex gap-2">
