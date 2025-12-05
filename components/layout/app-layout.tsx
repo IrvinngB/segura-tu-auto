@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { Toaster } from '@/components/ui/sonner';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -84,6 +85,7 @@ export const AppLayout = memo(function AppLayout({ children }: AppLayoutProps) {
           <main className="min-h-screen">{children}</main>
         </Suspense>
       </div>
+      <Toaster />
     </div>
   );
 });

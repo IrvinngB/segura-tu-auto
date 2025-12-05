@@ -40,7 +40,7 @@ export default function CustomerClaimDetailPage() {
   
   // Inicializar tab desde la URL si existe
   const initialTab = searchParams.get('tab');
-  const validTabs = ['details', 'documents', 'communication', 'status'];
+  const validTabs = ['details', 'documents'];
   const [activeTab, setActiveTab] = useState(
     (initialTab && validTabs.includes(initialTab)) ? initialTab : 'details'
   );
@@ -228,8 +228,7 @@ export default function CustomerClaimDetailPage() {
           <TabsList>
             <TabsTrigger value="details">Detalles</TabsTrigger>
             <TabsTrigger value="documents">Documentos y Evidencia</TabsTrigger>
-            <TabsTrigger value="communication">Comunicación</TabsTrigger>
-            <TabsTrigger value="status">Estado</TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="details">
@@ -371,116 +370,7 @@ export default function CustomerClaimDetailPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="communication">
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageCircle className="h-5 w-5" />
-                    Comunicación con su Agente
-                  </CardTitle>
-                  <CardDescription>
-                    Envíe mensajes, documentos e imágenes directamente a su agente de seguros
-                  </CardDescription>
-                </CardHeader>
-              </Card>
 
-              <ClaimCommunication
-                claimId={claim.id}
-                customerId={customerId}
-                claimNumber={claim.claim_number}
-                currentUserRole="customer"
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="status">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Estado de la Reclamación
-                  <InfoTooltip
-                    content="Aquí puedes ver el progreso de tu reclamación. El estado se actualiza automáticamente cuando el ajustador realiza cambios."
-                    side="right"
-                  />
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span>Estado actual:</span>
-                    {getStatusBadge(claim.status)}
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="font-medium">¿Qué significa este estado?</h4>
-                    <div className="text-sm text-muted-foreground">
-                      {claim.status === 'submitted' && (
-                        <p>Su reclamación ha sido recibida y está pendiente de revisión inicial.</p>
-                      )}
-                      {claim.status === 'under_review' && (
-                        <p>
-                          Su reclamación está siendo revisada por nuestro equipo de documentación.
-                        </p>
-                      )}
-                      {claim.status === 'pending_documentation' && (
-                        <p>
-                          Necesitamos documentación adicional para continuar con su reclamación. Por
-                          favor, contacte a su agente.
-                        </p>
-                      )}
-                      {claim.status === 'investigating' && (
-                        <p>
-                          Su reclamación está siendo evaluada técnicamente por un ajustador
-                          especializado.
-                        </p>
-                      )}
-                      {claim.status === 'waiting_approval' && (
-                        <p>
-                          La evaluación técnica ha sido completada y está pendiente de aprobación
-                          final.
-                        </p>
-                      )}
-                      {claim.status === 'approved' && (
-                        <p>Su reclamación ha sido aprobada. El proceso de pago iniciará pronto.</p>
-                      )}
-                      {claim.status === 'processing_payment' && (
-                        <p>
-                          Su pago está siendo procesado. Recibirá la compensación en los próximos
-                          días hábiles.
-                        </p>
-                      )}
-                      {claim.status === 'paid' && (
-                        <p>Su reclamación ha sido pagada exitosamente.</p>
-                      )}
-                      {claim.status === 'denied' && (
-                        <p>
-                          Su reclamación ha sido denegada. Para más información, contacte a su
-                          agente.
-                        </p>
-                      )}
-                      {claim.status === 'closed' && <p>Su reclamación ha sido cerrada.</p>}
-                    </div>
-                  </div>
-
-                  {claim.adjuster && (
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">
-                        Ajustador Asignado
-                      </label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <p>
-                          {claim.adjuster.first_name} {claim.adjuster.last_name}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
     </ProtectedRoute>

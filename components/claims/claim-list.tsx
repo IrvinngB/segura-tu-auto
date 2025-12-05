@@ -1111,67 +1111,67 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
           {(!userProfile?.role || userProfile?.role === 'customer') && (
             <>
               <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-gray-400">
+                <CardContent className="p-2 flex flex-col items-center justify-center text-center">
+                  <div className="text-2xl font-bold text-gray-400">
                     {filteredClaims.filter(c => c.status === 'submitted').length}
                   </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">Enviadas</div>
+                  <div className="text-sm text-muted-foreground">Enviadas</div>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-yellow-500">
+                <CardContent className="p-2 flex flex-col items-center justify-center text-center">
+                  <div className="text-2xl font-bold text-yellow-500">
                     {filteredClaims.filter(c => c.status === 'under_review').length}
                   </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">En revisión</div>
+                  <div className="text-sm text-muted-foreground">En revisión</div>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-purple-500">
+                <CardContent className="p-2 flex flex-col items-center justify-center text-center">
+                  <div className="text-2xl font-bold text-purple-500">
                     {filteredClaims.filter(c => c.status === 'waiting_approval').length}
                   </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">Esperando aprobación</div>
+                  <div className="text-sm text-muted-foreground">Esperando aprobación</div>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-blue-600">
+                <CardContent className="p-2 flex flex-col items-center justify-center text-center">
+                  <div className="text-2xl font-bold text-blue-600">
                     {filteredClaims.filter(c => c.status === 'investigating').length}
                   </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">En investigación</div>
+                  <div className="text-sm text-muted-foreground">En investigación</div>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-green-500">
+                <CardContent className="p-2 flex flex-col items-center justify-center text-center">
+                  <div className="text-2xl font-bold text-green-500">
                     {filteredClaims.filter(c => c.status === 'approved').length}
                   </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">Aprobadas</div>
+                  <div className="text-sm text-muted-foreground">Aprobadas</div>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-cyan-500">
+                <CardContent className="p-2 flex flex-col items-center justify-center text-center">
+                  <div className="text-2xl font-bold text-cyan-500">
                     {filteredClaims.filter(c => c.status === 'processing_payment').length}
                   </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">Procesando Pago</div>
+                  <div className="text-sm text-muted-foreground">Procesando Pago</div>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-gray-600">
+                <CardContent className="p-2 flex flex-col items-center justify-center text-center">
+                  <div className="text-2xl font-bold text-gray-600">
                     {filteredClaims.filter(c => c.status === 'closed').length}
                   </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">Cerradas</div>
+                  <div className="text-sm text-muted-foreground">Cerradas</div>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-red-600">
+                <CardContent className="p-2 flex flex-col items-center justify-center text-center">
+                  <div className="text-2xl font-bold text-red-600">
                     {filteredClaims.filter(c => ['denied', 'rejected'].includes(c.status)).length}
                   </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">Denegadas</div>
+                  <div className="text-sm text-muted-foreground">Denegadas</div>
                 </CardContent>
               </Card>
             </>
