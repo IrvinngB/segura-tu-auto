@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { ReactQueryProvider } from "@/lib/react-query-provider";
 import "./globals.css";
 import "./notification-scrollbar.css";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
     variable: "--font-inter",
@@ -62,6 +63,7 @@ export default function RootLayout({
                         <ReactQueryProvider>
                             <IdleTimer />
                             <AppLayout>{children}</AppLayout>
+                            <Toaster />
                         </ReactQueryProvider>
                     </AuthProvider>
                 </ThemeProvider>

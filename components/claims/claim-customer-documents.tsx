@@ -86,6 +86,7 @@ export function ClaimCustomerDocuments({
   // const [documents, setDocuments] = useState<ClaimCustomerDocument[]>([]); // Removed local state
   // const [loading, setLoading] = useState(true); // Removed loading state (handled by parent)
   const [uploading, setUploading] = useState(false);
+  const [replacingDocId, setReplacingDocId] = useState<string | null>(null);
   const [updatingDocIds, setUpdatingDocIds] = useState<Set<string>>(new Set());
   const [optimisticStatus, setOptimisticStatus] = useState<Record<string, string>>({});
   
@@ -133,6 +134,7 @@ export function ClaimCustomerDocuments({
       }
 
       setUploading(true);
+      setReplacingDocId(doc.id);
 
       try {
         console.log('🔄 Iniciando reemplazo de documento:', {
@@ -242,7 +244,7 @@ export function ClaimCustomerDocuments({
           console.warn('⚠️ Error en cleanup:', cleanupError);
         }
 
-        toast.success('Documento actualizado exitosamente');
+        toast.success(`Documento "${newFileName}" actualizado exitosamente`);
 
         // Trigger refresh
         await onRefresh();
@@ -252,6 +254,7 @@ export function ClaimCustomerDocuments({
         toast.error('Error al actualizar el documento: ' + (error as Error).message);
       } finally {
         setUploading(false);
+        setReplacingDocId(null);
       }
     };
 
@@ -552,8 +555,8 @@ export function ClaimCustomerDocuments({
 
 
 
-                      {/* Reemplazo para TODOS los documentos (normales y extra) si es cliente */}
-                      {currentUserRole === 'customer' && (
+                      {/* Reemplazo para TODOS los documentos (normales y extra) si es cliente o agente */}
+                      {['customer', 'agent'].includes(currentUserRole || '') && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -562,7 +565,11 @@ export function ClaimCustomerDocuments({
                           disabled={uploading || isUpdating}
                           title="Reemplazar documento"
                         >
-                          <Upload className="h-4 w-4" />
+                          {replacingDocId === doc.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
                         </Button>
                       )}
                       
