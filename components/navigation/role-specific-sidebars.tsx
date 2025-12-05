@@ -182,12 +182,7 @@ const adjusterNavigation: NavigationItem[] = [
     icon: AlertTriangle,
     description: 'Gestión de reclamos',
   },
-  {
-    name: 'Mis Casos',
-    href: '/adjuster/cases',
-    icon: ClipboardList,
-    description: 'Casos activos e histórico',
-  },
+
 ];
 
 interface SidebarProps {
