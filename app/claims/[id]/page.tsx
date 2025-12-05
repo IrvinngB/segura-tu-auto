@@ -1045,7 +1045,7 @@ export default function ClaimDetailPage() {
                     </p>
                   </div>
 
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap items-center">
                     {['submitted', 'under_review', 'pending_documentation'].includes(
                       claim.status
                     ) && (
@@ -1061,20 +1061,13 @@ export default function ClaimDetailPage() {
                     {claim.status === 'investigating' && (
                       <>
 
-                        <Button
-                          variant="secondary"
-                          onClick={() => updateClaimStatus('waiting_approval')}
-                          className="bg-green-100 text-green-700 hover:bg-green-200"
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Enviar a Aprobación Final
-                        </Button>
+
                         <Button
                           onClick={approveClaimWithAmount}
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <DollarSign className="h-4 w-4 mr-2" />
-                          Aprobar Directamente con Monto
+                          Aprobar con Monto
                         </Button>
                         <Button variant="destructive" onClick={() => updateClaimStatus('denied')}>
                           <XCircle className="h-4 w-4 mr-2" />
@@ -1125,7 +1118,7 @@ export default function ClaimDetailPage() {
                           <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
                             <CheckCircle className="h-4 w-4" />
                             <strong>Aprobación completada:</strong> El proceso de pago será manejado
-                            por el agente o administrador.
+                            por el agente.
                           </p>
                         </div>
                       </>

@@ -489,14 +489,14 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
             </CardTitle>
             <CardDescription>
               {customerId
-                ? 'Reclamaciones del cliente'
+                ? null
                 : userProfile?.role === 'agent'
                   ? 'Reclamaciones para gestión administrativa y documentación'
                   : userProfile?.role === 'adjuster'
                     ? 'Reclamaciones para evaluación técnica y aprobación'
                     : 'Gestión completa de reclamaciones'}
               {lastUpdated && (
-                <span className="block text-xs text-muted-foreground mt-1">
+                <span className="block text-xs text-muted-foreground mt-2">
                   Última actualización: {lastUpdated.toLocaleTimeString()}
                 </span>
               )}
