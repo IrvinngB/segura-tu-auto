@@ -330,7 +330,7 @@ export function ClaimAdditionalDocuments({
 
       if (dbError) throw dbError;
 
-      toast.success('Documento subido exitosamente');
+      // toast.success('Documento subido exitosamente');
       
       // Recargar para actualizar estado
       await fetchRequirements();

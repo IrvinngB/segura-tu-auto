@@ -436,7 +436,7 @@ export function ClaimForm({ policyId, customerId, onSuccess, onCancel, isCustome
         },
       }));
 
-      toast.success(`Documento ${docType} subido correctamente`);
+      // toast.success(`Documento ${docType} subido correctamente`);
     } catch (error) {
       console.error(`Error uploading document ${docType}:`, error);
       toast.error((error as Error).message || 'Error al subir el documento');

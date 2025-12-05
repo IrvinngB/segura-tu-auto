@@ -85,7 +85,7 @@ export const AppLayout = memo(function AppLayout({ children }: AppLayoutProps) {
           <main className="min-h-screen">{children}</main>
         </Suspense>
       </div>
-      <Toaster />
+      {userProfile?.role === 'customer' && <Toaster />}
     </div>
   );
 });
