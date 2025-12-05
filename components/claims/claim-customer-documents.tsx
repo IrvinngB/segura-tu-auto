@@ -555,8 +555,8 @@ export function ClaimCustomerDocuments({
 
 
 
-                      {/* Reemplazo para TODOS los documentos (normales y extra) si es cliente o agente */}
-                      {['customer', 'agent'].includes(currentUserRole || '') && (
+                      {/* Reemplazo para TODOS los documentos (normales y extra) si es cliente */}
+                      {currentUserRole === 'customer' && (
                         <Button
                           size="sm"
                           variant="ghost"

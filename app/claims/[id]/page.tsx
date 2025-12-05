@@ -1187,13 +1187,15 @@ export default function ClaimDetailPage() {
                           <UserCheck className="h-4 w-4 mr-2" />
                           Asignar a Evaluador
                         </Button>
-                        <Button
-                          variant="secondary"
-                          onClick={() => updateClaimStatus('waiting_approval')}
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Enviar a Aprobación
-                        </Button>
+                        {userProfile?.role !== 'admin' && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => updateClaimStatus('waiting_approval')}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Enviar a Aprobación
+                          </Button>
+                        )}
                         <DocumentRequestModal
                           claimId={Array.isArray(params.id) ? params.id[0] : params.id}
                           onDocumentRequested={() => {
@@ -1224,17 +1226,21 @@ export default function ClaimDetailPage() {
 
                     {claim.status === 'investigating' && (
                       <>
-                        <Button onClick={() => setShowAssessmentForm(true)}>
-                          <ClipboardCheck className="h-4 w-4 mr-2" />
-                          Nueva Evaluación
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          onClick={() => updateClaimStatus('waiting_approval')}
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Enviar a Aprobación
-                        </Button>
+                        {userProfile?.role !== 'admin' && (
+                          <Button onClick={() => setShowAssessmentForm(true)}>
+                            <ClipboardCheck className="h-4 w-4 mr-2" />
+                            Nueva Evaluación
+                          </Button>
+                        )}
+                        {userProfile?.role !== 'admin' && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => updateClaimStatus('waiting_approval')}
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Enviar a Aprobación
+                          </Button>
+                        )}
                         <Button onClick={approveClaimWithAmount}>
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Aprobar Directamente

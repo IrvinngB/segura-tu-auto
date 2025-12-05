@@ -856,14 +856,6 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
               </Card>
               <Card>
                 <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-purple-500">
-                    {filteredClaims.filter(c => c.status === 'waiting_approval').length}
-                  </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">Esperando aprobación</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
                   <div className="text-xl font-bold text-blue-600">
                     {filteredClaims.filter(c => c.status === 'investigating').length}
                   </div>
@@ -924,14 +916,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                   <div className="text-[10px] leading-tight text-muted-foreground">En revisión</div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-purple-500">
-                    {filteredClaims.filter(c => c.status === 'waiting_approval').length}
-                  </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">Esperando aprobación</div>
-                </CardContent>
-              </Card>
+
               <Card>
                 <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
                   <div className="text-xl font-bold text-blue-600">
@@ -1018,14 +1003,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                   <div className="text-[10px] leading-tight text-muted-foreground">En revisión</div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
-                  <div className="text-xl font-bold text-purple-500">
-                    {filteredClaims.filter(c => c.status === 'waiting_approval').length}
-                  </div>
-                  <div className="text-[10px] leading-tight text-muted-foreground">Esperando aprobación</div>
-                </CardContent>
-              </Card>
+
               <Card>
                 <CardContent className="p-1.5 flex flex-col items-center justify-center text-center h-full">
                   <div className="text-xl font-bold text-blue-600">
@@ -1126,14 +1104,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
                   <div className="text-sm text-muted-foreground">En revisión</div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-2 flex flex-col items-center justify-center text-center">
-                  <div className="text-2xl font-bold text-purple-500">
-                    {filteredClaims.filter(c => c.status === 'waiting_approval').length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Esperando aprobación</div>
-                </CardContent>
-              </Card>
+
               <Card>
                 <CardContent className="p-2 flex flex-col items-center justify-center text-center">
                   <div className="text-2xl font-bold text-blue-600">
