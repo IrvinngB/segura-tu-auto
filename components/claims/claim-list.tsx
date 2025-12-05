@@ -564,17 +564,7 @@ export function ClaimList({ customerId, policyId, onViewClaim, onEditClaim }: Cl
         </div>
 
         {/* Alert informativo por rol */}
-        {userProfile?.role === 'adjuster' && (
-          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-semibold text-blue-900 mb-2">💼 Panel de Ajustador</h3>
-            <ul className="text-sm text-blue-800 space-y-1">
-              <li>• <strong>Mis Reclamaciones:</strong> Solo ves las que están asignadas a ti</li>
-              <li>• <strong>Evaluar:</strong> Botón azul "Evaluar" en tus reclamaciones activas</li>
-              <li>• <strong>Estados:</strong> Investigating (evaluando) y Waiting Approval (esperando aprobación)</li>
-              <li>• <strong>Nota:</strong> No verás reclamaciones de otros ajustadores</li>
-            </ul>
-          </div>
-        )}
+
 
         {userProfile?.role === 'agent' && (
           <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">

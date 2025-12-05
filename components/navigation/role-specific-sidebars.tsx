@@ -131,7 +131,6 @@ const agentNavigation: NavigationItem[] = [
     icon: FileText,
     description: 'Sistema de documentación requerida',
   },
-  { name: 'Documentos', href: '/documents', icon: Upload, description: 'Gestión de documentos' },
 ];
 
 const customerNavigation: NavigationItem[] = [

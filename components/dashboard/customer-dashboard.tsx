@@ -113,6 +113,9 @@ export function CustomerDashboard() {
       waiting_approval: { label: 'Esperando Aprobación', variant: 'outline' },
       approved: { label: 'Aprobada', variant: 'default' },
       denied: { label: 'Denegada', variant: 'destructive' },
+      processing_payment: { label: 'Procesando Pago', variant: 'default' },
+      paid: { label: 'Pagada', variant: 'default' },
+      closed: { label: 'Cerrada', variant: 'outline' },
     };
     return config[status] || { label: status, variant: 'outline' };
   };
